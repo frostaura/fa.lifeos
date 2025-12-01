@@ -1,0 +1,346 @@
+using LifeOS.Application.Commands.Metrics;
+using LifeOS.Application.DTOs.Metrics;
+using LifeOS.Application.Queries.Metrics;
+using LifeOS.Domain.Enums;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
+
+namespace LifeOS.Api.Controllers;
+
+[ApiController]
+[Route("api/metrics")]
+[Authorize]
+public class MetricsController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly ILogger<MetricsController> _logger;
+
+    public MetricsController(IMediator mediator, ILogger<MetricsController> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
+
+    private Guid GetUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+    }
+
+    #region Metric Definitions CRUD
+
+    /// <summary>
+    /// Get all metric definitions
+    /// </summary>
+    [HttpGet("definitions")]
+    [ProducesResponseType(typeof(MetricDefinitionListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDefinitions(
+        [FromQuery] Guid? dimensionId,
+        [FromQuery] string? tags,
+        [FromQuery] bool? isActive = true)
+    {
+        var tagArray = string.IsNullOrEmpty(tags) ? null : tags.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        
+        var result = await _mediator.Send(new GetMetricDefinitionsQuery(dimensionId, tagArray, isActive));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get single metric definition by code
+    /// </summary>
+    [HttpGet("definitions/{code}")]
+    [ProducesResponseType(typeof(MetricDefinitionDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDefinitionByCode(string code)
+    {
+        var result = await _mediator.Send(new GetMetricDefinitionByCodeQuery(code));
+        
+        if (result == null)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric definition not found" } });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Create new metric definition
+    /// </summary>
+    [HttpPost("definitions")]
+    [ProducesResponseType(typeof(MetricDefinitionDetailResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateDefinition([FromBody] CreateMetricDefinitionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
+        {
+            return UnprocessableEntity(new
+            {
+                error = new
+                {
+                    code = "VALIDATION_ERROR",
+                    message = "Code and Name are required"
+                }
+            });
+        }
+
+        try
+        {
+            if (!Enum.TryParse<MetricValueType>(request.ValueType, true, out var valueType))
+                valueType = MetricValueType.Number;
+
+            if (!Enum.TryParse<AggregationType>(request.AggregationType, true, out var aggregationType))
+                aggregationType = AggregationType.Last;
+
+            var result = await _mediator.Send(new CreateMetricDefinitionCommand(
+                request.Code,
+                request.Name,
+                request.Description,
+                request.DimensionId,
+                request.Unit,
+                valueType,
+                aggregationType,
+                request.EnumValues,
+                request.MinValue,
+                request.MaxValue,
+                request.TargetValue,
+                request.Icon,
+                request.Tags,
+                request.IsDerived,
+                request.DerivationFormula,
+                request.IsActive));
+
+            return CreatedAtAction(nameof(GetDefinitionByCode), new { code = result.Data.Attributes.Code }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(new
+            {
+                error = new
+                {
+                    code = "DUPLICATE_CODE",
+                    message = ex.Message
+                }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Update metric definition
+    /// </summary>
+    [HttpPatch("definitions/{code}")]
+    [ProducesResponseType(typeof(MetricDefinitionDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDefinition(string code, [FromBody] UpdateMetricDefinitionRequest request)
+    {
+        MetricValueType? valueType = null;
+        if (!string.IsNullOrEmpty(request.ValueType) && Enum.TryParse<MetricValueType>(request.ValueType, true, out var vt))
+            valueType = vt;
+
+        AggregationType? aggregationType = null;
+        if (!string.IsNullOrEmpty(request.AggregationType) && Enum.TryParse<AggregationType>(request.AggregationType, true, out var at))
+            aggregationType = at;
+
+        var success = await _mediator.Send(new UpdateMetricDefinitionCommand(
+            code,
+            request.Name,
+            request.Description,
+            request.DimensionId,
+            request.Unit,
+            valueType,
+            aggregationType,
+            request.EnumValues,
+            request.MinValue,
+            request.MaxValue,
+            request.TargetValue,
+            request.Icon,
+            request.Tags,
+            request.IsDerived,
+            request.DerivationFormula,
+            request.IsActive));
+
+        if (!success)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric definition not found" } });
+
+        var result = await _mediator.Send(new GetMetricDefinitionByCodeQuery(code));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Delete metric definition (soft delete)
+    /// </summary>
+    [HttpDelete("definitions/{code}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteDefinition(string code)
+    {
+        var success = await _mediator.Send(new DeleteMetricDefinitionCommand(code));
+
+        if (!success)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric definition not found" } });
+
+        return NoContent();
+    }
+
+    #endregion
+
+    #region Metric Records CRUD
+
+    /// <summary>
+    /// List metric records with pagination
+    /// </summary>
+    [HttpGet("records")]
+    [ProducesResponseType(typeof(MetricRecordListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecords(
+        [FromQuery] string? code,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _mediator.Send(new GetMetricRecordsQuery(
+            GetUserId(),
+            code,
+            from,
+            to,
+            page,
+            Math.Min(pageSize, 100)));
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get single metric record by id
+    /// </summary>
+    [HttpGet("records/{id:guid}")]
+    [ProducesResponseType(typeof(MetricRecordDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRecordById(Guid id)
+    {
+        var result = await _mediator.Send(new GetMetricRecordByIdQuery(GetUserId(), id));
+        
+        if (result == null)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric record not found" } });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Update metric record value
+    /// </summary>
+    [HttpPatch("records/{id:guid}")]
+    [ProducesResponseType(typeof(MetricRecordDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateRecord(Guid id, [FromBody] UpdateMetricRecordRequest request)
+    {
+        var success = await _mediator.Send(new UpdateMetricRecordCommand(
+            GetUserId(),
+            id,
+            request.ValueNumber,
+            request.ValueBoolean,
+            request.ValueString,
+            request.Notes,
+            request.Metadata));
+
+        if (!success)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric record not found" } });
+
+        var result = await _mediator.Send(new GetMetricRecordByIdQuery(GetUserId(), id));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Delete metric record
+    /// </summary>
+    [HttpDelete("records/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteRecord(Guid id)
+    {
+        var success = await _mediator.Send(new DeleteMetricRecordCommand(GetUserId(), id));
+
+        if (!success)
+            return NotFound(new { error = new { code = "NOT_FOUND", message = "Metric record not found" } });
+
+        return NoContent();
+    }
+
+    #endregion
+
+    #region Existing Endpoints
+
+    /// <summary>
+    /// Record one or more metric values (CRITICAL: Single ingestion endpoint for n8n/automations)
+    /// </summary>
+    [HttpPost("record")]
+    [EnableRateLimiting("metrics")]
+    [ProducesResponseType(typeof(RecordMetricsResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RecordMetrics([FromBody] RecordMetricsRequest request)
+    {
+        if (request.Metrics == null || !request.Metrics.Any())
+        {
+            return UnprocessableEntity(new
+            {
+                error = new
+                {
+                    code = "VALIDATION_ERROR",
+                    message = "At least one metric must be provided"
+                }
+            });
+        }
+
+        var result = await _mediator.Send(new RecordMetricsCommand(
+            GetUserId(),
+            request.Timestamp,
+            request.Source,
+            request.Metrics));
+
+        _logger.LogInformation("Recorded {Recorded} metrics from source {Source}", 
+            result.Data.Attributes.Recorded, 
+            request.Source);
+
+        return StatusCode(201, result);
+    }
+
+    /// <summary>
+    /// Get metric history with aggregation
+    /// </summary>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(MetricHistoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetHistory(
+        [FromQuery] string codes,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] string granularity = "raw",
+        [FromQuery] int limit = 100)
+    {
+        if (string.IsNullOrEmpty(codes))
+        {
+            return BadRequest(new
+            {
+                error = new
+                {
+                    code = "VALIDATION_ERROR",
+                    message = "codes parameter is required"
+                }
+            });
+        }
+
+        var codeArray = codes.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        
+        var result = await _mediator.Send(new GetMetricHistoryQuery(
+            GetUserId(),
+            codeArray,
+            from,
+            to,
+            granularity,
+            Math.Min(limit, 1000)));
+
+        return Ok(result);
+    }
+
+    #endregion
+}
