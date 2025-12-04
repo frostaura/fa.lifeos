@@ -10,9 +10,15 @@ public record UpdateExpenseDefinitionCommand(
     decimal? AmountValue,
     string? AmountFormula,
     PaymentFrequency? Frequency,
+    DateOnly? StartDate,
     string? Category,
     bool? IsTaxDeductible,
     Guid? LinkedAccountId,
     bool? InflationAdjusted,
-    bool? IsActive
+    bool? IsActive,
+    EndConditionType? EndConditionType,
+    Guid? EndConditionAccountId,
+    DateOnly? EndDate,
+    decimal? EndAmountThreshold,
+    bool ClearEndConditionAccount = false
 ) : IRequest<bool>;

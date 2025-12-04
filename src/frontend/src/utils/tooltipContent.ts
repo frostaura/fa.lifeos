@@ -95,4 +95,5 @@ export const TOOLTIP_CONTENT = {
   inflationAdjusted: "If enabled, the expense amount will increase with inflation in financial projections.",
   isTaxDeductible: "If enabled, this expense can reduce taxable income in tax calculations.",
   targetAccount: "Optionally link this contribution to a tracked account. Helps visualize where your money is going.",
+  sourceAccount: "Select the account from which this contribution will be debited. This is used in financial simulations and projections to accurately track cash flow.",
 } as const;

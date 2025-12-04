@@ -72,30 +72,30 @@ export function DimensionCard({
     <GlassCard
       variant="default"
       className={cn(
-        'p-4 hover:shadow-glow-sm transition-all group',
+        'p-3 md:p-4 hover:shadow-glow-sm transition-all group',
         className
       )}
       onClick={handleClick}
     >
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
         <div
-          className="p-2 rounded-lg transition-colors"
+          className="p-1.5 md:p-2 rounded-lg transition-colors"
           style={{ backgroundColor: `${color}20` }}
         >
           <Icon
-            className="w-5 h-5 transition-transform group-hover:scale-110"
+            className="w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:scale-110"
             style={{ color }}
           />
         </div>
-        <span className="font-medium text-text-primary">{dimension.name}</span>
+        <span className="font-medium text-text-primary text-xs md:text-sm whitespace-nowrap overflow-hidden text-ellipsis">{dimension.name}</span>
       </div>
       
-      <div className="flex items-end justify-between mb-3">
-        <span className="text-2xl font-bold text-text-primary">{score}</span>
+      <div className="flex items-end justify-between mb-2 md:mb-3">
+        <span className="text-lg md:text-xl lg:text-2xl font-bold text-text-primary whitespace-nowrap">{score}</span>
         {trend !== 0 && (
           <span
             className={cn(
-              'text-sm font-medium',
+              'text-xs md:text-sm font-medium whitespace-nowrap',
               trend > 0 ? 'text-semantic-success' : 'text-semantic-error'
             )}
           >
@@ -107,7 +107,7 @@ export function DimensionCard({
       <ProgressBar value={score} color={color} height="sm" />
       
       {activeMilestones > 0 && (
-        <p className="mt-2 text-xs text-text-tertiary">
+        <p className="mt-1.5 md:mt-2 text-[10px] md:text-xs text-text-tertiary whitespace-nowrap">
           {activeMilestones} active milestone{activeMilestones !== 1 ? 's' : ''}
         </p>
       )}
@@ -129,7 +129,7 @@ interface DimensionGridProps {
 
 export function DimensionGrid({ dimensions, className }: DimensionGridProps) {
   return (
-    <div className={cn('grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4', className)}>
+    <div className={cn('grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4', className)}>
       {dimensions.map((dim) => (
         <DimensionCard
           key={dim.id}

@@ -22,6 +22,8 @@ public class GetInvestmentContributionsQueryHandler
     {
         var contributions = await _db.InvestmentContributions
             .Include(c => c.TargetAccount)
+            .Include(c => c.SourceAccount)
+            .Include(c => c.EndConditionAccount)
             .Where(c => c.UserId == request.UserId)
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken);
@@ -35,10 +37,18 @@ public class GetInvestmentContributionsQueryHandler
             Frequency = c.Frequency,
             TargetAccountId = c.TargetAccountId,
             TargetAccountName = c.TargetAccount?.Name,
+            SourceAccountId = c.SourceAccountId,
+            SourceAccountName = c.SourceAccount?.Name,
             Category = c.Category,
             AnnualIncreaseRate = c.AnnualIncreaseRate,
             Notes = c.Notes,
+            StartDate = c.StartDate,
             IsActive = c.IsActive,
+            EndConditionType = c.EndConditionType,
+            EndConditionAccountId = c.EndConditionAccountId,
+            EndConditionAccountName = c.EndConditionAccount?.Name,
+            EndDate = c.EndDate,
+            EndAmountThreshold = c.EndAmountThreshold,
             CreatedAt = c.CreatedAt
         }).ToList();
 
@@ -49,11 +59,12 @@ public class GetInvestmentContributionsQueryHandler
             PaymentFrequency.Biweekly => amount * 2.17m,
             PaymentFrequency.Annually => amount / 12m,
             PaymentFrequency.Quarterly => amount / 3m,
+            PaymentFrequency.Once => 0m, // One-time contributions don't count towards monthly total
             _ => amount
         };
 
         var totalMonthly = contributions
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive && c.Frequency != PaymentFrequency.Once)
             .Sum(c => GetMonthlyAmount(c.Amount, c.Frequency));
 
         var byCategory = contributions

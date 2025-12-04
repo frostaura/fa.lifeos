@@ -29,6 +29,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 12px;
 }
 
 body {
@@ -38,6 +39,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 12px;
 }
 
 #root {
@@ -75,6 +77,54 @@ body {
 
 /* Glass card utility classes */
 @layer components {
+  /* Responsive text utilities - scale down on smaller screens */
+  .text-responsive-xs {
+    @apply text-xs;
+  }
+  
+  .text-responsive-sm {
+    @apply text-xs md:text-sm;
+  }
+  
+  .text-responsive-base {
+    @apply text-sm md:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-base md:text-lg;
+  }
+  
+  .text-responsive-xl {
+    @apply text-lg md:text-xl;
+  }
+  
+  .text-responsive-2xl {
+    @apply text-xl md:text-2xl;
+  }
+  
+  .text-responsive-3xl {
+    @apply text-xl md:text-2xl lg:text-3xl;
+  }
+  
+  .text-responsive-4xl {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+  
+  .text-responsive-5xl {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+  
+  .text-responsive-6xl {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  /* No-wrap utility for text that shouldn't wrap */
+  .text-nowrap {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .glass-card {
     @apply bg-glass-medium backdrop-blur-md border border-glass-border rounded-xl transition-all duration-200;
   }

@@ -60,6 +60,7 @@ export const apiSlice = createApi({
     'ExpenseDefinitions',
     'InvestmentContributions',
     'FinancialGoals',
+    'LongevityModels',
   ],
   endpoints: () => ({}),
 });

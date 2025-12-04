@@ -12,8 +12,13 @@ public record CreateExpenseDefinitionCommand(
     decimal? AmountValue,
     string? AmountFormula,
     PaymentFrequency Frequency,
+    DateOnly? StartDate,
     string Category,
     bool IsTaxDeductible,
     Guid? LinkedAccountId,
-    bool InflationAdjusted
+    bool InflationAdjusted,
+    EndConditionType EndConditionType,
+    Guid? EndConditionAccountId,
+    DateOnly? EndDate,
+    decimal? EndAmountThreshold
 ) : IRequest<ExpenseDefinitionDetailResponse>;

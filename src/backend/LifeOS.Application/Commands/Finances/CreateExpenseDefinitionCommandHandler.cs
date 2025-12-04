@@ -25,10 +25,15 @@ public class CreateExpenseDefinitionCommandHandler : IRequestHandler<CreateExpen
             AmountValue = request.AmountValue,
             AmountFormula = request.AmountFormula,
             Frequency = request.Frequency,
+            StartDate = request.StartDate,
             Category = request.Category,
             IsTaxDeductible = request.IsTaxDeductible,
             LinkedAccountId = request.LinkedAccountId,
             InflationAdjusted = request.InflationAdjusted,
+            EndConditionType = request.EndConditionType,
+            EndConditionAccountId = request.EndConditionAccountId,
+            EndDate = request.EndDate,
+            EndAmountThreshold = request.EndAmountThreshold,
             IsActive = true
         };
 
@@ -49,11 +54,16 @@ public class CreateExpenseDefinitionCommandHandler : IRequestHandler<CreateExpen
                     AmountValue = expense.AmountValue,
                     AmountFormula = expense.AmountFormula,
                     Frequency = expense.Frequency.ToString().ToLowerInvariant(),
+                    StartDate = expense.StartDate?.ToString("yyyy-MM-dd"),
                     Category = expense.Category,
                     IsTaxDeductible = expense.IsTaxDeductible,
                     LinkedAccountId = expense.LinkedAccountId,
                     InflationAdjusted = expense.InflationAdjusted,
-                    IsActive = expense.IsActive
+                    IsActive = expense.IsActive,
+                    EndConditionType = expense.EndConditionType.ToString().ToLowerInvariant(),
+                    EndConditionAccountId = expense.EndConditionAccountId,
+                    EndDate = expense.EndDate?.ToString("yyyy-MM-dd"),
+                    EndAmountThreshold = expense.EndAmountThreshold
                 }
             }
         };

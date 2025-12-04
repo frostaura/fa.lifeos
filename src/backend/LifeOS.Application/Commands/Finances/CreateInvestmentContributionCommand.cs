@@ -33,10 +33,16 @@ public class CreateInvestmentContributionCommandHandler
             Amount = command.Request.Amount,
             Frequency = command.Request.Frequency,
             TargetAccountId = command.Request.TargetAccountId,
+            SourceAccountId = command.Request.SourceAccountId,
             Category = command.Request.Category,
             AnnualIncreaseRate = command.Request.AnnualIncreaseRate,
             Notes = command.Request.Notes,
+            StartDate = command.Request.StartDate,
             IsActive = true,
+            EndConditionType = command.Request.EndConditionType,
+            EndConditionAccountId = command.Request.EndConditionAccountId,
+            EndDate = command.Request.EndDate,
+            EndAmountThreshold = command.Request.EndAmountThreshold,
         };
 
         _db.InvestmentContributions.Add(contribution);
@@ -50,10 +56,16 @@ public class CreateInvestmentContributionCommandHandler
             Amount = contribution.Amount,
             Frequency = contribution.Frequency,
             TargetAccountId = contribution.TargetAccountId,
+            SourceAccountId = contribution.SourceAccountId,
             Category = contribution.Category,
             AnnualIncreaseRate = contribution.AnnualIncreaseRate,
             Notes = contribution.Notes,
+            StartDate = contribution.StartDate,
             IsActive = contribution.IsActive,
+            EndConditionType = contribution.EndConditionType,
+            EndConditionAccountId = contribution.EndConditionAccountId,
+            EndDate = contribution.EndDate,
+            EndAmountThreshold = contribution.EndAmountThreshold,
             CreatedAt = contribution.CreatedAt
         };
     }

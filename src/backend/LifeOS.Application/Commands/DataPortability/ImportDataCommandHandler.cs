@@ -65,6 +65,19 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
             results["accounts"] = await ImportAccountsAsync(request.UserId, data.Accounts, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["accounts"], ref totalImported, ref totalSkipped, ref totalErrors);
+            
+            // Save base entities (dimensions, accounts, etc.) before importing dependent entities
+            if (!request.DryRun)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save base entities: {Message}", ex.InnerException?.Message ?? ex.Message);
+                }
+            }
 
             results["milestones"] = await ImportMilestonesAsync(request.UserId, data.Milestones, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["milestones"], ref totalImported, ref totalSkipped, ref totalErrors);
@@ -114,9 +127,42 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             results["longevitySnapshots"] = await ImportLongevitySnapshotsAsync(request.UserId, data.LongevitySnapshots, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["longevitySnapshots"], ref totalImported, ref totalSkipped, ref totalErrors);
 
+            results["achievements"] = await ImportAchievementsAsync(data.Achievements, isReplaceMode, request.DryRun, cancellationToken);
+            UpdateCounts(results["achievements"], ref totalImported, ref totalSkipped, ref totalErrors);
+            
+            // Save achievements before user achievements
             if (!request.DryRun)
             {
-                await _context.SaveChangesAsync(cancellationToken);
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to save achievements: {Message}", ex.InnerException?.Message ?? ex.Message);
+                }
+            }
+
+            results["userAchievements"] = await ImportUserAchievementsAsync(request.UserId, data.UserAchievements, isReplaceMode, request.DryRun, cancellationToken);
+            UpdateCounts(results["userAchievements"], ref totalImported, ref totalSkipped, ref totalErrors);
+
+            results["userXP"] = await ImportUserXPAsync(request.UserId, data.UserXP, isReplaceMode, request.DryRun, cancellationToken);
+            UpdateCounts(results["userXP"], ref totalImported, ref totalSkipped, ref totalErrors);
+
+            results["netWorthSnapshots"] = await ImportNetWorthSnapshotsAsync(request.UserId, data.NetWorthSnapshots, isReplaceMode, request.DryRun, cancellationToken);
+            UpdateCounts(results["netWorthSnapshots"], ref totalImported, ref totalSkipped, ref totalErrors);
+
+            if (!request.DryRun)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogWarning(ex, "Some entities could not be saved due to foreign key constraints. Import completed with warnings.");
+                    totalErrors++;
+                }
             }
 
             stopwatch.Stop();
@@ -159,9 +205,22 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
     {
         _logger.LogInformation("Deleting all data for user {UserId}", userId);
         
+        // Delete in reverse FK dependency order to avoid constraint violations
+        
+        // 1. Delete user achievements, XP, and snapshots (no dependencies)
+        var userAchievements = await _context.UserAchievements.Where(ua => ua.UserId == userId).ToListAsync(ct);
+        _context.UserAchievements.RemoveRange(userAchievements);
+        
+        var userXPs = await _context.UserXPs.Where(x => x.UserId == userId).ToListAsync(ct);
+        _context.UserXPs.RemoveRange(userXPs);
+        
+        var netWorthSnapshots = await _context.NetWorthSnapshots.Where(n => n.UserId == userId).ToListAsync(ct);
+        _context.NetWorthSnapshots.RemoveRange(netWorthSnapshots);
+        
         var longevitySnapshots = await _context.LongevitySnapshots.Where(l => l.UserId == userId).ToListAsync(ct);
         _context.LongevitySnapshots.RemoveRange(longevitySnapshots);
         
+        // 2. Delete simulation-related data (depends on scenarios and accounts)
         var scenarioIds = await _context.SimulationScenarios.Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync(ct);
         if (scenarioIds.Any())
         {
@@ -178,11 +237,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             _context.SimulationScenarios.RemoveRange(scenarios);
         }
         
+        // 3. Delete financial data that references accounts (must be deleted BEFORE accounts)
         var transactions = await _context.Transactions.Where(t => t.UserId == userId).ToListAsync(ct);
         _context.Transactions.RemoveRange(transactions);
-        
-        var financialGoals = await _context.FinancialGoals.Where(f => f.UserId == userId).ToListAsync(ct);
-        _context.FinancialGoals.RemoveRange(financialGoals);
         
         var investmentContributions = await _context.InvestmentContributions.Where(i => i.UserId == userId).ToListAsync(ct);
         _context.InvestmentContributions.RemoveRange(investmentContributions);
@@ -193,12 +250,10 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var incomeSources = await _context.IncomeSources.Where(i => i.UserId == userId).ToListAsync(ct);
         _context.IncomeSources.RemoveRange(incomeSources);
         
-        var scoreRecords = await _context.ScoreRecords.Where(s => s.UserId == userId).ToListAsync(ct);
-        _context.ScoreRecords.RemoveRange(scoreRecords);
+        var financialGoals = await _context.FinancialGoals.Where(f => f.UserId == userId).ToListAsync(ct);
+        _context.FinancialGoals.RemoveRange(financialGoals);
         
-        var metricRecords = await _context.MetricRecords.Where(m => m.UserId == userId).ToListAsync(ct);
-        _context.MetricRecords.RemoveRange(metricRecords);
-        
+        // 4. Delete tasks and milestones (may reference accounts)
         var streaks = await _context.Streaks.Where(s => s.UserId == userId).ToListAsync(ct);
         _context.Streaks.RemoveRange(streaks);
         
@@ -208,6 +263,14 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var milestones = await _context.Milestones.Where(m => m.UserId == userId).ToListAsync(ct);
         _context.Milestones.RemoveRange(milestones);
         
+        // 5. Delete metric and score records
+        var scoreRecords = await _context.ScoreRecords.Where(s => s.UserId == userId).ToListAsync(ct);
+        _context.ScoreRecords.RemoveRange(scoreRecords);
+        
+        var metricRecords = await _context.MetricRecords.Where(m => m.UserId == userId).ToListAsync(ct);
+        _context.MetricRecords.RemoveRange(metricRecords);
+        
+        // 6. Finally delete accounts and tax profiles (base entities)
         var accounts = await _context.Accounts.Where(a => a.UserId == userId).ToListAsync(ct);
         _context.Accounts.RemoveRange(accounts);
         
@@ -761,9 +824,17 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
+        // Get all account IDs and tax profile IDs for this user to validate foreign keys
+        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
+        var taxProfileIds = await _context.TaxProfiles.Where(t => t.UserId == userId).Select(t => t.Id).ToListAsync(ct);
+
         foreach (var item in items)
         {
             var existing = await _context.IncomeSources.FirstOrDefaultAsync(i => i.UserId == userId && i.Name == item.Name, ct);
+            
+            // Validate foreign keys - set to null if they don't exist
+            var targetAccountId = item.TargetAccountId.HasValue && accountIds.Contains(item.TargetAccountId.Value) ? item.TargetAccountId : null;
+            var taxProfileId = item.TaxProfileId.HasValue && taxProfileIds.Contains(item.TaxProfileId.Value) ? item.TaxProfileId : null;
             
             if (existing != null)
             {
@@ -771,7 +842,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 
                 if (!dryRun)
                 {
-                    existing.TaxProfileId = item.TaxProfileId;
+                    existing.TaxProfileId = taxProfileId;
                     existing.Currency = item.Currency;
                     existing.BaseAmount = item.BaseAmount;
                     existing.IsPreTax = item.IsPreTax;
@@ -781,6 +852,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     existing.EmployerName = item.EmployerName;
                     existing.Notes = item.Notes;
                     existing.IsActive = item.IsActive;
+                    existing.TargetAccountId = targetAccountId;
                 }
             }
             else
@@ -790,7 +862,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new IncomeSource
                     {
                         UserId = userId,
-                        TaxProfileId = item.TaxProfileId,
+                        TaxProfileId = taxProfileId,
                         Name = item.Name,
                         Currency = item.Currency,
                         BaseAmount = item.BaseAmount,
@@ -800,7 +872,8 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         AnnualIncreaseRate = item.AnnualIncreaseRate,
                         EmployerName = item.EmployerName,
                         Notes = item.Notes,
-                        IsActive = item.IsActive
+                        IsActive = item.IsActive,
+                        TargetAccountId = targetAccountId
                     };
                     _context.IncomeSources.Add(entity);
                 }
@@ -816,9 +889,16 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
+        // Get all account IDs for this user to validate foreign keys
+        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
+
         foreach (var item in items)
         {
             var existing = await _context.ExpenseDefinitions.FirstOrDefaultAsync(e => e.UserId == userId && e.Name == item.Name, ct);
+            
+            // Validate foreign keys - set to null if account doesn't exist
+            var linkedAccountId = item.LinkedAccountId.HasValue && accountIds.Contains(item.LinkedAccountId.Value) ? item.LinkedAccountId : null;
+            var endConditionAccountId = item.EndConditionAccountId.HasValue && accountIds.Contains(item.EndConditionAccountId.Value) ? item.EndConditionAccountId : null;
             
             if (existing != null)
             {
@@ -826,16 +906,21 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 
                 if (!dryRun)
                 {
-                    existing.LinkedAccountId = item.LinkedAccountId;
+                    existing.LinkedAccountId = linkedAccountId;
                     existing.Currency = item.Currency;
                     existing.AmountType = Enum.TryParse<AmountType>(item.AmountType, true, out var amt) ? amt : AmountType.Fixed;
                     existing.AmountValue = item.AmountValue;
                     existing.AmountFormula = item.AmountFormula;
                     existing.Frequency = Enum.TryParse<PaymentFrequency>(item.Frequency, true, out var freq) ? freq : PaymentFrequency.Monthly;
+                    existing.StartDate = item.StartDate;
                     existing.Category = item.Category;
                     existing.IsTaxDeductible = item.IsTaxDeductible;
                     existing.InflationAdjusted = item.InflationAdjusted;
                     existing.IsActive = item.IsActive;
+                    existing.EndConditionType = Enum.TryParse<EndConditionType>(item.EndConditionType, true, out var ect) ? ect : EndConditionType.None;
+                    existing.EndConditionAccountId = endConditionAccountId;
+                    existing.EndDate = item.EndDate;
+                    existing.EndAmountThreshold = item.EndAmountThreshold;
                 }
             }
             else
@@ -845,17 +930,22 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new ExpenseDefinition
                     {
                         UserId = userId,
-                        LinkedAccountId = item.LinkedAccountId,
+                        LinkedAccountId = linkedAccountId,
                         Name = item.Name,
                         Currency = item.Currency,
                         AmountType = Enum.TryParse<AmountType>(item.AmountType, true, out var amt) ? amt : AmountType.Fixed,
                         AmountValue = item.AmountValue,
                         AmountFormula = item.AmountFormula,
                         Frequency = Enum.TryParse<PaymentFrequency>(item.Frequency, true, out var freq) ? freq : PaymentFrequency.Monthly,
+                        StartDate = item.StartDate,
                         Category = item.Category,
                         IsTaxDeductible = item.IsTaxDeductible,
                         InflationAdjusted = item.InflationAdjusted,
-                        IsActive = item.IsActive
+                        IsActive = item.IsActive,
+                        EndConditionType = Enum.TryParse<EndConditionType>(item.EndConditionType, true, out var ect) ? ect : EndConditionType.None,
+                        EndConditionAccountId = endConditionAccountId,
+                        EndDate = item.EndDate,
+                        EndAmountThreshold = item.EndAmountThreshold
                     };
                     _context.ExpenseDefinitions.Add(entity);
                 }
@@ -871,9 +961,17 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
+        // Get all account IDs for this user to validate foreign keys
+        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
+
         foreach (var item in items)
         {
             var existing = await _context.InvestmentContributions.FirstOrDefaultAsync(i => i.UserId == userId && i.Name == item.Name, ct);
+            
+            // Validate foreign keys - set to null if account doesn't exist
+            var targetAccountId = item.TargetAccountId.HasValue && accountIds.Contains(item.TargetAccountId.Value) ? item.TargetAccountId : null;
+            var sourceAccountId = item.SourceAccountId.HasValue && accountIds.Contains(item.SourceAccountId.Value) ? item.SourceAccountId : null;
+            var endConditionAccountId = item.EndConditionAccountId.HasValue && accountIds.Contains(item.EndConditionAccountId.Value) ? item.EndConditionAccountId : null;
             
             if (existing != null)
             {
@@ -881,7 +979,8 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 
                 if (!dryRun)
                 {
-                    existing.TargetAccountId = item.TargetAccountId;
+                    existing.TargetAccountId = targetAccountId;
+                    existing.SourceAccountId = sourceAccountId;
                     existing.Currency = item.Currency;
                     existing.Amount = item.Amount;
                     existing.Frequency = Enum.TryParse<PaymentFrequency>(item.Frequency, true, out var invfreq) ? invfreq : PaymentFrequency.Monthly;
@@ -889,6 +988,11 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     existing.AnnualIncreaseRate = item.AnnualIncreaseRate;
                     existing.Notes = item.Notes;
                     existing.IsActive = item.IsActive;
+                    existing.StartDate = item.StartDate;
+                    existing.EndConditionType = Enum.TryParse<EndConditionType>(item.EndConditionType, true, out var ect) ? ect : EndConditionType.None;
+                    existing.EndConditionAccountId = endConditionAccountId;
+                    existing.EndDate = item.EndDate;
+                    existing.EndAmountThreshold = item.EndAmountThreshold;
                 }
             }
             else
@@ -898,7 +1002,8 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new InvestmentContribution
                     {
                         UserId = userId,
-                        TargetAccountId = item.TargetAccountId,
+                        TargetAccountId = targetAccountId,
+                        SourceAccountId = sourceAccountId,
                         Name = item.Name,
                         Currency = item.Currency,
                         Amount = item.Amount,
@@ -906,7 +1011,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         Category = item.Category,
                         AnnualIncreaseRate = item.AnnualIncreaseRate,
                         Notes = item.Notes,
-                        IsActive = item.IsActive
+                        IsActive = item.IsActive,
+                        StartDate = item.StartDate,
+                        EndConditionType = Enum.TryParse<EndConditionType>(item.EndConditionType, true, out var ect) ? ect : EndConditionType.None,
+                        EndConditionAccountId = endConditionAccountId,
+                        EndDate = item.EndDate,
+                        EndAmountThreshold = item.EndAmountThreshold
                     };
                     _context.InvestmentContributions.Add(entity);
                 }
@@ -1101,10 +1211,22 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        foreach (var item in items)
+        if (!dryRun)
         {
-            if (!dryRun)
+            // Get all valid account and scenario IDs
+            var accountIds = await _context.Accounts.Select(a => a.Id).ToListAsync(ct);
+            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
+
+            foreach (var item in items)
             {
+                // Skip if scenario doesn't exist, or if AffectedAccountId is set but doesn't exist
+                if (!scenarioIds.Contains(item.ScenarioId) || 
+                    (item.AffectedAccountId.HasValue && !accountIds.Contains(item.AffectedAccountId.Value)))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 var entity = new SimulationEvent
                 {
                     ScenarioId = item.ScenarioId,
@@ -1124,8 +1246,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     IsActive = item.IsActive
                 };
                 _context.SimulationEvents.Add(entity);
+                imported++;
             }
-            imported++;
+        }
+        else
+        {
+            imported = items.Count;
         }
 
         return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
@@ -1136,10 +1262,21 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        foreach (var item in items)
+        if (!dryRun)
         {
-            if (!dryRun)
+            // Get all valid account and scenario IDs
+            var accountIds = await _context.Accounts.Select(a => a.Id).ToListAsync(ct);
+            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
+
+            foreach (var item in items)
             {
+                // Skip if account or scenario doesn't exist
+                if (!accountIds.Contains(item.AccountId) || !scenarioIds.Contains(item.ScenarioId))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 var entity = new AccountProjection
                 {
                     ScenarioId = item.ScenarioId,
@@ -1152,8 +1289,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     PeriodInterest = item.PeriodInterest ?? 0
                 };
                 _context.AccountProjections.Add(entity);
+                imported++;
             }
-            imported++;
+        }
+        else
+        {
+            imported = items.Count;
         }
 
         return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
@@ -1164,10 +1305,20 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        foreach (var item in items)
+        if (!dryRun)
         {
-            if (!dryRun)
+            // Get all valid scenario IDs
+            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
+
+            foreach (var item in items)
             {
+                // Skip if scenario doesn't exist
+                if (!scenarioIds.Contains(item.ScenarioId))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 var entity = new NetWorthProjection
                 {
                     ScenarioId = item.ScenarioId,
@@ -1179,8 +1330,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     BreakdownByCurrency = item.BreakdownByCurrency ?? "{}"
                 };
                 _context.NetWorthProjections.Add(entity);
+                imported++;
             }
-            imported++;
+        }
+        else
+        {
+            imported = items.Count;
         }
 
         return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
@@ -1207,6 +1362,203 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     ConfidenceLevel = item.ConfidenceLevel ?? "moderate"
                 };
                 _context.LongevitySnapshots.Add(entity);
+            }
+            imported++;
+        }
+
+        return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
+    }
+
+    private async Task<ImportEntityResultDto> ImportAchievementsAsync(List<AchievementExportDto> items, bool isReplace, bool dryRun, CancellationToken ct)
+    {
+        var imported = 0;
+        var skipped = 0;
+
+        foreach (var item in items)
+        {
+            var existing = await _context.Achievements.FirstOrDefaultAsync(a => a.Code == item.Code, ct);
+            
+            if (existing != null)
+            {
+                if (!isReplace) { skipped++; continue; }
+                
+                if (!dryRun)
+                {
+                    existing.Name = item.Name;
+                    existing.Description = item.Description;
+                    existing.Icon = item.Icon;
+                    existing.XpValue = item.XpValue;
+                    existing.Category = item.Category;
+                    existing.Tier = item.Tier;
+                    existing.UnlockCondition = item.UnlockCondition;
+                    existing.IsActive = item.IsActive;
+                    existing.SortOrder = item.SortOrder;
+                }
+            }
+            else
+            {
+                if (!dryRun)
+                {
+                    var entity = new Achievement
+                    {
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Icon = item.Icon,
+                        XpValue = item.XpValue,
+                        Category = item.Category,
+                        Tier = item.Tier,
+                        UnlockCondition = item.UnlockCondition,
+                        IsActive = item.IsActive,
+                        SortOrder = item.SortOrder
+                    };
+                    _context.Achievements.Add(entity);
+                }
+            }
+            imported++;
+        }
+
+        return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
+    }
+
+    private async Task<ImportEntityResultDto> ImportUserAchievementsAsync(Guid userId, List<UserAchievementExportDto> items, bool isReplace, bool dryRun, CancellationToken ct)
+    {
+        var imported = 0;
+        var skipped = 0;
+
+        foreach (var item in items)
+        {
+            // Find achievement by code
+            var achievement = await _context.Achievements.FirstOrDefaultAsync(a => a.Code == item.AchievementCode, ct);
+            if (achievement == null)
+            {
+                skipped++;
+                continue;
+            }
+
+            var existing = await _context.UserAchievements.FirstOrDefaultAsync(
+                ua => ua.UserId == userId && ua.AchievementId == achievement.Id, ct);
+            
+            if (existing != null)
+            {
+                if (!isReplace) { skipped++; continue; }
+                
+                if (!dryRun)
+                {
+                    existing.UnlockedAt = item.UnlockedAt;
+                    existing.Progress = item.Progress;
+                    existing.UnlockContext = item.UnlockContext;
+                }
+            }
+            else
+            {
+                if (!dryRun)
+                {
+                    var entity = new UserAchievement
+                    {
+                        UserId = userId,
+                        AchievementId = achievement.Id,
+                        UnlockedAt = item.UnlockedAt,
+                        Progress = item.Progress,
+                        UnlockContext = item.UnlockContext
+                    };
+                    _context.UserAchievements.Add(entity);
+                }
+            }
+            imported++;
+        }
+
+        return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
+    }
+
+    private async Task<ImportEntityResultDto> ImportUserXPAsync(Guid userId, UserXPExportDto? item, bool isReplace, bool dryRun, CancellationToken ct)
+    {
+        var imported = 0;
+        var skipped = 0;
+
+        if (item == null)
+        {
+            return new ImportEntityResultDto { Imported = 0, Skipped = 0, Errors = 0 };
+        }
+
+        var existing = await _context.UserXPs.FirstOrDefaultAsync(x => x.UserId == userId, ct);
+        
+        if (existing != null)
+        {
+            if (!isReplace) { skipped++; }
+            else if (!dryRun)
+            {
+                existing.TotalXp = item.TotalXp;
+                existing.Level = item.Level;
+                existing.WeeklyXp = item.WeeklyXp;
+                existing.WeekStartDate = item.WeekStartDate;
+                imported++;
+            }
+            else { imported++; }
+        }
+        else
+        {
+            if (!dryRun)
+            {
+                var entity = new UserXP
+                {
+                    UserId = userId,
+                    TotalXp = item.TotalXp,
+                    Level = item.Level,
+                    WeeklyXp = item.WeeklyXp,
+                    WeekStartDate = item.WeekStartDate
+                };
+                _context.UserXPs.Add(entity);
+            }
+            imported++;
+        }
+
+        return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
+    }
+
+    private async Task<ImportEntityResultDto> ImportNetWorthSnapshotsAsync(Guid userId, List<NetWorthSnapshotExportDto> items, bool isReplace, bool dryRun, CancellationToken ct)
+    {
+        var imported = 0;
+        var skipped = 0;
+
+        foreach (var item in items)
+        {
+            var existing = await _context.NetWorthSnapshots.FirstOrDefaultAsync(
+                n => n.UserId == userId && n.SnapshotDate == item.SnapshotDate, ct);
+            
+            if (existing != null)
+            {
+                if (!isReplace) { skipped++; continue; }
+                
+                if (!dryRun)
+                {
+                    existing.TotalAssets = item.TotalAssets;
+                    existing.TotalLiabilities = item.TotalLiabilities;
+                    existing.NetWorth = item.NetWorth;
+                    existing.HomeCurrency = item.HomeCurrency;
+                    existing.BreakdownByType = item.BreakdownByType;
+                    existing.BreakdownByCurrency = item.BreakdownByCurrency;
+                    existing.AccountCount = item.AccountCount;
+                }
+            }
+            else
+            {
+                if (!dryRun)
+                {
+                    var entity = new NetWorthSnapshot
+                    {
+                        UserId = userId,
+                        SnapshotDate = item.SnapshotDate,
+                        TotalAssets = item.TotalAssets,
+                        TotalLiabilities = item.TotalLiabilities,
+                        NetWorth = item.NetWorth,
+                        HomeCurrency = item.HomeCurrency,
+                        BreakdownByType = item.BreakdownByType,
+                        BreakdownByCurrency = item.BreakdownByCurrency,
+                        AccountCount = item.AccountCount
+                    };
+                    _context.NetWorthSnapshots.Add(entity);
+                }
             }
             imported++;
         }

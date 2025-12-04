@@ -315,10 +315,21 @@ public class LongevityEstimator : ILongevityEstimator
 
 public class LongevityModelParameters
 {
+    [System.Text.Json.Serialization.JsonPropertyName("metricCode")]
     public string? MetricCode { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("threshold")]
     public decimal Threshold { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("direction")]
     public string? Direction { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("optimalMin")]
     public decimal? OptimalMin { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("optimalMax")]
     public decimal? OptimalMax { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("maxYearsAdded")]
     public decimal MaxYearsAdded { get; set; }
 }

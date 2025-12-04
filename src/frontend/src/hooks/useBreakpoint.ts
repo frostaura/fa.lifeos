@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 
 type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
+// Breakpoints aligned with tailwind.config.js
 const breakpoints: Record<Breakpoint, number> = {
   xs: 320,
-  sm: 640,
+  sm: 320,
   md: 768,
   lg: 1024,
-  xl: 1280,
-  '2xl': 1440,
+  xl: 1440,
+  '2xl': 1920,
 };
 
 export function useBreakpoint(breakpoint: Breakpoint): boolean {

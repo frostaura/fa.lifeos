@@ -9,7 +9,12 @@ export interface MetricDefinition {
   unit: string;
   valueType: 'integer' | 'decimal' | 'boolean' | 'percentage';
   targetValue?: number;
+  targetDirection: 'AtOrAbove' | 'AtOrBelow';
   isActive: boolean;
+  dimensionId?: string;
+  dimensionCode?: string;
+  latestValue?: number;
+  latestRecordedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +26,8 @@ export interface CreateMetricDefinitionRequest {
   unit: string;
   valueType: 'integer' | 'decimal' | 'boolean' | 'percentage';
   targetValue?: number;
+  targetDirection?: 'AtOrAbove' | 'AtOrBelow';
+  dimensionId?: string;
 }
 
 export interface UpdateMetricDefinitionRequest {
@@ -29,7 +36,9 @@ export interface UpdateMetricDefinitionRequest {
   unit?: string;
   valueType?: 'integer' | 'decimal' | 'boolean' | 'percentage';
   targetValue?: number;
+  targetDirection?: 'AtOrAbove' | 'AtOrBelow';
   isActive?: boolean;
+  dimensionId?: string;
 }
 
 // Types for Metric Records
@@ -102,10 +111,14 @@ interface MetricDefinitionApiResponse {
       code: string;
       name: string;
       description?: string;
+      dimensionId?: string;
+      dimensionCode?: string;
       unit: string;
       valueType: string;
       targetValue?: number;
       isActive: boolean;
+      latestValue?: number;
+      latestRecordedAt?: string;
       createdAt: string;
       updatedAt: string;
     };
@@ -147,10 +160,15 @@ export const metricsApi = apiSlice.injectEndpoints({
           code: item.attributes.code,
           name: item.attributes.name,
           description: item.attributes.description,
+          dimensionId: item.attributes.dimensionId,
+          dimensionCode: item.attributes.dimensionCode,
           unit: item.attributes.unit,
           valueType: item.attributes.valueType as MetricDefinition['valueType'],
           targetValue: item.attributes.targetValue,
+          targetDirection: (item.attributes.targetDirection || 'AtOrAbove') as MetricDefinition['targetDirection'],
           isActive: item.attributes.isActive,
+          latestValue: item.attributes.latestValue,
+          latestRecordedAt: item.attributes.latestRecordedAt,
           createdAt: item.attributes.createdAt,
           updatedAt: item.attributes.updatedAt,
         }));

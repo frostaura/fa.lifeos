@@ -16,19 +16,19 @@ export function TodaysTasksList({ tasks, onToggleTask, className }: TodaysTasksL
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <GlassCard variant="default" className={cn('p-6', className)}>
-      <div className="flex items-center justify-between mb-4">
+    <GlassCard variant="default" className={cn('p-4 md:p-6', className)}>
+      <div className="flex items-center justify-between mb-3 md:mb-4">
         <div className="flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-accent-cyan" />
-          <h2 className="text-lg font-semibold text-text-primary">Today's Tasks</h2>
+          <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-accent-cyan" />
+          <h2 className="text-base md:text-lg font-semibold text-text-primary whitespace-nowrap">Today's Tasks</h2>
         </div>
-        <span className="text-sm text-text-secondary">
+        <span className="text-xs md:text-sm text-text-secondary whitespace-nowrap">
           {completedCount}/{totalCount} done
         </span>
       </div>
 
       {/* Progress indicator */}
-      <div className="h-1 bg-glass-light rounded-full overflow-hidden mb-4">
+      <div className="h-1 bg-glass-light rounded-full overflow-hidden mb-3 md:mb-4">
         <div
           className="h-full bg-gradient-to-r from-accent-purple to-accent-cyan transition-all duration-300"
           style={{ width: `${progress}%` }}
@@ -36,7 +36,7 @@ export function TodaysTasksList({ tasks, onToggleTask, className }: TodaysTasksL
       </div>
 
       {tasks.length === 0 ? (
-        <p className="text-text-tertiary text-sm">No tasks for today. Enjoy your day!</p>
+        <p className="text-text-tertiary text-xs md:text-sm">No tasks for today. Enjoy your day!</p>
       ) : (
         <div className="space-y-1">
           {tasks.map((task) => (

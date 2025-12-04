@@ -6,5 +6,6 @@ public enum PaymentFrequency
     Biweekly,
     Monthly,
     Quarterly,
-    Annually
+    Annually,
+    Once
 }

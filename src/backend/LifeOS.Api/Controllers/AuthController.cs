@@ -1,5 +1,6 @@
 using LifeOS.Api.Configuration;
 using LifeOS.Api.Contracts.Auth;
+using LifeOS.Domain.Entities;
 using LifeOS.Infrastructure.Persistence;
 using LifeOS.Infrastructure.Services.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +14,7 @@ namespace LifeOS.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController : ControllerBase
+public partial class AuthController : ControllerBase
 {
     private readonly LifeOSDbContext _context;
     private readonly IJwtService _jwtService;
@@ -147,6 +148,9 @@ public class AuthController : ControllerBase
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             _logger.LogInformation("Created dev user: {Email}", request.Email);
+            
+            // Seed default SA tax profile for new user
+            await SeedDefaultTaxProfileForUserAsync(user.Id);
         }
 
         var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email);
@@ -180,4 +184,47 @@ public class DevLoginRequest
 {
     public required string Email { get; set; }
     public string? DisplayName { get; set; }
+}
+
+public partial class AuthController
+{
+    private async Task SeedDefaultTaxProfileForUserAsync(Guid userId)
+    {
+        // South African 2024/2025 tax brackets (SARS official rates)
+        var saTaxBrackets = @"[
+            {""min"": 0, ""max"": 237100, ""rate"": 0.18, ""baseTax"": 0},
+            {""min"": 237101, ""max"": 370500, ""rate"": 0.26, ""baseTax"": 42678},
+            {""min"": 370501, ""max"": 512800, ""rate"": 0.31, ""baseTax"": 77362},
+            {""min"": 512801, ""max"": 673000, ""rate"": 0.36, ""baseTax"": 121475},
+            {""min"": 673001, ""max"": 857900, ""rate"": 0.39, ""baseTax"": 179147},
+            {""min"": 857901, ""max"": 1817000, ""rate"": 0.41, ""baseTax"": 251258},
+            {""min"": 1817001, ""max"": null, ""rate"": 0.45, ""baseTax"": 644489}
+        ]";
+
+        var taxRebates = @"{
+            ""primary"": 17235,
+            ""secondary"": 9444,
+            ""tertiary"": 3145
+        }";
+
+        var taxProfile = new TaxProfile
+        {
+            UserId = userId,
+            Name = "SA Tax 2024/2025",
+            TaxYear = 2024,
+            CountryCode = "ZA",
+            Brackets = saTaxBrackets,
+            UifRate = 0.01m,
+            UifCap = 177.12m,
+            VatRate = 0.15m,
+            IsVatRegistered = false,
+            TaxRebates = taxRebates,
+            IsActive = true
+        };
+
+        _context.TaxProfiles.Add(taxProfile);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Created default SA tax profile for user {UserId}", userId);
+    }
 }

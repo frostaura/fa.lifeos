@@ -391,7 +391,9 @@ export function FinancialGoalsWidget() {
                 
                 {goal.monthsToAcquire !== undefined && goal.monthsToAcquire > 0 && (
                   <p className="text-xs text-text-tertiary mt-1">
-                    ~{goal.monthsToAcquire} months to acquire
+                    ~{goal.monthsToAcquire >= 12 
+                      ? `${Math.floor(goal.monthsToAcquire / 12)}y ${goal.monthsToAcquire % 12}m` 
+                      : `${goal.monthsToAcquire}m`} to acquire
                   </p>
                 )}
               </div>

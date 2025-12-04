@@ -108,3 +108,13 @@ export type {
   ImportResult,
   ImportEntityResult,
 } from './dataPortability';
+// Longevity Models
+export {
+  longevityApi,
+  useGetLongevityModelsQuery,
+  useUpdateLongevityModelMutation,
+} from './longevity';
+export type {
+  LongevityModel,
+  UpdateLongevityModelRequest,
+} from './longevity';

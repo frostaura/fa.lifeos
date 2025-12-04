@@ -9,7 +9,7 @@ import { NetWorthGoalTracker } from '@components/organisms/NetWorthGoalTracker';
 import { LoanPayoffCalculator } from '@components/organisms/LoanPayoffCalculator';
 import { AccountRow } from '@components/molecules/AccountRow';
 import { CurrencySelector, formatCurrency } from '@components/molecules/CurrencySelector';
-import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@utils/cn';
 import type { Account, NetWorthDataPoint, FxRate, Scenario } from '@/types';
 import { AddAccountModal } from './placeholders/AddAccountModal';
@@ -62,7 +62,8 @@ export function Finances() {
   const [netWorth, setNetWorth] = useState(0);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | 'ALL'>('1Y');
+  const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '5Y' | '10Y' | 'ALL'>('5Y');
+  const [showProjectionInfo, setShowProjectionInfo] = useState(false);
   const [fxRates] = useState<FxRate[]>([
     { pair: 'USD/ZAR', rate: 18.52, change: 0.15, timestamp: new Date().toISOString() },
     { pair: 'EUR/ZAR', rate: 19.85, change: -0.22, timestamp: new Date().toISOString() },
@@ -110,11 +111,14 @@ export function Finances() {
       const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       try {
-        // Fetch accounts
+        // Fetch accounts first
         const accountsRes = await fetch('/api/accounts', { headers });
+        let calculatedNetWorth = 0;
+        let mappedAccounts: Account[] = [];
+        
         if (accountsRes.ok) {
           const accountsData: AccountApiResponse = await accountsRes.json();
-          const mappedAccounts: Account[] = accountsData.data.map(a => ({
+          mappedAccounts = accountsData.data.map(a => ({
             id: a.id,
             name: a.attributes.name,
             type: a.attributes.accountType as Account['type'],
@@ -130,13 +134,15 @@ export function Finances() {
           }));
           setAccounts(mappedAccounts);
           
-          // Calculate net worth
+          // Calculate net worth immediately (not relying on state)
           const assets = mappedAccounts.filter(a => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
           const liabilities = mappedAccounts.filter(a => a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
-          setNetWorth(assets - liabilities);
+          calculatedNetWorth = assets - liabilities;
+          setNetWorth(calculatedNetWorth);
         }
 
         // Fetch scenarios
+        let baselineScenarioId: string | null = null;
         const scenariosRes = await fetch('/api/simulations/scenarios', { headers });
         if (scenariosRes.ok) {
           const scenariosData: ScenarioApiResponse = await scenariosRes.json();
@@ -151,29 +157,75 @@ export function Finances() {
             isActive: s.attributes.isBaseline,
           }));
           setScenarios(mappedScenarios);
+          
+          // Find baseline scenario
+          const baseline = scenariosData.data.find(s => s.attributes.isBaseline);
+          if (baseline) {
+            baselineScenarioId = baseline.id;
+          }
         }
 
-        // Fetch net worth history from API
-        const historyRes = await fetch(`/api/dashboard/net-worth/history?period=${chartPeriod}`, { headers });
-        if (historyRes.ok) {
-          const historyData = await historyRes.json();
-          if (historyData.data?.history?.length > 0) {
-            setNetWorthHistory(historyData.data.history.map((h: { date: string; value: number }) => ({
-              date: h.date,
-              value: h.value,
-            })));
-          } else {
-            // Fallback to generated data if no history exists yet
-            setNetWorthHistory(generateNetWorthHistory());
+        // Try to get projections from baseline scenario simulation
+        if (baselineScenarioId) {
+          try {
+            // First run the simulation to get fresh projections
+            await fetch(`/api/simulations/scenarios/${baselineScenarioId}/run`, {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recalculateFromStart: true }),
+            });
+            
+            // Then fetch projections
+            const projectionsRes = await fetch(`/api/simulations/scenarios/${baselineScenarioId}/projections`, { headers });
+            if (projectionsRes.ok) {
+              const projectionsData = await projectionsRes.json();
+              if (projectionsData.data?.monthlyProjections?.length > 0) {
+                // Map the projections to the expected format including accounts
+                const simulationProjections: NetWorthDataPoint[] = projectionsData.data.monthlyProjections.map((p: { 
+                  period: string; 
+                  netWorth: number;
+                  accounts?: Array<{
+                    accountId: string;
+                    accountName: string;
+                    balance: number;
+                  }>;
+                }) => ({
+                  date: p.period,
+                  value: Math.round(p.netWorth),
+                  accounts: p.accounts?.map(a => ({
+                    accountId: a.accountId,
+                    accountName: a.accountName,
+                    balance: a.balance,
+                  })),
+                }));
+                
+                // Filter based on chart period
+                const monthsToShow = {
+                  '1M': 1,
+                  '3M': 3,
+                  '6M': 6,
+                  '1Y': 12,
+                  '5Y': 60,
+                  '10Y': 120,
+                  'ALL': simulationProjections.length,
+                }[chartPeriod] || 60;
+                
+                setNetWorthHistory(simulationProjections.slice(0, monthsToShow + 1));
+                return;
+              }
+            }
+          } catch (simErr) {
+            console.warn('Failed to get simulation projections, falling back to simple calculation:', simErr);
           }
-        } else {
-          // Fallback to generated data if API fails
-          setNetWorthHistory(generateNetWorthHistory());
         }
+
+        // Fallback: Generate simple projections based on accounts only
+        // This is a simplified version without income/expenses/investments
+        setNetWorthHistory(generateProjections(calculatedNetWorth, mappedAccounts, chartPeriod));
       } catch (err) {
         console.error('Failed to fetch finances data:', err);
-        // Fallback to generated data on error
-        setNetWorthHistory(generateNetWorthHistory());
+        // On error, show empty state
+        setNetWorthHistory([]);
       } finally {
         setLoading(false);
       }
@@ -239,11 +291,13 @@ export function Finances() {
         setEditingAccount(null);
         setRefreshTrigger(prev => prev + 1);
       } else {
-        alert('Failed to update account');
+        const errorData = await res.json().catch(() => null);
+        const errorMessage = errorData?.message || errorData?.title || `Failed to update account (${res.status})`;
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('Failed to update account:', error);
-      alert('Failed to update account');
+      alert('Failed to update account: Network error');
     }
   };
 
@@ -252,28 +306,78 @@ export function Finances() {
     setEditingAccount(null);
   };
 
-  // Generate fallback mock history based on current net worth (used when API has no data)
-  const generateNetWorthHistory = (): NetWorthDataPoint[] => {
+  // Generate future projections based on current net worth and accounts
+  // This shows the current state plus projected future values based on investments, loans, etc.
+  const generateProjections = (
+    _currentNetWorth: number, 
+    accountsList: Account[], 
+    period: string
+  ): NetWorthDataPoint[] => {
     const periodMonths: Record<string, number> = {
       '1M': 1,
       '3M': 3,
       '6M': 6,
       '1Y': 12,
-      'ALL': 24,
+      '5Y': 60,
+      '10Y': 120,
+      'ALL': 240, // 20 years for ALL
     };
-    const months = periodMonths[chartPeriod] || 12;
-    const history: NetWorthDataPoint[] = [];
+    const months = periodMonths[period] || 60;
+    const projections: NetWorthDataPoint[] = [];
     
-    for (let i = months; i >= 0; i--) {
+    // Track each account's balance separately for proper compound interest
+    const accountBalances = accountsList.map(account => ({
+      id: account.id,
+      name: account.name,
+      balance: account.balance,
+      interestRateAnnual: account.interestRateAnnual || 0,
+      monthlyFee: account.monthlyFee || 0,
+      isLiability: account.isLiability || account.balance < 0,
+    }));
+    
+    // Start with today's date and project forward
+    for (let i = 0; i <= months; i++) {
       const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      const variance = (Math.random() - 0.3) * 0.08;
-      history.push({
-        date: date.toISOString().slice(0, 7),
-        value: Math.round(netWorth * (1 - (i * 0.015) + variance)),
+      date.setMonth(date.getMonth() + i);
+      
+      // Calculate current net worth from all account balances
+      const currentTotal = accountBalances.reduce((sum, acc) => sum + acc.balance, 0);
+      
+      projections.push({
+        date: date.toISOString().slice(0, 7), // YYYY-MM format
+        value: Math.round(currentTotal),
+        accounts: accountBalances.map(acc => ({
+          accountId: acc.id,
+          accountName: acc.name,
+          balance: Math.round(acc.balance),
+        })),
+      });
+      
+      // Apply monthly compound interest and fees for next month
+      accountBalances.forEach(acc => {
+        const monthlyRate = acc.interestRateAnnual / 100 / 12;
+        
+        if (acc.balance > 0) {
+          // Asset: interest grows the balance
+          acc.balance += acc.balance * monthlyRate;
+        } else if (acc.balance < 0) {
+          // Liability: interest makes debt grow (more negative)
+          // Note: balance is already negative, so subtracting interest makes it more negative
+          acc.balance -= Math.abs(acc.balance) * monthlyRate;
+        }
+        
+        // Deduct monthly fees (reduces net worth)
+        if (acc.monthlyFee > 0) {
+          if (acc.balance > 0) {
+            acc.balance -= acc.monthlyFee;
+          } else {
+            acc.balance -= acc.monthlyFee; // Fee adds to debt
+          }
+        }
       });
     }
-    return history;
+    
+    return projections;
   };
 
   if (loading) {
@@ -285,52 +389,85 @@ export function Finances() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary">Finances</h1>
-          <p className="text-text-secondary mt-1">Track your wealth</p>
+          <h1 className="text-base md:text-lg font-bold text-text-primary">Finances</h1>
+          <p className="text-text-secondary mt-0.5 text-xs">Track your wealth</p>
         </div>
-        <div className="flex items-center gap-3">
-          <CurrencySelector size="md" />
-          <Button onClick={() => setIsAddTransactionOpen(true)} variant="secondary" icon={<Plus className="w-4 h-4" />}>
-            Transaction
+        <div className="flex flex-wrap items-center gap-2">
+          <CurrencySelector size="sm" />
+          <Button onClick={() => setIsAddTransactionOpen(true)} variant="secondary" icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">Transaction</span>
+            <span className="sm:hidden">+</span>
           </Button>
-          <Button onClick={() => setIsAddAccountOpen(true)} icon={<Plus className="w-4 h-4" />}>
-            Account
+          <Button onClick={() => setIsAddAccountOpen(true)} icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">Account</span>
+            <span className="sm:hidden">+</span>
           </Button>
         </div>
       </div>
 
       {/* Net Worth Banner */}
-      <GlassCard variant="elevated" glow="accent" className="p-8">
+      <GlassCard variant="elevated" glow="accent" className="p-3 md:p-4">
         <div className="text-center">
-          <p className="text-text-secondary mb-2">Total Net Worth</p>
-          <h2 className="text-5xl font-bold text-text-primary mb-2">
+          <p className="text-text-secondary mb-1 text-xs">Total Net Worth</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text-primary mb-1">
             {formatCurrency(netWorth, 'ZAR')}
           </h2>
           <div className={cn(
-            "flex items-center justify-center gap-1",
+            "flex items-center justify-center gap-1 text-xs",
             netWorth >= 0 ? "text-semantic-success" : "text-semantic-error"
           )}>
-            {netWorth >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+            {netWorth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
             <span>Real-time from {accounts.length} accounts</span>
           </div>
         </div>
       </GlassCard>
 
       {/* Net Worth Chart */}
-      <GlassCard variant="default" className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">Net Worth History</h2>
-          <div className="flex gap-2">
-            {(['1M', '3M', '6M', '1Y', 'ALL'] as const).map((period) => (
+      <GlassCard variant="default" className="p-3 md:p-4">
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm md:text-base font-semibold text-text-primary">Net Worth Projection</h2>
+            <div className="relative">
+              <button
+                onClick={() => setShowProjectionInfo(!showProjectionInfo)}
+                className="text-text-tertiary hover:text-text-secondary transition-colors"
+                aria-label="Projection calculation info"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+              {showProjectionInfo && (
+                <div className="absolute left-0 top-full mt-2 z-50 w-72 p-3 rounded-lg bg-background-tertiary border border-glass-border shadow-lg text-xs text-text-secondary">
+                  <h4 className="font-semibold text-text-primary mb-2">How Projections Work</h4>
+                  <ul className="space-y-1.5">
+                    <li><span className="text-accent-cyan">•</span> <strong>Income:</strong> All income sources are added to target accounts, with annual increases applied</li>
+                    <li><span className="text-semantic-error">•</span> <strong>Expenses:</strong> Recurring and one-off expenses deducted from source accounts, with inflation adjustment</li>
+                    <li><span className="text-accent-purple">•</span> <strong>Investments:</strong> Contributions transfer from source to target accounts, with compound growth</li>
+                    <li><span className="text-semantic-success">•</span> <strong>Interest:</strong> Account interest rates apply monthly (daily/monthly/quarterly/annual compounding)</li>
+                    <li><span className="text-semantic-warning">•</span> <strong>Growth:</strong> Investment accounts grow at their configured annual rate</li>
+                    <li><span className="text-text-tertiary">•</span> <strong>Taxes:</strong> Income tax calculated using your tax profile brackets</li>
+                  </ul>
+                  <p className="mt-2 text-text-tertiary text-[10px]">Default inflation: 5% annually</p>
+                  <button
+                    onClick={() => setShowProjectionInfo(false)}
+                    className="mt-2 text-accent-purple hover:text-accent-purple/80 text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {(['1M', '3M', '6M', '1Y', '5Y', '10Y', 'ALL'] as const).map((period) => (
               <button
                 key={period}
                 onClick={() => setChartPeriod(period)}
                 className={cn(
-                  'px-3 py-1 text-sm rounded-lg transition-colors',
+                  'px-2 py-0.5 text-xs rounded-md transition-colors',
                   chartPeriod === period 
                     ? 'bg-accent-purple text-white' 
                     : 'text-text-secondary hover:bg-background-hover'
@@ -341,20 +478,20 @@ export function Finances() {
             ))}
           </div>
         </div>
-        <NetWorthChart data={netWorthHistory} height={280} />
+        <NetWorthChart data={netWorthHistory} height={240} />
       </GlassCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Accounts */}
         <div className="lg:col-span-2">
-          <GlassCard variant="default" className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text-primary">Accounts</h2>
-              <span className="text-text-tertiary text-sm">{accounts.length} accounts</span>
+          <GlassCard variant="default" className="p-3 md:p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm md:text-base font-semibold text-text-primary">Accounts</h2>
+              <span className="text-text-tertiary text-xs">{accounts.length} accounts</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {accounts.length === 0 ? (
-                <p className="text-text-tertiary text-center py-8">No accounts yet. Add your first account!</p>
+                <p className="text-text-tertiary text-center py-6 text-xs">No accounts yet. Add your first account!</p>
               ) : (
                 accounts.map((account) => (
                   <AccountRow
@@ -371,23 +508,23 @@ export function Finances() {
         </div>
 
         {/* Sidebar: FX & Simulations */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* FX Rates */}
-          <GlassCard variant="default" className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-accent-cyan" />
-              <h2 className="text-lg font-semibold text-text-primary">Exchange Rates</h2>
+          <GlassCard variant="default" className="p-3 md:p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-accent-cyan" />
+              <h2 className="text-sm md:text-base font-semibold text-text-primary">Exchange Rates</h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {fxRates.map((rate) => (
                 <div key={rate.pair} className="flex items-center justify-between">
-                  <span className="text-text-secondary">{rate.pair}</span>
+                  <span className="text-text-secondary text-xs">{rate.pair}</span>
                   <div className="text-right">
-                    <span className="font-medium text-text-primary">
+                    <span className="font-medium text-text-primary text-xs">
                       {rate.rate.toLocaleString()}
                     </span>
                     <span className={cn(
-                      'text-sm ml-2',
+                      'text-xs ml-1',
                       rate.change > 0 ? 'text-semantic-success' : 'text-semantic-error'
                     )}>
                       {rate.change > 0 ? '+' : ''}{rate.change}%
@@ -399,39 +536,39 @@ export function Finances() {
           </GlassCard>
 
           {/* Simulations */}
-          <GlassCard variant="default" className="p-6">
-            <div className="flex items-center justify-between mb-4">
+          <GlassCard variant="default" className="p-3 md:p-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-accent-purple" />
-                <h2 className="text-lg font-semibold text-text-primary">Simulations</h2>
+                <Calculator className="w-4 h-4 text-accent-purple" />
+                <h2 className="text-sm md:text-base font-semibold text-text-primary">Simulations</h2>
               </div>
               <button 
                 onClick={() => navigate('/simulation/new')}
                 className="text-accent-purple hover:text-accent-purple/80 transition-colors"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {scenarios.length === 0 ? (
-                <p className="text-text-tertiary text-center py-4">No simulations yet</p>
+                <p className="text-text-tertiary text-center py-3 text-xs">No simulations yet</p>
               ) : (
                 scenarios.map((scenario) => (
                   <div
                     key={scenario.id}
                     onClick={() => navigate(`/simulation/${scenario.id}`)}
-                    className="p-3 rounded-lg bg-background-hover/50 hover:bg-background-hover transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-background-hover/50 hover:bg-background-hover transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-text-primary">{scenario.name}</span>
+                      <span className="font-medium text-text-primary text-xs">{scenario.name}</span>
                       {scenario.isActive && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-semantic-success/20 text-semantic-success">
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-semantic-success/20 text-semantic-success">
                           Baseline
                         </span>
                       )}
                     </div>
                     {scenario.description && (
-                      <p className="text-sm text-text-tertiary mt-1">{scenario.description}</p>
+                      <p className="text-xs text-text-tertiary mt-1">{scenario.description}</p>
                     )}
                   </div>
                 ))
@@ -442,7 +579,7 @@ export function Finances() {
       </div>
 
       {/* Financial Goals & Calculators Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <FinancialGoalsWidget />
         <NetWorthGoalTracker />
         <LoanPayoffCalculator />

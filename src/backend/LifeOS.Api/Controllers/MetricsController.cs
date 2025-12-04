@@ -93,6 +93,9 @@ public class MetricsController : ControllerBase
             if (!Enum.TryParse<AggregationType>(request.AggregationType, true, out var aggregationType))
                 aggregationType = AggregationType.Last;
 
+            if (!Enum.TryParse<TargetDirection>(request.TargetDirection, true, out var targetDirection))
+                targetDirection = TargetDirection.AtOrAbove;
+
             var result = await _mediator.Send(new CreateMetricDefinitionCommand(
                 request.Code,
                 request.Name,
@@ -105,6 +108,7 @@ public class MetricsController : ControllerBase
                 request.MinValue,
                 request.MaxValue,
                 request.TargetValue,
+                targetDirection,
                 request.Icon,
                 request.Tags,
                 request.IsDerived,
@@ -142,6 +146,10 @@ public class MetricsController : ControllerBase
         if (!string.IsNullOrEmpty(request.AggregationType) && Enum.TryParse<AggregationType>(request.AggregationType, true, out var at))
             aggregationType = at;
 
+        TargetDirection? targetDirection = null;
+        if (!string.IsNullOrEmpty(request.TargetDirection) && Enum.TryParse<TargetDirection>(request.TargetDirection, true, out var td))
+            targetDirection = td;
+
         var success = await _mediator.Send(new UpdateMetricDefinitionCommand(
             code,
             request.Name,
@@ -154,6 +162,7 @@ public class MetricsController : ControllerBase
             request.MinValue,
             request.MaxValue,
             request.TargetValue,
+            targetDirection,
             request.Icon,
             request.Tags,
             request.IsDerived,

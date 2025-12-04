@@ -27,6 +27,8 @@ public class UpdateInvestmentContributionCommandHandler
     {
         var contribution = await _db.InvestmentContributions
             .Include(c => c.TargetAccount)
+            .Include(c => c.SourceAccount)
+            .Include(c => c.EndConditionAccount)
             .FirstOrDefaultAsync(c => c.Id == command.ContributionId && c.UserId == command.UserId, cancellationToken);
 
         if (contribution == null)
@@ -40,32 +42,59 @@ public class UpdateInvestmentContributionCommandHandler
             contribution.Frequency = command.Request.Frequency.Value;
         if (command.Request.TargetAccountId.HasValue)
             contribution.TargetAccountId = command.Request.TargetAccountId;
+        if (command.Request.SourceAccountId.HasValue)
+            contribution.SourceAccountId = command.Request.SourceAccountId;
         if (command.Request.Category != null)
             contribution.Category = command.Request.Category;
         if (command.Request.AnnualIncreaseRate.HasValue)
             contribution.AnnualIncreaseRate = command.Request.AnnualIncreaseRate;
         if (command.Request.Notes != null)
             contribution.Notes = command.Request.Notes;
+        if (command.Request.StartDate.HasValue)
+            contribution.StartDate = command.Request.StartDate;
         if (command.Request.IsActive.HasValue)
             contribution.IsActive = command.Request.IsActive.Value;
+        if (command.Request.EndConditionType.HasValue)
+            contribution.EndConditionType = command.Request.EndConditionType.Value;
+        if (command.Request.EndConditionAccountId.HasValue)
+            contribution.EndConditionAccountId = command.Request.EndConditionAccountId;
+        if (command.Request.EndDate.HasValue)
+            contribution.EndDate = command.Request.EndDate;
+        if (command.Request.EndAmountThreshold.HasValue)
+            contribution.EndAmountThreshold = command.Request.EndAmountThreshold;
 
         contribution.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
+        // Re-query to get updated navigation properties
+        var updated = await _db.InvestmentContributions
+            .Include(c => c.TargetAccount)
+            .Include(c => c.SourceAccount)
+            .Include(c => c.EndConditionAccount)
+            .FirstAsync(c => c.Id == contribution.Id, cancellationToken);
+
         return new InvestmentContributionDto
         {
-            Id = contribution.Id,
-            Name = contribution.Name,
-            Currency = contribution.Currency,
-            Amount = contribution.Amount,
-            Frequency = contribution.Frequency,
-            TargetAccountId = contribution.TargetAccountId,
-            TargetAccountName = contribution.TargetAccount?.Name,
-            Category = contribution.Category,
-            AnnualIncreaseRate = contribution.AnnualIncreaseRate,
-            Notes = contribution.Notes,
-            IsActive = contribution.IsActive,
-            CreatedAt = contribution.CreatedAt
+            Id = updated.Id,
+            Name = updated.Name,
+            Currency = updated.Currency,
+            Amount = updated.Amount,
+            Frequency = updated.Frequency,
+            TargetAccountId = updated.TargetAccountId,
+            TargetAccountName = updated.TargetAccount?.Name,
+            SourceAccountId = updated.SourceAccountId,
+            SourceAccountName = updated.SourceAccount?.Name,
+            Category = updated.Category,
+            AnnualIncreaseRate = updated.AnnualIncreaseRate,
+            Notes = updated.Notes,
+            StartDate = updated.StartDate,
+            IsActive = updated.IsActive,
+            EndConditionType = updated.EndConditionType,
+            EndConditionAccountId = updated.EndConditionAccountId,
+            EndConditionAccountName = updated.EndConditionAccount?.Name,
+            EndDate = updated.EndDate,
+            EndAmountThreshold = updated.EndAmountThreshold,
+            CreatedAt = updated.CreatedAt
         };
     }
 }

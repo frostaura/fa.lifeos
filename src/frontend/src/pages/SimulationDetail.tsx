@@ -4,7 +4,7 @@ import { GlassCard } from '@components/atoms/GlassCard';
 import { Button } from '@components/atoms/Button';
 import { Badge } from '@components/atoms/Badge';
 import { ProjectionChart } from '@components/organisms/ProjectionChart';
-import { ArrowLeft, Play, Settings, Plus, Trash2, Calendar, DollarSign, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Play, Settings, Plus, Trash2, Calendar, DollarSign, Loader2, AlertCircle, Info } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { formatCurrency } from '@components/molecules/CurrencySelector';
 import type { Scenario, FutureEvent } from '@/types';
@@ -25,6 +25,7 @@ export function SimulationDetail() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [showEventEditor, setShowEventEditor] = useState(false);
+  const [showProjectionInfo, setShowProjectionInfo] = useState(false);
 
   // API queries
   const { 
@@ -103,6 +104,7 @@ export function SimulationDetail() {
     endNetWorth: 0,
     totalGrowth: 0,
     annualizedReturn: 0,
+    avgMonthlyGrowthRate: 0,
     totalMonths: 0,
   };
 
@@ -112,7 +114,7 @@ export function SimulationDetail() {
     totalIncome: projections.reduce((sum, p) => sum + p.income, 0),
     totalExpenses: projections.reduce((sum, p) => sum + p.expenses, 0),
     avgMonthlyGrowth: summary.totalMonths > 0 
-      ? (summary.annualizedReturn * 100 / 12).toFixed(1) 
+      ? (summary.avgMonthlyGrowthRate * 100).toFixed(1) 
       : '0',
   };
 
@@ -217,12 +219,49 @@ export function SimulationDetail() {
 
       {/* Projection Chart */}
       {projections.length > 0 && (
-        <ProjectionChart
-          data={projections}
-          milestones={milestones}
-          showCard
-          height={400}
-        />
+        <div className="relative">
+          <div className="absolute right-4 top-4 z-10">
+            <button
+              onClick={() => setShowProjectionInfo(!showProjectionInfo)}
+              className="text-text-tertiary hover:text-text-secondary transition-colors p-1"
+              aria-label="Projection calculation info"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+            {showProjectionInfo && (
+              <div className="absolute right-0 top-full mt-2 w-80 p-4 rounded-lg bg-background-tertiary border border-glass-border shadow-lg text-sm text-text-secondary">
+                <h4 className="font-semibold text-text-primary mb-2">How Projections Are Calculated</h4>
+                <ul className="space-y-2">
+                  <li><span className="text-accent-cyan">•</span> <strong>Income Sources:</strong> Added to target accounts each period, with annual salary increases applied over time</li>
+                  <li><span className="text-semantic-error">•</span> <strong>Expenses:</strong> Deducted from linked accounts, with inflation adjustment (default 5% annually)</li>
+                  <li><span className="text-accent-purple">•</span> <strong>Investment Contributions:</strong> Transferred from source to target investment accounts, with annual increase rates</li>
+                  <li><span className="text-semantic-success">•</span> <strong>Account Interest:</strong> Compound interest calculated based on account's rate and compounding frequency (daily/monthly/quarterly/annual)</li>
+                  <li><span className="text-semantic-warning">•</span> <strong>Scheduled Payments:</strong> One-off income (bonuses) and expenses applied on their scheduled dates</li>
+                  <li><span className="text-text-tertiary">•</span> <strong>Taxes:</strong> PAYE calculated using tax profile brackets, UIF contributions, and rebates</li>
+                  <li><span className="text-accent-cyan">•</span> <strong>Simulation Events:</strong> Custom events (income changes, purchases, etc.) applied at trigger dates/conditions</li>
+                </ul>
+                <div className="mt-3 pt-3 border-t border-glass-border">
+                  <p className="text-xs text-text-tertiary">
+                    <strong>Formula:</strong> Net Worth = Total Assets - Total Liabilities<br/>
+                    Each month: Balance += Income - Expenses - Investments_Out + Investments_In + Interest
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowProjectionInfo(false)}
+                  className="mt-3 text-accent-purple hover:text-accent-purple/80 text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+          <ProjectionChart
+            data={projections}
+            milestones={milestones}
+            showCard
+            height={400}
+          />
+        </div>
       )}
 
       {/* No Projections Message */}

@@ -59,6 +59,8 @@ interface IncomeSourceResponse {
       employerName?: string;
       notes?: string;
       isActive: boolean;
+      targetAccountId?: string;
+      targetAccountName?: string;
     };
   }>;
   meta?: {
@@ -70,24 +72,32 @@ interface IncomeSourceResponse {
 }
 
 // API Response types for expense definitions
+interface ExpenseDefinitionItem {
+  id: string;
+  type: string;
+  attributes: {
+    name: string;
+    currency: string;
+    amountType: string;
+    amountValue?: number;
+    amountFormula?: string;
+    frequency: string;
+    startDate?: string;
+    category: string;
+    isTaxDeductible: boolean;
+    linkedAccountId?: string;
+    linkedAccountName?: string;
+    inflationAdjusted: boolean;
+    isActive: boolean;
+    endConditionType: string;
+    endConditionAccountId?: string;
+    endDate?: string;
+    endAmountThreshold?: number;
+  };
+}
+
 interface ExpenseDefinitionResponse {
-  data: Array<{
-    id: string;
-    type: string;
-    attributes: {
-      name: string;
-      currency: string;
-      amountType: string;
-      amountValue?: number;
-      amountFormula?: string;
-      frequency: string;
-      category: string;
-      isTaxDeductible: boolean;
-      linkedAccountId?: string;
-      inflationAdjusted: boolean;
-      isActive: boolean;
-    };
-  }>;
+  data: ExpenseDefinitionItem[];
   meta?: {
     totalMonthly: number;
     byCategory: Record<string, number>;
@@ -173,7 +183,7 @@ export const financesApi = apiSlice.injectEndpoints({
     updateAccount: builder.mutation<Account, Partial<Account> & { id: string }>({
       query: ({ id, ...body }) => ({
         url: `/api/accounts/${id}`,
-        method: 'PUT',
+        method: 'PATCH',
         body,
       }),
       invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios'],
@@ -300,6 +310,8 @@ export const financesApi = apiSlice.injectEndpoints({
           employerName: item.attributes.employerName,
           notes: item.attributes.notes,
           isActive: item.attributes.isActive,
+          targetAccountId: item.attributes.targetAccountId,
+          targetAccountName: item.attributes.targetAccountName,
         }));
       },
       providesTags: ['IncomeSources'],
@@ -334,6 +346,8 @@ export const financesApi = apiSlice.injectEndpoints({
             employerName: item.attributes.employerName,
             notes: item.attributes.notes,
             isActive: item.attributes.isActive,
+            targetAccountId: item.attributes.targetAccountId,
+            targetAccountName: item.attributes.targetAccountName,
           })),
           summary: {
             totalMonthlyGross: response.meta?.totalMonthlyGross || 0,
@@ -385,11 +399,17 @@ export const financesApi = apiSlice.injectEndpoints({
           amountValue: item.attributes.amountValue,
           amountFormula: item.attributes.amountFormula,
           frequency: item.attributes.frequency as ExpenseDefinition['frequency'],
+          startDate: item.attributes.startDate,
           category: item.attributes.category,
           isTaxDeductible: item.attributes.isTaxDeductible,
           linkedAccountId: item.attributes.linkedAccountId,
+          linkedAccountName: item.attributes.linkedAccountName,
           inflationAdjusted: item.attributes.inflationAdjusted,
           isActive: item.attributes.isActive,
+          endConditionType: (item.attributes.endConditionType || 'none') as ExpenseDefinition['endConditionType'],
+          endConditionAccountId: item.attributes.endConditionAccountId,
+          endDate: item.attributes.endDate,
+          endAmountThreshold: item.attributes.endAmountThreshold,
         }));
       },
       providesTags: ['ExpenseDefinitions'],
@@ -401,6 +421,29 @@ export const financesApi = apiSlice.injectEndpoints({
         method: 'POST',
         body,
       }),
+      transformResponse: (response: { data: ExpenseDefinitionItem }) => {
+        const item = response.data;
+        return {
+          id: item.id,
+          name: item.attributes.name,
+          currency: item.attributes.currency,
+          amountType: item.attributes.amountType as ExpenseDefinition['amountType'],
+          amountValue: item.attributes.amountValue,
+          amountFormula: item.attributes.amountFormula,
+          frequency: item.attributes.frequency as ExpenseDefinition['frequency'],
+          startDate: item.attributes.startDate,
+          category: item.attributes.category,
+          isTaxDeductible: item.attributes.isTaxDeductible,
+          linkedAccountId: item.attributes.linkedAccountId,
+          linkedAccountName: item.attributes.linkedAccountName,
+          inflationAdjusted: item.attributes.inflationAdjusted,
+          isActive: item.attributes.isActive,
+          endConditionType: (item.attributes.endConditionType || 'none') as ExpenseDefinition['endConditionType'],
+          endConditionAccountId: item.attributes.endConditionAccountId,
+          endDate: item.attributes.endDate,
+          endAmountThreshold: item.attributes.endAmountThreshold,
+        };
+      },
       invalidatesTags: ['ExpenseDefinitions', 'Dashboard', 'Scenarios'],
     }),
 

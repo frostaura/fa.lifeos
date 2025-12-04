@@ -16,6 +16,7 @@ const DEFAULT_RANGES: TimeRange[] = [
   { label: '30D', value: '30d', days: 30 },
   { label: '90D', value: '90d', days: 90 },
   { label: '1Y', value: '1y', days: 365 },
+  { label: '5Y', value: '5y', days: 1825 },
 ];
 
 export function TimeScaleSlider({

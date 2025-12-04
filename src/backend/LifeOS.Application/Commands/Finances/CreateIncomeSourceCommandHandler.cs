@@ -29,11 +29,21 @@ public class CreateIncomeSourceCommandHandler : IRequestHandler<CreateIncomeSour
             AnnualIncreaseRate = request.AnnualIncreaseRate,
             EmployerName = request.EmployerName,
             Notes = request.Notes,
-            IsActive = true
+            IsActive = true,
+            TargetAccountId = request.TargetAccountId
         };
 
         _context.IncomeSources.Add(incomeSource);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Get target account name if set
+        string? targetAccountName = null;
+        if (incomeSource.TargetAccountId.HasValue)
+        {
+            var account = await _context.Accounts
+                .FindAsync(new object[] { incomeSource.TargetAccountId.Value }, cancellationToken);
+            targetAccountName = account?.Name;
+        }
 
         return new IncomeSourceDetailResponse
         {
@@ -53,7 +63,9 @@ public class CreateIncomeSourceCommandHandler : IRequestHandler<CreateIncomeSour
                     AnnualIncreaseRate = incomeSource.AnnualIncreaseRate,
                     EmployerName = incomeSource.EmployerName,
                     Notes = incomeSource.Notes,
-                    IsActive = incomeSource.IsActive
+                    IsActive = incomeSource.IsActive,
+                    TargetAccountId = incomeSource.TargetAccountId,
+                    TargetAccountName = targetAccountName
                 }
             }
         };

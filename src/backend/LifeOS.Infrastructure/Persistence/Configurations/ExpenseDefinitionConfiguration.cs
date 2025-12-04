@@ -51,6 +51,17 @@ public class ExpenseDefinitionConfiguration : IEntityTypeConfiguration<ExpenseDe
         builder.Property(e => e.IsActive)
             .HasDefaultValue(true);
 
+        // End condition properties
+        builder.Property(e => e.EndConditionType)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .HasDefaultValue(EndConditionType.None);
+
+        builder.Property(e => e.EndDate);
+
+        builder.Property(e => e.EndAmountThreshold)
+            .HasPrecision(18, 4);
+
         builder.Property(e => e.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -64,6 +75,11 @@ public class ExpenseDefinitionConfiguration : IEntityTypeConfiguration<ExpenseDe
         builder.HasOne(e => e.LinkedAccount)
             .WithMany(a => a.ExpenseDefinitions)
             .HasForeignKey(e => e.LinkedAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.EndConditionAccount)
+            .WithMany()
+            .HasForeignKey(e => e.EndConditionAccountId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(e => e.UserId);

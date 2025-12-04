@@ -15,5 +15,6 @@ public record UpdateIncomeSourceCommand(
     decimal? AnnualIncreaseRate,
     string? EmployerName,
     string? Notes,
-    bool? IsActive
+    bool? IsActive,
+    Guid? TargetAccountId
 ) : IRequest<bool>;

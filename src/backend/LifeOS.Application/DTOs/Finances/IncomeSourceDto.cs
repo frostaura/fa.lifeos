@@ -17,6 +17,8 @@ public record IncomeSourceDto
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
     public bool IsActive { get; init; }
+    public Guid? TargetAccountId { get; init; }
+    public string? TargetAccountName { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 
@@ -46,6 +48,8 @@ public record IncomeSourceAttributes
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
     public bool IsActive { get; init; }
+    public Guid? TargetAccountId { get; init; }
+    public string? TargetAccountName { get; init; }
 }
 
 public record IncomeSourceMeta
@@ -73,6 +77,7 @@ public record CreateIncomeSourceRequest
     public decimal? AnnualIncreaseRate { get; init; }
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
+    public Guid? TargetAccountId { get; init; } // Optional: where the income is deposited
 }
 
 public record UpdateIncomeSourceRequest
@@ -87,4 +92,5 @@ public record UpdateIncomeSourceRequest
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
     public bool? IsActive { get; init; }
+    public Guid? TargetAccountId { get; init; }
 }

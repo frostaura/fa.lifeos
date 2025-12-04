@@ -236,7 +236,8 @@ public class DashboardController : ControllerBase
             "3M" => today.AddMonths(-3),
             "6M" => today.AddMonths(-6),
             "1Y" => today.AddYears(-1),
-            "ALL" => today.AddYears(-10),
+            "10Y" => today.AddYears(-10),
+            "ALL" => today.AddYears(-20),
             _ => today.AddYears(-1)
         };
         

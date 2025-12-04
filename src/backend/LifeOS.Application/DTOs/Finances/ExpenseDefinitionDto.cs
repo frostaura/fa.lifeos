@@ -12,11 +12,16 @@ public record ExpenseDefinitionDto
     public decimal? AmountValue { get; init; }
     public string? AmountFormula { get; init; }
     public PaymentFrequency Frequency { get; init; }
+    public DateOnly? StartDate { get; init; }
     public string Category { get; init; } = string.Empty;
     public bool IsTaxDeductible { get; init; }
     public Guid? LinkedAccountId { get; init; }
     public bool InflationAdjusted { get; init; }
     public bool IsActive { get; init; }
+    public EndConditionType EndConditionType { get; init; }
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 
@@ -41,11 +46,17 @@ public record ExpenseDefinitionAttributes
     public decimal? AmountValue { get; init; }
     public string? AmountFormula { get; init; }
     public string Frequency { get; init; } = string.Empty;
+    public string? StartDate { get; init; }
     public string Category { get; init; } = string.Empty;
     public bool IsTaxDeductible { get; init; }
     public Guid? LinkedAccountId { get; init; }
+    public string? LinkedAccountName { get; init; }
     public bool InflationAdjusted { get; init; }
     public bool IsActive { get; init; }
+    public string EndConditionType { get; init; } = "none";
+    public Guid? EndConditionAccountId { get; init; }
+    public string? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record ExpenseDefinitionMeta
@@ -67,10 +78,15 @@ public record CreateExpenseDefinitionRequest
     public decimal? AmountValue { get; init; }
     public string? AmountFormula { get; init; }
     public PaymentFrequency Frequency { get; init; } = PaymentFrequency.Monthly;
+    public DateOnly? StartDate { get; init; } // Start date for scheduling (especially for once-off expenses)
     public string Category { get; init; } = string.Empty;
     public bool IsTaxDeductible { get; init; }
-    public Guid? LinkedAccountId { get; init; }
+    public Guid? LinkedAccountId { get; init; } // Optional: the account this expense is debited from
     public bool InflationAdjusted { get; init; } = true;
+    public EndConditionType EndConditionType { get; init; } = EndConditionType.None;
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record UpdateExpenseDefinitionRequest
@@ -79,9 +95,14 @@ public record UpdateExpenseDefinitionRequest
     public decimal? AmountValue { get; init; }
     public string? AmountFormula { get; init; }
     public PaymentFrequency? Frequency { get; init; }
+    public DateOnly? StartDate { get; init; }
     public string? Category { get; init; }
     public bool? IsTaxDeductible { get; init; }
     public Guid? LinkedAccountId { get; init; }
     public bool? InflationAdjusted { get; init; }
     public bool? IsActive { get; init; }
+    public EndConditionType? EndConditionType { get; init; }
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }

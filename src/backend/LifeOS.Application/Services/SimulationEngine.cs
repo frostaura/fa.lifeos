@@ -60,6 +60,12 @@ public class SimulationEngine : ISimulationEngine
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        // Load investment contributions
+        var investmentContributions = await _context.InvestmentContributions
+            .Where(i => i.UserId == userId && i.IsActive)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
         // Load tax profiles
         var taxProfiles = await _context.TaxProfiles
             .Where(t => t.UserId == userId && t.IsActive)
@@ -104,6 +110,17 @@ public class SimulationEngine : ISimulationEngine
 
         // Track applied one-time events
         var appliedOneTimeEvents = new HashSet<Guid>();
+        
+        // Track applied once-off income and expense items
+        var appliedOnceOffIncomeSources = new HashSet<Guid>();
+        var appliedOnceOffExpenseDefinitions = new HashSet<Guid>();
+        var appliedOnceOffInvestmentContributions = new HashSet<Guid>();
+
+        // Track cumulative expense amounts for UntilAmount end condition
+        var cumulativeExpenseAmounts = new Dictionary<Guid, decimal>();
+        
+        // Track cumulative investment contribution amounts for UntilAmount end condition
+        var cumulativeContributionAmounts = new Dictionary<Guid, decimal>();
 
         // Run month-by-month simulation
         var currentDate = startDate;
@@ -151,8 +168,16 @@ public class SimulationEngine : ISimulationEngine
             // 2. Apply income sources
             foreach (var income in incomeSources)
             {
+                // Skip once-off items that have already been applied
+                if (income.PaymentFrequency == PaymentFrequency.Once && appliedOnceOffIncomeSources.Contains(income.Id))
+                    continue;
+                    
                 if (!ShouldApplyRecurringItem(income.PaymentFrequency, currentDate, income.NextPaymentDate))
                     continue;
+                    
+                // Mark once-off items as applied
+                if (income.PaymentFrequency == PaymentFrequency.Once)
+                    appliedOnceOffIncomeSources.Add(income.Id);
 
                 var grossAmount = income.BaseAmount;
 
@@ -168,8 +193,9 @@ public class SimulationEngine : ISimulationEngine
                     ? CalculateNetIncome(grossAmount, income.TaxProfileId.Value, taxProfiles, income.PaymentFrequency)
                     : grossAmount;
 
-                // Find primary bank account to credit (or first available)
-                var targetAccountId = accounts.FirstOrDefault(a => a.AccountType == AccountType.Bank && !a.IsLiability)?.Id
+                // Use target account if specified, otherwise find primary bank account
+                var targetAccountId = income.TargetAccountId
+                    ?? accounts.FirstOrDefault(a => a.AccountType == AccountType.Bank && !a.IsLiability)?.Id
                     ?? accounts.FirstOrDefault()?.Id;
 
                 if (targetAccountId.HasValue)
@@ -182,10 +208,31 @@ public class SimulationEngine : ISimulationEngine
             // 3. Apply expense definitions
             foreach (var expense in expenseDefinitions)
             {
-                if (!ShouldApplyRecurringItem(expense.Frequency, currentDate, null))
+                // Skip once-off items that have already been applied
+                if (expense.Frequency == PaymentFrequency.Once && appliedOnceOffExpenseDefinitions.Contains(expense.Id))
+                    continue;
+                
+                // Use StartDate for scheduling (especially for once-off expenses)
+                // Fall back to null for recurring expenses without explicit start date
+                var scheduleDate = expense.StartDate;
+                    
+                if (!ShouldApplyRecurringItem(expense.Frequency, currentDate, scheduleDate))
+                    continue;
+                    
+                // Mark once-off items as applied
+                if (expense.Frequency == PaymentFrequency.Once)
+                    appliedOnceOffExpenseDefinitions.Add(expense.Id);
+
+                // Check end condition before applying expense
+                if (!ShouldApplyExpense(expense, accountBalances, currentDate, cumulativeExpenseAmounts))
                     continue;
 
                 var amount = CalculateExpenseAmount(expense, state, assumptions);
+
+                // Track cumulative amount for UntilAmount end condition
+                if (!cumulativeExpenseAmounts.ContainsKey(expense.Id))
+                    cumulativeExpenseAmounts[expense.Id] = 0;
+                cumulativeExpenseAmounts[expense.Id] += amount;
 
                 // Debit from linked account or primary bank account
                 var sourceAccountId = expense.LinkedAccountId 
@@ -198,7 +245,67 @@ public class SimulationEngine : ISimulationEngine
                 }
             }
 
-            // 4. Apply simulation events
+            // 4. Apply investment contributions (debit source, credit target)
+            foreach (var investment in investmentContributions)
+            {
+                // Skip once-off items that have already been applied
+                if (investment.Frequency == PaymentFrequency.Once && appliedOnceOffInvestmentContributions.Contains(investment.Id))
+                    continue;
+                    
+                if (!ShouldApplyRecurringItem(investment.Frequency, currentDate, investment.StartDate))
+                    continue;
+                    
+                // Mark once-off items as applied
+                if (investment.Frequency == PaymentFrequency.Once)
+                    appliedOnceOffInvestmentContributions.Add(investment.Id);
+
+                // Check end condition before applying contribution
+                if (!ShouldApplyInvestmentContribution(investment, accountBalances, currentDate, cumulativeContributionAmounts))
+                    continue;
+
+                var contributionAmount = investment.Amount;
+
+                // Apply annual increase rate to investment contributions
+                if (investment.AnnualIncreaseRate.HasValue && monthsElapsed > 0)
+                {
+                    var yearsElapsed = monthsElapsed / 12.0m;
+                    contributionAmount *= (decimal)Math.Pow((double)(1 + investment.AnnualIncreaseRate.Value), (double)yearsElapsed);
+                }
+
+                // Track cumulative amount for UntilAmount end condition
+                if (!cumulativeContributionAmounts.ContainsKey(investment.Id))
+                    cumulativeContributionAmounts[investment.Id] = 0;
+                cumulativeContributionAmounts[investment.Id] += contributionAmount;
+
+                // Debit from source account (if specified)
+                if (investment.SourceAccountId.HasValue && accountBalances.ContainsKey(investment.SourceAccountId.Value))
+                {
+                    accountBalances[investment.SourceAccountId.Value] -= contributionAmount;
+                    accountExpenses[investment.SourceAccountId.Value] += contributionAmount;
+                }
+
+                // Credit to target account (or pay down liability)
+                if (investment.TargetAccountId.HasValue && accountBalances.ContainsKey(investment.TargetAccountId.Value))
+                {
+                    var targetIsLiability = accountLiability.GetValueOrDefault(investment.TargetAccountId.Value);
+                    if (targetIsLiability)
+                    {
+                        // For liability accounts, contribution pays down the debt (reduces balance)
+                        accountBalances[investment.TargetAccountId.Value] -= contributionAmount;
+                        // Don't go below zero - debt is fully paid
+                        if (accountBalances[investment.TargetAccountId.Value] < 0)
+                            accountBalances[investment.TargetAccountId.Value] = 0;
+                    }
+                    else
+                    {
+                        // For asset accounts, contribution adds to balance
+                        accountBalances[investment.TargetAccountId.Value] += contributionAmount;
+                    }
+                    accountIncomes[investment.TargetAccountId.Value] += contributionAmount;
+                }
+            }
+
+            // 5. Apply simulation events
             foreach (var evt in scenario.Events.OrderBy(e => e.SortOrder))
             {
                 if (!evt.IsActive)
@@ -250,6 +357,10 @@ public class SimulationEngine : ISimulationEngine
                 var balance = accountBalances[account.Id];
                 var balanceHomeCurrency = balance; // TODO: Apply FX conversion
 
+                // For display purposes, negate liability balances so they appear as negative
+                var displayBalance = account.IsLiability ? -Math.Abs(balance) : balance;
+                var displayBalanceHomeCurrency = account.IsLiability ? -Math.Abs(balanceHomeCurrency) : balanceHomeCurrency;
+
                 if (account.IsLiability)
                 {
                     totalLiabilities += Math.Abs(balanceHomeCurrency);
@@ -264,15 +375,15 @@ public class SimulationEngine : ISimulationEngine
                 }
 
                 breakdownByCurrency[account.Currency] =
-                    breakdownByCurrency.GetValueOrDefault(account.Currency) + balance;
+                    breakdownByCurrency.GetValueOrDefault(account.Currency) + displayBalance;
 
                 var projection = new AccountProjection
                 {
                     ScenarioId = scenarioId,
                     AccountId = account.Id,
                     PeriodDate = currentDate,
-                    Balance = balance,
-                    BalanceHomeCurrency = balanceHomeCurrency,
+                    Balance = displayBalance,
+                    BalanceHomeCurrency = displayBalanceHomeCurrency,
                     PeriodIncome = accountIncomes.GetValueOrDefault(account.Id),
                     PeriodExpenses = accountExpenses.GetValueOrDefault(account.Id),
                     PeriodInterest = accountInterests.GetValueOrDefault(account.Id),
@@ -539,6 +650,7 @@ public class SimulationEngine : ISimulationEngine
             PaymentFrequency.Monthly => amount,
             PaymentFrequency.Quarterly => amount / 3,
             PaymentFrequency.Annually => amount / 12,
+            PaymentFrequency.Once => 0, // One-time items don't contribute to monthly totals
             _ => amount
         };
     }
@@ -574,15 +686,18 @@ public class SimulationEngine : ISimulationEngine
         if (annualRate == 0 || balance == 0)
             return 0;
 
+        // Convert percentage to decimal (e.g., 10% stored as 10 becomes 0.10)
+        var rateDecimal = annualRate / 100m;
+
         // Monthly compounding calculation
         return compounding switch
         {
             CompoundingFrequency.None => 0,
-            CompoundingFrequency.Daily => balance * ((decimal)Math.Pow((double)(1 + annualRate / 365), 30.42) - 1),
-            CompoundingFrequency.Monthly => balance * (annualRate / 12),
-            CompoundingFrequency.Quarterly => balance * ((decimal)Math.Pow((double)(1 + annualRate / 4), 1.0 / 3) - 1),
-            CompoundingFrequency.Annually => balance * ((decimal)Math.Pow((double)(1 + annualRate), 1.0 / 12) - 1),
-            CompoundingFrequency.Continuous => balance * ((decimal)Math.Exp((double)(annualRate / 12)) - 1),
+            CompoundingFrequency.Daily => balance * ((decimal)Math.Pow((double)(1 + rateDecimal / 365), 30.42) - 1),
+            CompoundingFrequency.Monthly => balance * (rateDecimal / 12),
+            CompoundingFrequency.Quarterly => balance * ((decimal)Math.Pow((double)(1 + rateDecimal / 4), 1.0 / 3) - 1),
+            CompoundingFrequency.Annually => balance * ((decimal)Math.Pow((double)(1 + rateDecimal), 1.0 / 12) - 1),
+            CompoundingFrequency.Continuous => balance * ((decimal)Math.Exp((double)(rateDecimal / 12)) - 1),
             _ => 0
         };
     }
@@ -597,6 +712,9 @@ public class SimulationEngine : ISimulationEngine
             PaymentFrequency.Monthly => true,
             PaymentFrequency.Quarterly => currentDate.Month % 3 == (startDate?.Month ?? 1) % 3,
             PaymentFrequency.Annually => currentDate.Month == (startDate?.Month ?? 1),
+            PaymentFrequency.Once => startDate.HasValue && 
+                currentDate.Year == startDate.Value.Year && 
+                currentDate.Month == startDate.Value.Month, // Apply only in the specific month
             _ => true
         };
     }
@@ -619,6 +737,7 @@ public class SimulationEngine : ISimulationEngine
             PaymentFrequency.Monthly => grossAmount * 12,
             PaymentFrequency.Quarterly => grossAmount * 4,
             PaymentFrequency.Annually => grossAmount,
+            PaymentFrequency.Once => grossAmount, // One-time payment is the full amount
             _ => grossAmount * 12
         };
 
@@ -647,6 +766,7 @@ public class SimulationEngine : ISimulationEngine
             PaymentFrequency.Monthly => annualNet / 12,
             PaymentFrequency.Quarterly => annualNet / 4,
             PaymentFrequency.Annually => annualNet,
+            PaymentFrequency.Once => annualNet, // One-time payment returns full net amount
             _ => annualNet / 12
         };
     }
@@ -710,6 +830,96 @@ public class SimulationEngine : ISimulationEngine
         }
 
         return baseAmount;
+    }
+
+    private bool ShouldApplyExpense(
+        ExpenseDefinition expense,
+        Dictionary<Guid, decimal> accountBalances,
+        DateOnly currentDate,
+        Dictionary<Guid, decimal> cumulativeExpenseAmounts)
+    {
+        switch (expense.EndConditionType)
+        {
+            case EndConditionType.None:
+                return true;
+
+            case EndConditionType.UntilAccountSettled:
+                // Stop if linked account balance is zero (liability fully paid off)
+                // Note: Liabilities are stored as POSITIVE numbers internally
+                if (expense.EndConditionAccountId.HasValue && 
+                    accountBalances.TryGetValue(expense.EndConditionAccountId.Value, out var balance))
+                {
+                    // Continue applying expense while balance > 0 (debt still exists)
+                    // Stop when balance <= 0 (debt fully paid)
+                    return balance > 0;
+                }
+                return true;
+
+            case EndConditionType.UntilDate:
+                // Stop after the specified end date
+                if (expense.EndDate.HasValue)
+                {
+                    return currentDate <= expense.EndDate.Value;
+                }
+                return true;
+
+            case EndConditionType.UntilAmount:
+                // Stop after cumulative amount threshold is reached
+                if (expense.EndAmountThreshold.HasValue)
+                {
+                    var cumulative = cumulativeExpenseAmounts.GetValueOrDefault(expense.Id, 0);
+                    return cumulative < expense.EndAmountThreshold.Value;
+                }
+                return true;
+
+            default:
+                return true;
+        }
+    }
+
+    private bool ShouldApplyInvestmentContribution(
+        InvestmentContribution contribution,
+        Dictionary<Guid, decimal> accountBalances,
+        DateOnly currentDate,
+        Dictionary<Guid, decimal> cumulativeContributionAmounts)
+    {
+        switch (contribution.EndConditionType)
+        {
+            case EndConditionType.None:
+                return true;
+
+            case EndConditionType.UntilAccountSettled:
+                // Stop if linked account balance is zero (liability fully paid off)
+                // Note: Liabilities are stored as POSITIVE numbers internally
+                if (contribution.EndConditionAccountId.HasValue && 
+                    accountBalances.TryGetValue(contribution.EndConditionAccountId.Value, out var balance))
+                {
+                    // Continue contributing while balance > 0 (debt still exists)
+                    // Stop when balance <= 0 (debt fully paid)
+                    return balance > 0;
+                }
+                return true;
+
+            case EndConditionType.UntilDate:
+                // Stop after the specified end date
+                if (contribution.EndDate.HasValue)
+                {
+                    return currentDate <= contribution.EndDate.Value;
+                }
+                return true;
+
+            case EndConditionType.UntilAmount:
+                // Stop after cumulative amount threshold is reached
+                if (contribution.EndAmountThreshold.HasValue)
+                {
+                    var cumulative = cumulativeContributionAmounts.GetValueOrDefault(contribution.Id, 0);
+                    return cumulative < contribution.EndAmountThreshold.Value;
+                }
+                return true;
+
+            default:
+                return true;
+        }
     }
 
     private decimal EvaluateFormula(string? formula, SimulationState state)
@@ -839,12 +1049,38 @@ public class SimulationEngine : ISimulationEngine
         var totalMonths = ordered.Count;
         var totalGrowth = last.NetWorth - first.NetWorth;
 
-        // Calculate annualized return using CAGR formula
+        // Calculate annualized return (CAGR) - only valid for positive starting values
         decimal annualizedReturn = 0;
-        if (first.NetWorth > 0 && totalMonths > 0)
+        if (first.NetWorth > 0 && totalMonths > 1)
         {
             var years = totalMonths / 12.0;
             annualizedReturn = (decimal)(Math.Pow((double)(last.NetWorth / first.NetWorth), 1.0 / years) - 1);
+        }
+
+        // Calculate average monthly growth rate
+        // This is the simple average of month-over-month percentage changes
+        decimal avgMonthlyGrowthRate = 0;
+        if (totalMonths > 1)
+        {
+            var monthlyGrowthRates = new List<decimal>();
+            for (int i = 1; i < ordered.Count; i++)
+            {
+                var prevNetWorth = ordered[i - 1].NetWorth;
+                var currentNetWorth = ordered[i].NetWorth;
+                
+                // Calculate percentage change from previous month
+                // For negative values, we use absolute value as base to get meaningful percentages
+                if (prevNetWorth != 0)
+                {
+                    var growthRate = (currentNetWorth - prevNetWorth) / Math.Abs(prevNetWorth);
+                    monthlyGrowthRates.Add(growthRate);
+                }
+            }
+            
+            if (monthlyGrowthRates.Count > 0)
+            {
+                avgMonthlyGrowthRate = monthlyGrowthRates.Average();
+            }
         }
 
         return new ProjectionSummary
@@ -853,6 +1089,7 @@ public class SimulationEngine : ISimulationEngine
             EndNetWorth = last.NetWorth,
             TotalGrowth = totalGrowth,
             AnnualizedReturn = Math.Round(annualizedReturn, 4),
+            AvgMonthlyGrowthRate = Math.Round(avgMonthlyGrowthRate, 6),
             TotalMonths = totalMonths
         };
     }

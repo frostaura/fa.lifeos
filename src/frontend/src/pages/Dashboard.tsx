@@ -9,6 +9,7 @@ import {
 } from '@components/organisms';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Spinner } from '@components/atoms/Spinner';
+import { cn } from '@utils/cn';
 import type { Streak, TaskItem, NetWorthDataPoint, DimensionId } from '@/types';
 
 // API response types
@@ -70,6 +71,71 @@ export function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardApiResponse['data'] | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [netWorthHistory, setNetWorthHistory] = useState<NetWorthDataPoint[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '5Y' | '10Y' | 'ALL'>('5Y');
+
+  // Fetch projections from baseline scenario
+  const fetchProjections = async (period: string) => {
+    const token = localStorage.getItem('accessToken');
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    try {
+      // First get scenarios to find baseline
+      const scenariosRes = await fetch('/api/simulations/scenarios', { headers });
+      if (!scenariosRes.ok) return null;
+      
+      const scenariosData = await scenariosRes.json();
+      const baseline = scenariosData.data?.find((s: { attributes: { isBaseline: boolean } }) => s.attributes.isBaseline);
+      
+      if (!baseline) return null;
+      
+      // Run simulation to ensure fresh data
+      await fetch(`/api/simulations/scenarios/${baseline.id}/run`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recalculateFromStart: true }),
+      });
+      
+      // Fetch projections
+      const projectionsRes = await fetch(`/api/simulations/scenarios/${baseline.id}/projections`, { headers });
+      if (!projectionsRes.ok) return null;
+      
+      const projectionsData = await projectionsRes.json();
+      if (!projectionsData.data?.monthlyProjections?.length) return null;
+      
+      // Map and filter based on period, including accounts data
+      const allProjections: NetWorthDataPoint[] = projectionsData.data.monthlyProjections.map((p: { 
+        period: string; 
+        netWorth: number;
+        accounts?: Array<{
+          accountId: string;
+          accountName: string;
+          balance: number;
+        }>;
+      }) => ({
+        date: p.period,
+        value: Math.round(p.netWorth),
+        accounts: p.accounts?.map(a => ({
+          accountId: a.accountId,
+          accountName: a.accountName,
+          balance: a.balance,
+        })),
+      }));
+      
+      const monthsToShow = {
+        '1M': 1,
+        '3M': 3,
+        '6M': 6,
+        '1Y': 12,
+        '5Y': 60,
+        '10Y': 120,
+        'ALL': allProjections.length,
+      }[period] || 60;
+      
+      return allProjections.slice(0, monthsToShow + 1);
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -93,25 +159,13 @@ export function Dashboard() {
           dimensionId: (t.dimensionId || 'health') as DimensionId,
         })));
 
-        // Fetch net worth history from API
-        try {
-          const historyRes = await fetch('/api/dashboard/net-worth/history?period=1Y', { headers });
-          if (historyRes.ok) {
-            const historyData: NetWorthHistoryApiResponse = await historyRes.json();
-            if (historyData.data?.history?.length > 0) {
-              setNetWorthHistory(historyData.data.history.map(h => ({
-                date: h.date,
-                value: h.value,
-              })));
-            } else {
-              // Fallback to generated data if no history exists yet
-              setNetWorthHistory(generateFallbackHistory(data.data.netWorth.value));
-            }
-          } else {
-            setNetWorthHistory(generateFallbackHistory(data.data.netWorth.value));
-          }
-        } catch {
-          setNetWorthHistory(generateFallbackHistory(data.data.netWorth.value));
+        // Fetch real projections from baseline scenario
+        const projections = await fetchProjections(chartPeriod);
+        if (projections && projections.length > 0) {
+          setNetWorthHistory(projections);
+        } else {
+          // Fallback to simple projection if no baseline scenario
+          setNetWorthHistory(generateProjectionsForDashboard(data.data.netWorth.value, chartPeriod));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -122,20 +176,52 @@ export function Dashboard() {
 
     fetchDashboard();
   }, []);
+
+  // Update projections when chart period changes
+  useEffect(() => {
+    if (!dashboardData) return;
+    
+    const updateProjections = async () => {
+      const projections = await fetchProjections(chartPeriod);
+      if (projections && projections.length > 0) {
+        setNetWorthHistory(projections);
+      } else {
+        setNetWorthHistory(generateProjectionsForDashboard(dashboardData.netWorth.value, chartPeriod));
+      }
+    };
+    
+    updateProjections();
+  }, [chartPeriod, dashboardData]);
   
-  // Generate fallback history when no API data exists
-  const generateFallbackHistory = (currentNetWorth: number): NetWorthDataPoint[] => {
-    const history: NetWorthDataPoint[] = [];
-    for (let i = 10; i >= 0; i--) {
+  // Generate future projections based on current net worth (fallback)
+  const generateProjectionsForDashboard = (currentNetWorth: number, period: string): NetWorthDataPoint[] => {
+    const projections: NetWorthDataPoint[] = [];
+    const periodMonths: Record<string, number> = {
+      '1M': 1,
+      '3M': 3,
+      '6M': 6,
+      '1Y': 12,
+      '5Y': 60,
+      '10Y': 120,
+      'ALL': 240,
+    };
+    const months = periodMonths[period] || 60;
+    
+    // Assume modest growth rate of ~5% annually for dashboard overview
+    const monthlyGrowthRate = 0.05 / 12;
+    let projectedValue = currentNetWorth;
+    
+    for (let i = 0; i <= months; i++) {
       const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      const variance = (Math.random() - 0.3) * 0.1;
-      history.push({
+      date.setMonth(date.getMonth() + i);
+      projections.push({
         date: date.toISOString().slice(0, 7),
-        value: Math.round(currentNetWorth * (1 - (i * 0.02) + variance)),
+        value: Math.round(projectedValue),
       });
+      // Apply growth for next month
+      projectedValue = projectedValue * (1 + monthlyGrowthRate);
     }
-    return history;
+    return projections;
   };
 
   const handleToggleTask = async (id: string, completed: boolean) => {
@@ -203,8 +289,8 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-text-secondary mt-1">Welcome back to LifeOS</p>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary whitespace-nowrap">Dashboard</h1>
+          <p className="text-text-secondary mt-1 text-sm md:text-base whitespace-nowrap">Welcome back to LifeOS</p>
         </div>
       </div>
 
@@ -220,13 +306,31 @@ export function Dashboard() {
 
       {/* Dimension Cards */}
       <div>
-        <h2 className="text-xl font-semibold text-text-primary mb-4">Dimensions</h2>
+        <h2 className="text-base md:text-lg lg:text-xl font-semibold text-text-primary mb-4 whitespace-nowrap">Dimensions</h2>
         <DimensionGrid dimensions={dimensions} />
       </div>
 
       {/* Net Worth Chart */}
-      <GlassCard variant="default" className="p-6">
-        <h2 className="text-lg font-semibold text-text-primary mb-4">Net Worth Trend</h2>
+      <GlassCard variant="default" className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <h2 className="text-base md:text-lg font-semibold text-text-primary whitespace-nowrap">Net Worth Trend</h2>
+          <div className="flex gap-1 flex-wrap">
+            {(['1M', '3M', '6M', '1Y', '5Y', '10Y', 'ALL'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setChartPeriod(period)}
+                className={cn(
+                  'px-2 py-0.5 text-xs rounded-md transition-colors',
+                  chartPeriod === period 
+                    ? 'bg-accent-purple text-white' 
+                    : 'text-text-secondary hover:bg-background-hover'
+                )}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
         <NetWorthChart data={netWorthHistory} height={250} />
       </GlassCard>
 

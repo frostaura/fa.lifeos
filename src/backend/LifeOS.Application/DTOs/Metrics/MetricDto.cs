@@ -92,11 +92,14 @@ public record MetricDefinitionAttributes
     public decimal? MinValue { get; init; }
     public decimal? MaxValue { get; init; }
     public decimal? TargetValue { get; init; }
+    public string TargetDirection { get; init; } = "atOrAbove";
     public string? Icon { get; init; }
     public string[]? Tags { get; init; }
     public bool IsDerived { get; init; }
     public string? DerivationFormula { get; init; }
     public bool IsActive { get; init; }
+    public decimal? LatestValue { get; init; }
+    public DateTime? LatestRecordedAt { get; init; }
 }
 
 public record MetricDefinitionDetailResponse
@@ -118,6 +121,7 @@ public record CreateMetricDefinitionRequest
     public decimal? MinValue { get; init; }
     public decimal? MaxValue { get; init; }
     public decimal? TargetValue { get; init; }
+    public string TargetDirection { get; init; } = "atOrAbove";
     public string? Icon { get; init; }
     public string[]? Tags { get; init; }
     public bool IsDerived { get; init; }
@@ -138,6 +142,7 @@ public record UpdateMetricDefinitionRequest
     public decimal? MinValue { get; init; }
     public decimal? MaxValue { get; init; }
     public decimal? TargetValue { get; init; }
+    public string? TargetDirection { get; init; }
     public string? Icon { get; init; }
     public string[]? Tags { get; init; }
     public bool? IsDerived { get; init; }

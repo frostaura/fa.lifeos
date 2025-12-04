@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,27 +6,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LifeOS.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAccountMonthlyFee : Migration
+    public partial class AddInvestmentContributionStartDate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<decimal>(
-                name: "MonthlyFee",
-                table: "accounts",
-                type: "numeric(18,4)",
-                precision: 18,
-                scale: 4,
-                nullable: false,
-                defaultValue: 0m);
+            migrationBuilder.AddColumn<DateOnly>(
+                name: "StartDate",
+                table: "InvestmentContributions",
+                type: "date",
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "MonthlyFee",
-                table: "accounts");
+                name: "StartDate",
+                table: "InvestmentContributions");
         }
     }
 }

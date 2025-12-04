@@ -10,6 +10,7 @@ import { Health } from '@pages/Health';
 import { Simulation } from '@pages/Simulation';
 import { SimulationDetail } from '@pages/SimulationDetail';
 import { SimulationBuilder } from '@pages/SimulationBuilder';
+import { CustomScenarioBuilder } from '@pages/CustomScenarioBuilder';
 import { Metrics } from '@pages/Metrics';
 import {
   Settings,
@@ -41,6 +42,7 @@ export const router = createHashRouter([
       { path: 'finances/accounts/:accountId', element: <AccountDetail /> },
       { path: 'simulation', element: <Simulation /> },
       { path: 'simulation/new', element: <SimulationBuilder /> },
+      { path: 'simulation/builder', element: <CustomScenarioBuilder /> },
       { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
       { path: 'health', element: <Health /> },
       { path: 'metrics', element: <Metrics /> },

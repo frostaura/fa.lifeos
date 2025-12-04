@@ -46,11 +46,17 @@ public class DataController : ControllerBase
 
         var result = await _mediator.Send(new ExportDataCommand(userId));
 
-        // Set headers to suggest download
-        var fileName = $"lifeos-export-{DateTime.UtcNow:yyyy-MM-dd}.json";
-        Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{fileName}\"");
-
-        return Ok(result);
+        // Return as file download with proper filename
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
+        var fileName = $"lifeos-backup-{timestamp}.json";
+        var json = System.Text.Json.JsonSerializer.Serialize(result, new System.Text.Json.JsonSerializerOptions 
+        { 
+            WriteIndented = true,
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        
+        return File(bytes, "application/json", fileName);
     }
 
     /// <summary>

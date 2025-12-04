@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Check, AlertCircle, Clock, RefreshCw, Copy, FileJson, Plus, Edit2, Trash2, ChevronLeft, Activity, CheckCircle, XCircle } from 'lucide-react';
+import { Play, Check, AlertCircle, Clock, RefreshCw, Copy, FileJson, Plus, Edit2, Trash2, ChevronLeft, Activity, CheckCircle, XCircle, Link2 } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Button } from '@components/atoms/Button';
@@ -15,6 +15,7 @@ import {
   useGetMetricRecordsQuery,
   useUpdateMetricRecordMutation,
   useDeleteMetricRecordMutation,
+  useGetDimensionsQuery,
   type MetricDefinition,
   type MetricRecord,
   type CreateMetricDefinitionRequest,
@@ -34,12 +35,20 @@ interface EventLogItem {
 }
 
 interface CollectResponse {
-  success: boolean;
   data: {
-    recorded: number;
-    errors: Array<{ code: string; message: string }>;
-    timestamp: string;
-    eventId: string;
+    type: string;
+    attributes: {
+      recorded: number;
+      failed: number;
+      timestamp: string;
+      source: string;
+    };
+    records: Array<{
+      code: string;
+      status: string;
+      id?: string;
+      error?: string;
+    }>;
   };
 }
 
@@ -88,9 +97,10 @@ interface DefinitionModalProps {
   definition?: MetricDefinition | null;
   onSubmit: (data: CreateMetricDefinitionRequest | (UpdateMetricDefinitionRequest & { code: string })) => Promise<void>;
   isLoading: boolean;
+  dimensions: Array<{ id: string; code: string; name: string }>;
 }
 
-function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: DefinitionModalProps) {
+function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading, dimensions }: DefinitionModalProps) {
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -98,10 +108,17 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
   const [unit, setUnit] = useState('');
   const [valueType, setValueType] = useState<MetricDefinition['valueType']>('decimal');
   const [targetValue, setTargetValue] = useState('');
+  const [dimensionId, setDimensionId] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!definition;
+
+  // Build dimension options for the select - dimension is mandatory
+  const dimensionOptions = dimensions.map((d) => ({
+    value: d.id,
+    label: d.name,
+  }));
 
   useEffect(() => {
     if (definition) {
@@ -111,6 +128,7 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
       setUnit(definition.unit);
       setValueType(definition.valueType);
       setTargetValue(definition.targetValue !== undefined ? String(definition.targetValue) : '');
+      setDimensionId(definition.dimensionId || '');
       setIsActive(definition.isActive);
     } else {
       setCode('');
@@ -119,6 +137,7 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
       setUnit('');
       setValueType('decimal');
       setTargetValue('');
+      setDimensionId('');
       setIsActive(true);
     }
     setErrors({});
@@ -131,6 +150,7 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
     if (!isEditing && !code.trim()) newErrors.code = 'Code is required';
     if (!name.trim()) newErrors.name = 'Name is required';
     if (!unit.trim()) newErrors.unit = 'Unit is required';
+    if (!dimensionId) newErrors.dimensionId = 'Dimension is required';
     if (targetValue && isNaN(parseFloat(targetValue))) newErrors.targetValue = 'Must be a number';
 
     if (Object.keys(newErrors).length > 0) {
@@ -148,6 +168,7 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
         unit,
         valueType,
         targetValue: parsedTarget,
+        dimensionId: dimensionId || undefined,
         isActive,
       });
     } else {
@@ -158,6 +179,7 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
         unit,
         valueType,
         targetValue: parsedTarget,
+        dimensionId: dimensionId || undefined,
       });
     }
     onClose();
@@ -215,6 +237,17 @@ function DefinitionModal({ isOpen, onClose, definition, onSubmit, isLoading }: D
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+
+          <Select
+            label="Dimension"
+            options={dimensionOptions}
+            value={dimensionId}
+            onChange={(e) => setDimensionId(e.target.value)}
+            error={errors.dimensionId}
+          />
+          <p className="text-xs text-text-tertiary -mt-2">
+            Every metric must be linked to a life dimension.
+          </p>
 
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -521,12 +554,23 @@ export function Metrics() {
   
   // Management state
   const { data: definitions, isLoading: isLoadingDefs, error: defsError, refetch: refetchDefs } = useGetMetricDefinitionsQuery();
+  const { data: dimensionsData } = useGetDimensionsQuery();
   const [createDefinition, { isLoading: isCreating }] = useCreateMetricDefinitionMutation();
   const [updateDefinition, { isLoading: isUpdatingDef }] = useUpdateMetricDefinitionMutation();
   const [deleteDefinition] = useDeleteMetricDefinitionMutation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDefinition, setEditingDefinition] = useState<MetricDefinition | null>(null);
   const [selectedDefinition, setSelectedDefinition] = useState<MetricDefinition | null>(null);
+
+  // Transform dimensions for modal and lookup
+  const dimensions = (dimensionsData?.data || []).map((d) => ({
+    id: d.id,
+    code: d.attributes.code,
+    name: d.attributes.name,
+  }));
+  
+  // Create dimension lookup map for quick access in table
+  const dimensionLookup = new Map(dimensions.map((d) => [d.id, d]));
   
   // Playground state
   const [code, setCode] = useState(JSON.stringify(examplePayload, null, 2));
@@ -651,8 +695,12 @@ export function Metrics() {
       if (response.ok) {
         setResult(data);
         refetchDefs(); // Refresh definitions to update record counts
+        // Refresh event log after successful metric recording
+        setTimeout(() => loadEventLog(), 500);
       } else {
         setError(data.message || data.error?.message || 'Failed to send metrics');
+        // Also refresh event log on error to show the error event
+        setTimeout(() => loadEventLog(), 500);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to send metrics');
@@ -704,6 +752,8 @@ export function Metrics() {
         </Button>
       </div>
 
+      {/* Quick Add section removed - all metrics come from definitions */}
+
       {/* Definitions Table - Top Half */}
       <GlassCard variant="default" className="p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -725,19 +775,21 @@ export function Metrics() {
         ) : (
           <div className="overflow-x-auto max-h-64 overflow-y-auto">
             <table className="w-full">
-              <thead className="sticky top-0 bg-glass-bg">
-                <tr className="border-b border-glass-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary">Code</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary">Unit</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-text-secondary hidden md:table-cell">Target</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary hidden lg:table-cell">Value Type</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-text-secondary hidden md:table-cell">Status</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-text-secondary">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-glass-border bg-[#1a1a2e]">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Code</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Dimension</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Unit</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Latest</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e] hidden md:table-cell">Status</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-text-secondary bg-[#1a1a2e]">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {definitions?.map((def) => (
+                {definitions?.map((def) => {
+                  const linkedDimension = def.dimensionId ? dimensionLookup.get(def.dimensionId) : null;
+                  return (
                   <tr
                     key={def.id}
                     className="border-b border-glass-border/50 hover:bg-background-hover/50 cursor-pointer"
@@ -747,15 +799,38 @@ export function Metrics() {
                       <span className="font-mono text-sm text-accent-purple">{def.code}</span>
                     </td>
                     <td className="py-3 px-4 text-sm text-text-primary">{def.name}</td>
-                    <td className="py-3 px-4 text-sm text-text-tertiary">{def.unit}</td>
-                    <td className="py-3 px-4 text-sm text-right hidden md:table-cell">
-                      {def.targetValue !== undefined && def.targetValue !== null ? (
-                        <span className="text-accent-purple font-medium">{def.targetValue} {def.unit}</span>
+                    <td className="py-3 px-4">
+                      {linkedDimension ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent-cyan/10 border border-accent-cyan/20">
+                          <Link2 className="w-3 h-3 text-accent-cyan" />
+                          <span className="text-xs font-medium text-accent-cyan">{linkedDimension.name}</span>
+                        </span>
+                      ) : def.dimensionCode ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent-cyan/10 border border-accent-cyan/20">
+                          <Link2 className="w-3 h-3 text-accent-cyan" />
+                          <span className="text-xs font-medium text-accent-cyan">{def.dimensionCode}</span>
+                        </span>
                       ) : (
-                        <span className="text-text-tertiary">—</span>
+                        <span className="text-xs text-text-tertiary">—</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-sm text-text-tertiary capitalize hidden lg:table-cell">{def.valueType}</td>
+                    <td className="py-3 px-4 text-sm text-text-tertiary">{def.unit}</td>
+                    <td className="py-3 px-4 text-right">
+                      {def.latestValue !== undefined && def.latestValue !== null ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-medium text-accent-green">{def.latestValue} {def.unit}</span>
+                          {def.latestRecordedAt && (
+                            <span className="text-xs text-text-tertiary">
+                              {new Date(def.latestRecordedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              {' '}
+                              {new Date(def.latestRecordedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-text-tertiary text-sm">—</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-center hidden md:table-cell">
                       {def.isActive ? (
                         <span className="inline-flex items-center gap-1 text-xs text-semantic-success">
@@ -792,7 +867,7 @@ export function Metrics() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>
@@ -912,9 +987,12 @@ export function Metrics() {
                   Success!
                 </div>
                 <div className="text-sm text-text-secondary space-y-1">
-                  <p>Recorded: <span className="text-text-primary">{result.data.recorded} metrics</span></p>
-                  <p>Event ID: <span className="text-text-primary font-mono text-xs">{result.data.eventId}</span></p>
-                  <p>Timestamp: <span className="text-text-primary">{formatTimestamp(result.data.timestamp)}</span></p>
+                  <p>Recorded: <span className="text-text-primary">{result.data.attributes.recorded} metrics</span></p>
+                  {result.data.attributes.failed > 0 && (
+                    <p>Failed: <span className="text-semantic-error">{result.data.attributes.failed}</span></p>
+                  )}
+                  <p>Source: <span className="text-text-primary">{result.data.attributes.source}</span></p>
+                  <p>Timestamp: <span className="text-text-primary">{formatTimestamp(result.data.attributes.timestamp)}</span></p>
                 </div>
               </div>
             )}
@@ -1002,34 +1080,6 @@ export function Metrics() {
         </div>
       </div>
 
-      {/* Quick Add Metric Codes - Use actual definitions */}
-      {definitions && definitions.length > 0 && (
-        <div className="bg-bg-secondary rounded-xl border border-border-primary p-6">
-          <h2 className="text-lg font-semibold text-text-primary mb-4">Quick Add Metric</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {definitions.slice(0, 12).map((metric) => (
-              <button
-                key={metric.code}
-                onClick={() => {
-                  try {
-                    const current = JSON.parse(code);
-                    current.metrics[metric.code] = 0;
-                    setCode(JSON.stringify(current, null, 2));
-                  } catch {
-                    // Ignore parse errors
-                  }
-                }}
-                className="p-3 bg-bg-tertiary rounded-lg hover:bg-bg-primary transition-colors text-left"
-              >
-                <p className="font-mono text-xs text-accent-purple mb-1">{metric.code}</p>
-                <p className="text-sm text-text-primary truncate">{metric.name}</p>
-                <p className="text-xs text-text-tertiary">{metric.unit}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Definition Modal */}
       <DefinitionModal
         isOpen={isModalOpen}
@@ -1040,6 +1090,7 @@ export function Metrics() {
         definition={editingDefinition}
         onSubmit={handleCreateOrUpdate}
         isLoading={isCreating || isUpdatingDef}
+        dimensions={dimensions}
       />
     </div>
   );

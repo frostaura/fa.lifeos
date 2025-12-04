@@ -27,6 +27,11 @@ export interface NetWorthData {
 export interface NetWorthDataPoint {
   date: string;
   value: number;
+  accounts?: Array<{
+    accountId: string;
+    accountName: string;
+    balance: number;
+  }>;
 }
 
 // Dimension Types
@@ -159,12 +164,21 @@ export interface SimulationResult {
   summary: SimulationSummary;
 }
 
+export interface ProjectionAccountBalance {
+  accountId: string;
+  accountName: string;
+  balance: number;
+  periodIncome: number;
+  periodExpenses: number;
+}
+
 export interface ProjectionDataPoint {
   date: string;
   netWorth: number;
   income: number;
   expenses: number;
   savings: number;
+  accounts?: ProjectionAccountBalance[];
 }
 
 export interface MilestoneResult {
@@ -233,7 +247,7 @@ export interface UpdateTaxProfileRequest {
 }
 
 // Income Source Types
-export type PaymentFrequency = 'Monthly' | 'Annual' | 'Weekly' | 'BiWeekly' | 'Once';
+export type PaymentFrequency = 'Monthly' | 'Annually' | 'Weekly' | 'Biweekly' | 'Once';
 
 export interface IncomeSource {
   id: string;
@@ -248,6 +262,8 @@ export interface IncomeSource {
   employerName?: string;
   notes?: string;
   isActive: boolean;
+  targetAccountId?: string;
+  targetAccountName?: string;
 }
 
 export interface CreateIncomeSourceRequest {
@@ -261,10 +277,14 @@ export interface CreateIncomeSourceRequest {
   annualIncreaseRate?: number;
   employerName?: string;
   notes?: string;
+  targetAccountId: string; // Required: where the income is deposited
 }
 
 // Expense Definition Types
 export type AmountType = 'Fixed' | 'Percentage' | 'Formula';
+
+// End condition type for recurring expenses
+export type EndConditionType = 'None' | 'UntilAccountSettled' | 'UntilDate' | 'UntilAmount';
 
 export interface ExpenseDefinition {
   id: string;
@@ -274,11 +294,17 @@ export interface ExpenseDefinition {
   amountValue?: number;
   amountFormula?: string;
   frequency: PaymentFrequency;
+  startDate?: string; // Start date for scheduling (especially for once-off expenses)
   category: string;
   isTaxDeductible: boolean;
   linkedAccountId?: string;
+  linkedAccountName?: string;
   inflationAdjusted: boolean;
   isActive: boolean;
+  endConditionType: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 export interface CreateExpenseDefinitionRequest {
@@ -288,10 +314,32 @@ export interface CreateExpenseDefinitionRequest {
   amountValue?: number;
   amountFormula?: string;
   frequency: PaymentFrequency;
+  startDate?: string; // Start date for scheduling (especially for once-off expenses)
   category: string;
+  isTaxDeductible?: boolean;
+  linkedAccountId?: string; // Optional: the account this expense is debited from
+  inflationAdjusted?: boolean;
+  endConditionType?: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
+}
+
+export interface UpdateExpenseDefinitionRequest {
+  name?: string;
+  amountValue?: number;
+  amountFormula?: string;
+  frequency?: PaymentFrequency;
+  startDate?: string;
+  category?: string;
   isTaxDeductible?: boolean;
   linkedAccountId?: string;
   inflationAdjusted?: boolean;
+  isActive?: boolean;
+  endConditionType?: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 // Currency
@@ -314,10 +362,18 @@ export interface InvestmentContribution {
   frequency: PaymentFrequency;
   targetAccountId?: string;
   targetAccountName?: string;
+  sourceAccountId?: string;
+  sourceAccountName?: string;
   category?: string;
   annualIncreaseRate?: number;
   notes?: string;
+  startDate?: string; // Required for once-off contributions
   isActive: boolean;
+  endConditionType: EndConditionType;
+  endConditionAccountId?: string;
+  endConditionAccountName?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
   createdAt: string;
 }
 
@@ -336,10 +392,16 @@ export interface CreateInvestmentContributionRequest {
   currency: string;
   amount: number;
   frequency: PaymentFrequency;
-  targetAccountId?: string;
+  targetAccountId: string; // Required: where the investment goes
+  sourceAccountId: string; // Required: where the money comes from
   category?: string;
   annualIncreaseRate?: number;
   notes?: string;
+  startDate?: string; // Required for once-off contributions
+  endConditionType?: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 export interface UpdateInvestmentContributionRequest {
@@ -347,10 +409,16 @@ export interface UpdateInvestmentContributionRequest {
   amount?: number;
   frequency?: PaymentFrequency;
   targetAccountId?: string;
+  sourceAccountId?: string;
   category?: string;
   annualIncreaseRate?: number;
   notes?: string;
+  startDate?: string;
   isActive?: boolean;
+  endConditionType?: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 // Financial Goals Types
@@ -378,6 +446,7 @@ export interface FinancialGoalSummary {
   totalRemainingAmount: number;
   overallProgressPercent: number;
   monthlyInvestmentRate: number;
+  estimatedTotalMonths?: number;
 }
 
 export interface FinancialGoalListResponse {

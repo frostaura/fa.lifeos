@@ -34,6 +34,7 @@ public record FinancialGoalSummary
     public decimal TotalRemainingAmount { get; init; }
     public decimal OverallProgressPercent { get; init; }
     public decimal MonthlyInvestmentRate { get; init; } // Total monthly investment contributions
+    public int? EstimatedTotalMonths { get; init; } // Calculated considering compound growth
 }
 
 public record CreateFinancialGoalRequest

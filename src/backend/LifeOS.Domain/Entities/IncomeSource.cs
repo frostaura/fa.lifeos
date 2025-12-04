@@ -23,8 +23,12 @@ public class IncomeSource : BaseEntity
     public string? Notes { get; set; }
     
     public bool IsActive { get; set; } = true;
+    
+    // Target account where income will be deposited
+    public Guid? TargetAccountId { get; set; }
 
     // Navigation properties
     public virtual User User { get; set; } = null!;
     public virtual TaxProfile? TaxProfile { get; set; }
+    public virtual Account? TargetAccount { get; set; }
 }

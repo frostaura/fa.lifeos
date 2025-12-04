@@ -47,9 +47,25 @@ public class GetMetricDefinitionsQueryHandler : IRequestHandler<GetMetricDefinit
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return new MetricDefinitionListResponse
-        {
-            Data = definitions.Select(m => new MetricDefinitionItemResponse
+        // Get latest records for each metric code
+        var metricCodes = definitions.Select(d => d.Code).ToList();
+        var latestRecords = await _context.MetricRecords
+            .Where(r => metricCodes.Contains(r.MetricCode))
+            .GroupBy(r => r.MetricCode)
+            .Select(g => new
+            {
+                Code = g.Key,
+                LatestValue = g.OrderByDescending(r => r.RecordedAt).First().ValueNumber,
+                LatestRecordedAt = g.OrderByDescending(r => r.RecordedAt).First().RecordedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var latestRecordLookup = latestRecords.ToDictionary(r => r.Code);
+
+        // Build response and order by latest recorded first
+        var results = definitions.Select(m => {
+            latestRecordLookup.TryGetValue(m.Code, out var latestRecord);
+            return new MetricDefinitionItemResponse
             {
                 Id = m.Id,
                 Attributes = new MetricDefinitionAttributes
@@ -65,12 +81,23 @@ public class GetMetricDefinitionsQueryHandler : IRequestHandler<GetMetricDefinit
                     MinValue = m.MinValue,
                     MaxValue = m.MaxValue,
                     TargetValue = m.TargetValue,
+                    TargetDirection = m.TargetDirection.ToString(),
                     Icon = m.Icon,
                     Tags = m.Tags,
                     IsDerived = m.IsDerived,
-                    IsActive = m.IsActive
+                    IsActive = m.IsActive,
+                    LatestValue = latestRecord?.LatestValue,
+                    LatestRecordedAt = latestRecord?.LatestRecordedAt
                 }
-            }).ToList()
+            };
+        })
+        .OrderByDescending(r => r.Attributes.LatestRecordedAt ?? DateTime.MinValue)
+        .ThenBy(r => r.Attributes.Name)
+        .ToList();
+
+        return new MetricDefinitionListResponse
+        {
+            Data = results
         };
     }
 }

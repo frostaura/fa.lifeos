@@ -267,6 +267,7 @@ public record ProjectionSummary
     public decimal EndNetWorth { get; init; }
     public decimal TotalGrowth { get; init; }
     public decimal AnnualizedReturn { get; init; }
+    public decimal AvgMonthlyGrowthRate { get; init; } // Average month-over-month growth rate
     public int TotalMonths { get; init; }
 }
 

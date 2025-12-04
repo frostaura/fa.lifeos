@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,16 +6,15 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LifeOS.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAccountInstitution : Migration
+    public partial class AddExpenseDefinitionStartDate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Institution",
-                table: "accounts",
-                type: "character varying(100)",
-                maxLength: 100,
+            migrationBuilder.AddColumn<DateOnly>(
+                name: "StartDate",
+                table: "expense_definitions",
+                type: "date",
                 nullable: true);
         }
 
@@ -22,8 +22,8 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Institution",
-                table: "accounts");
+                name: "StartDate",
+                table: "expense_definitions");
         }
     }
 }

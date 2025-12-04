@@ -73,6 +73,7 @@ interface ProjectionsResponse {
       endNetWorth: number;
       totalGrowth: number;
       annualizedReturn: number;
+      avgMonthlyGrowthRate: number;
       totalMonths: number;
     };
   };
@@ -80,16 +81,18 @@ interface ProjectionsResponse {
 
 interface EventApiItem {
   id: string;
-  type: 'event';
+  type: 'event' | 'simulationEvent';
   attributes: {
     scenarioId: string;
     name: string;
     eventType: string;
-    date: string;
-    amount: number;
-    currency: string;
-    isRecurring: boolean;
-    recurringFrequency?: string;
+    triggerType: string;
+    triggerDate: string | null;
+    amountType: string;
+    amountValue: number | null;
+    currency: string | null;
+    appliesOnce: boolean;
+    recurrenceFrequency: string | null;
   };
 }
 
@@ -100,6 +103,28 @@ interface EventsResponse {
 interface EventResponse {
   data: EventApiItem;
 }
+
+// Helper to map frontend recurring frequency to backend enum
+const mapRecurringFrequency = (freq?: 'monthly' | 'quarterly' | 'yearly'): string | undefined => {
+  if (!freq) return undefined;
+  const map: Record<string, string> = {
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    yearly: 'Annually',
+  };
+  return map[freq];
+};
+
+// Helper to map backend recurrence frequency to frontend
+const mapBackendFrequency = (freq?: string | null): 'monthly' | 'quarterly' | 'yearly' | undefined => {
+  if (!freq) return undefined;
+  const map: Record<string, 'monthly' | 'quarterly' | 'yearly'> = {
+    Monthly: 'monthly',
+    Quarterly: 'quarterly',
+    Annually: 'yearly',
+  };
+  return map[freq];
+};
 
 // Transform functions
 const transformScenario = (item: ScenarioApiItem): Scenario => ({
@@ -118,11 +143,11 @@ const transformEvent = (item: EventApiItem): FutureEvent => ({
   scenarioId: item.attributes.scenarioId,
   name: item.attributes.name,
   type: item.attributes.eventType as FutureEvent['type'],
-  date: item.attributes.date,
-  amount: item.attributes.amount,
-  currency: item.attributes.currency,
-  isRecurring: item.attributes.isRecurring,
-  recurringFrequency: item.attributes.recurringFrequency as FutureEvent['recurringFrequency'],
+  date: item.attributes.triggerDate || '',
+  amount: item.attributes.amountValue || 0,
+  currency: item.attributes.currency || 'ZAR',
+  isRecurring: !item.attributes.appliesOnce,
+  recurringFrequency: mapBackendFrequency(item.attributes.recurrenceFrequency),
 });
 
 export const simulationApi = apiSlice.injectEndpoints({
@@ -147,16 +172,11 @@ export const simulationApi = apiSlice.injectEndpoints({
         url: '/api/simulations/scenarios',
         method: 'POST',
         body: {
-          data: {
-            type: 'scenario',
-            attributes: {
-              name: body.name,
-              description: body.description,
-              startDate: body.startDate,
-              endDate: body.endDate,
-              isBaseline: body.isActive,
-            },
-          },
+          name: body.name,
+          description: body.description,
+          startDate: body.startDate,
+          endDate: body.endDate,
+          isBaseline: body.isActive,
         },
       }),
       transformResponse: (response: ScenarioResponse) => 
@@ -169,16 +189,11 @@ export const simulationApi = apiSlice.injectEndpoints({
         url: `/api/simulations/scenarios/${id}`,
         method: 'PATCH',
         body: {
-          data: {
-            type: 'scenario',
-            attributes: {
-              ...(body.name && { name: body.name }),
-              ...(body.description && { description: body.description }),
-              ...(body.startDate && { startDate: body.startDate }),
-              ...(body.endDate && { endDate: body.endDate }),
-              ...(body.isActive !== undefined && { isBaseline: body.isActive }),
-            },
-          },
+          ...(body.name && { name: body.name }),
+          ...(body.description && { description: body.description }),
+          ...(body.startDate && { startDate: body.startDate }),
+          ...(body.endDate && { endDate: body.endDate }),
+          ...(body.isActive !== undefined && { isBaseline: body.isActive }),
         },
       }),
       transformResponse: (response: ScenarioResponse) => 
@@ -199,12 +214,7 @@ export const simulationApi = apiSlice.injectEndpoints({
         url: `/api/simulations/scenarios/${id}`,
         method: 'PATCH',
         body: {
-          data: {
-            type: 'scenario',
-            attributes: {
-              isBaseline: true,
-            },
-          },
+          isBaseline: true,
         },
       }),
       invalidatesTags: ['Scenarios', 'Dashboard'],
@@ -223,19 +233,16 @@ export const simulationApi = apiSlice.injectEndpoints({
         url: '/api/simulations/events',
         method: 'POST',
         body: {
-          data: {
-            type: 'event',
-            attributes: {
-              scenarioId,
-              name: event.name,
-              eventType: event.type,
-              date: event.date,
-              amount: event.amount,
-              currency: event.currency,
-              isRecurring: event.isRecurring,
-              recurringFrequency: event.recurringFrequency,
-            },
-          },
+          scenarioId,
+          name: event.name,
+          eventType: event.type,
+          triggerType: 'Date', // Default to date-based trigger
+          triggerDate: event.date,
+          amountType: 'Fixed', // Default to fixed amount
+          amountValue: event.amount,
+          currency: event.currency,
+          appliesOnce: !event.isRecurring,
+          recurrenceFrequency: event.isRecurring ? mapRecurringFrequency(event.recurringFrequency) : undefined,
         },
       }),
       transformResponse: (response: EventResponse) => 
@@ -248,18 +255,13 @@ export const simulationApi = apiSlice.injectEndpoints({
         url: `/api/simulations/events/${eventId}`,
         method: 'PATCH',
         body: {
-          data: {
-            type: 'event',
-            attributes: {
-              ...(event.name && { name: event.name }),
-              ...(event.type && { eventType: event.type }),
-              ...(event.date && { date: event.date }),
-              ...(event.amount !== undefined && { amount: event.amount }),
-              ...(event.currency && { currency: event.currency }),
-              ...(event.isRecurring !== undefined && { isRecurring: event.isRecurring }),
-              ...(event.recurringFrequency && { recurringFrequency: event.recurringFrequency }),
-            },
-          },
+          ...(event.name && { name: event.name }),
+          ...(event.type && { eventType: event.type }),
+          ...(event.date && { triggerDate: event.date }),
+          ...(event.amount !== undefined && { amountValue: event.amount }),
+          ...(event.currency && { currency: event.currency }),
+          ...(event.isRecurring !== undefined && { appliesOnce: !event.isRecurring }),
+          ...(event.recurringFrequency && { recurrenceFrequency: mapRecurringFrequency(event.recurringFrequency) }),
         },
       }),
       transformResponse: (response: EventResponse) => 
@@ -293,6 +295,7 @@ export const simulationApi = apiSlice.injectEndpoints({
         endNetWorth: number;
         totalGrowth: number;
         annualizedReturn: number;
+        avgMonthlyGrowthRate: number;
         totalMonths: number;
       };
     }, { scenarioId: string; currency?: string }>({
@@ -305,6 +308,13 @@ export const simulationApi = apiSlice.injectEndpoints({
           income: p.accounts.reduce((sum, a) => sum + a.periodIncome, 0),
           expenses: p.accounts.reduce((sum, a) => sum + a.periodExpenses, 0),
           savings: p.accounts.reduce((sum, a) => sum + a.periodIncome - a.periodExpenses, 0),
+          accounts: p.accounts.map((a) => ({
+            accountId: a.accountId,
+            accountName: a.accountName,
+            balance: a.balance,
+            periodIncome: a.periodIncome,
+            periodExpenses: a.periodExpenses,
+          })),
         })),
         milestones: response.data.milestones.map((m) => ({
           label: m.description,

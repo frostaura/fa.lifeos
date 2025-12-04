@@ -59,7 +59,8 @@ public class IncomeSourcesController : ControllerBase
             request.NextPaymentDate,
             request.AnnualIncreaseRate,
             request.EmployerName,
-            request.Notes));
+            request.Notes,
+            request.TargetAccountId));
 
         return Created($"/api/income-sources/{result.Data.Id}", result);
     }
@@ -84,7 +85,8 @@ public class IncomeSourcesController : ControllerBase
             request.AnnualIncreaseRate,
             request.EmployerName,
             request.Notes,
-            request.IsActive));
+            request.IsActive,
+            request.TargetAccountId));
 
         if (!success)
             return NotFound(new { error = new { code = "NOT_FOUND", message = "Income source not found" } });

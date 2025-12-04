@@ -12,6 +12,29 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "achievements",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Icon = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    XpValue = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Tier = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "bronze"),
+                    UnlockCondition = table.Column<string>(type: "text", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    SortOrder = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_achievements", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "dimensions",
                 columns: table => new
                 {
@@ -111,6 +134,7 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     EnumValues = table.Column<string[]>(type: "text[]", nullable: true),
                     MinValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     MaxValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
+                    TargetValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     Icon = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     Tags = table.Column<string[]>(type: "text[]", nullable: true),
                     IsDerived = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
@@ -172,9 +196,11 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     InitialBalance = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false, defaultValue: 0m),
                     CurrentBalance = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false, defaultValue: 0m),
                     BalanceUpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    Institution = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     IsLiability = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     InterestRateAnnual = table.Column<decimal>(type: "numeric(8,5)", precision: 8, scale: 5, nullable: true),
                     InterestCompounding = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    MonthlyFee = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false, defaultValue: 0m),
                     Metadata = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'{}'::jsonb"),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
@@ -185,6 +211,91 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     table.PrimaryKey("PK_accounts", x => x.Id);
                     table.ForeignKey(
                         name: "FK_accounts_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "api_event_logs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EventType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Source = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ApiKeyPrefix = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    RequestPayload = table.Column<string>(type: "text", nullable: true),
+                    ResponsePayload = table.Column<string>(type: "text", nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    ErrorMessage = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_api_event_logs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_api_event_logs_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "api_keys",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    KeyPrefix = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    KeyHash = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Scopes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false, defaultValue: "metrics:write"),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LastUsedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_api_keys", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_api_keys_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "financial_goals",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    TargetAmount = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    CurrentAmount = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false, defaultValue: 0m),
+                    Priority = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    TargetDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    IconName = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false, defaultValue: "ZAR"),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    Notes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_financial_goals", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_financial_goals_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "Id",
@@ -253,6 +364,34 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "net_worth_snapshots",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SnapshotDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    TotalAssets = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    TotalLiabilities = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    NetWorth = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    HomeCurrency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false, defaultValue: "ZAR"),
+                    BreakdownByType = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'{}'::jsonb"),
+                    BreakdownByCurrency = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'{}'::jsonb"),
+                    AccountCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_net_worth_snapshots", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_net_worth_snapshots_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "simulation_scenarios",
                 columns: table => new
                 {
@@ -305,6 +444,89 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     table.PrimaryKey("PK_tax_profiles", x => x.Id);
                     table.ForeignKey(
                         name: "FK_tax_profiles_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_achievements",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AchievementId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UnlockedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    Progress = table.Column<int>(type: "integer", nullable: false, defaultValue: 100),
+                    UnlockContext = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_achievements", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_user_achievements_achievements_AchievementId",
+                        column: x => x.AchievementId,
+                        principalTable: "achievements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_user_achievements_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_xps",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TotalXp = table.Column<long>(type: "bigint", nullable: false, defaultValue: 0L),
+                    Level = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    WeeklyXp = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    WeekStartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_xps", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_user_xps_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WebAuthnCredentials",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CredentialId = table.Column<byte[]>(type: "bytea", nullable: false),
+                    PublicKey = table.Column<byte[]>(type: "bytea", nullable: false),
+                    UserHandle = table.Column<byte[]>(type: "bytea", nullable: false),
+                    SignatureCounter = table.Column<long>(type: "bigint", nullable: false),
+                    CredType = table.Column<string>(type: "text", nullable: false),
+                    AaGuid = table.Column<Guid>(type: "uuid", nullable: false),
+                    DeviceName = table.Column<string>(type: "text", nullable: true),
+                    RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastUsedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WebAuthnCredentials", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WebAuthnCredentials_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "Id",
@@ -410,6 +632,40 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_expense_definitions_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "InvestmentContributions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Currency = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
+                    Frequency = table.Column<int>(type: "integer", nullable: false),
+                    TargetAccountId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Category = table.Column<string>(type: "text", nullable: true),
+                    AnnualIncreaseRate = table.Column<decimal>(type: "numeric", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Notes = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InvestmentContributions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_InvestmentContributions_accounts_TargetAccountId",
+                        column: x => x.TargetAccountId,
+                        principalTable: "accounts",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_InvestmentContributions_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "Id",
@@ -733,6 +989,47 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 columns: new[] { "UserId", "Currency" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_achievements_Category",
+                table: "achievements",
+                column: "Category");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_achievements_Code",
+                table: "achievements",
+                column: "Code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_achievements_IsActive",
+                table: "achievements",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_api_event_logs_EventType",
+                table: "api_event_logs",
+                column: "EventType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_api_event_logs_Timestamp",
+                table: "api_event_logs",
+                column: "Timestamp");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_api_event_logs_UserId",
+                table: "api_event_logs",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_api_keys_KeyPrefix",
+                table: "api_keys",
+                column: "KeyPrefix");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_api_keys_UserId_IsRevoked",
+                table: "api_keys",
+                columns: new[] { "UserId", "IsRevoked" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_dimensions_Code",
                 table: "dimensions",
                 column: "Code",
@@ -761,6 +1058,17 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 columns: new[] { "UserId", "Category" });
 
             migrationBuilder.CreateIndex(
+                name: "idx_financial_goals_active",
+                table: "financial_goals",
+                column: "UserId",
+                filter: "\"IsActive\" = TRUE");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_financial_goals_UserId_Priority",
+                table: "financial_goals",
+                columns: new[] { "UserId", "Priority" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_fx_rates_BaseCurrency_QuoteCurrency_RateTimestamp",
                 table: "fx_rates",
                 columns: new[] { "BaseCurrency", "QuoteCurrency", "RateTimestamp" },
@@ -777,6 +1085,16 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 name: "IX_income_sources_TaxProfileId",
                 table: "income_sources",
                 column: "TaxProfileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvestmentContributions_TargetAccountId",
+                table: "InvestmentContributions",
+                column: "TargetAccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvestmentContributions_UserId",
+                table: "InvestmentContributions",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_longevity_models_Code",
@@ -853,6 +1171,13 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 table: "net_worth_projections",
                 columns: new[] { "ScenarioId", "PeriodDate" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "idx_net_worth_snapshots_user_date_desc",
+                table: "net_worth_snapshots",
+                columns: new[] { "UserId", "SnapshotDate" },
+                unique: true,
+                descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_score_definitions_Code",
@@ -1000,6 +1325,28 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 columns: new[] { "UserId", "TransactionDate" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_user_achievements_AchievementId",
+                table: "user_achievements",
+                column: "AchievementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_achievements_UserId",
+                table: "user_achievements",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_achievements_UserId_AchievementId",
+                table: "user_achievements",
+                columns: new[] { "UserId", "AchievementId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_xps_UserId",
+                table: "user_xps",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_users_Email",
                 table: "users",
                 column: "Email",
@@ -1011,6 +1358,11 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 column: "Username",
                 unique: true,
                 filter: "\"Username\" IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WebAuthnCredentials_UserId",
+                table: "WebAuthnCredentials",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -1020,13 +1372,25 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 name: "account_projections");
 
             migrationBuilder.DropTable(
+                name: "api_event_logs");
+
+            migrationBuilder.DropTable(
+                name: "api_keys");
+
+            migrationBuilder.DropTable(
                 name: "expense_definitions");
+
+            migrationBuilder.DropTable(
+                name: "financial_goals");
 
             migrationBuilder.DropTable(
                 name: "fx_rates");
 
             migrationBuilder.DropTable(
                 name: "income_sources");
+
+            migrationBuilder.DropTable(
+                name: "InvestmentContributions");
 
             migrationBuilder.DropTable(
                 name: "longevity_models");
@@ -1041,6 +1405,9 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 name: "net_worth_projections");
 
             migrationBuilder.DropTable(
+                name: "net_worth_snapshots");
+
+            migrationBuilder.DropTable(
                 name: "score_records");
 
             migrationBuilder.DropTable(
@@ -1051,6 +1418,15 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "transactions");
+
+            migrationBuilder.DropTable(
+                name: "user_achievements");
+
+            migrationBuilder.DropTable(
+                name: "user_xps");
+
+            migrationBuilder.DropTable(
+                name: "WebAuthnCredentials");
 
             migrationBuilder.DropTable(
                 name: "tax_profiles");
@@ -1069,6 +1445,9 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "accounts");
+
+            migrationBuilder.DropTable(
+                name: "achievements");
 
             migrationBuilder.DropTable(
                 name: "milestones");

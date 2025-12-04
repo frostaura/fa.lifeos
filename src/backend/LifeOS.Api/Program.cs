@@ -1,3 +1,6 @@
+using Fido2NetLib;
+using Hangfire;
+using Hangfire.Dashboard;
 using LifeOS.Api.Extensions;
 using LifeOS.Api.Middleware;
 using LifeOS.Application;
@@ -5,9 +8,6 @@ using LifeOS.Infrastructure;
 using LifeOS.Infrastructure.BackgroundJobs;
 using LifeOS.Infrastructure.Configuration;
 using LifeOS.Infrastructure.Services.Seeding;
-using Fido2NetLib;
-using Hangfire;
-using Hangfire.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,8 +36,8 @@ builder.Services.AddFido2(options =>
 {
     options.ServerDomain = builder.Configuration["Fido2:ServerDomain"] ?? "localhost";
     options.ServerName = "LifeOS";
-    options.Origins = new HashSet<string> 
-    { 
+    options.Origins = new HashSet<string>
+    {
         builder.Configuration["Fido2:Origin"] ?? "http://localhost:5173",
         "http://localhost:5001",
         "http://localhost:5000"
@@ -68,7 +68,7 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 // Add MediatR from Api assembly
-builder.Services.AddMediatR(cfg => 
+builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 });
@@ -111,8 +111,8 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
 {
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
-        Authorization = app.Environment.IsDevelopment() 
-            ? Array.Empty<IDashboardAuthorizationFilter>() 
+        Authorization = app.Environment.IsDevelopment()
+            ? Array.Empty<IDashboardAuthorizationFilter>()
             : new[] { new HangfireBasicAuthFilter() },
         DashboardTitle = "LifeOS Background Jobs"
     });
@@ -127,23 +127,52 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
    .WithName("HealthCheck");
 
-// Apply migrations and seed data in development
+// Apply migrations on startup (safe for all environments)
+await MigrateDatabaseAsync(app);
+
+// Seed data in development only
 if (app.Environment.IsDevelopment())
 {
-    await MigrateDatabaseAsync(app);
     await SeedAdminUserAsync(app);
     await SeedDataAsync(app);
 }
 
 app.Run();
 
-// Apply database migrations
+// Apply database migrations safely with retry logic
 async Task MigrateDatabaseAsync(WebApplication app)
 {
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<LifeOS.Infrastructure.Persistence.LifeOSDbContext>();
-    await context.Database.MigrateAsync();
-    Console.WriteLine("Database migrations applied.");
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    var maxRetries = 5;
+    var delay = TimeSpan.FromSeconds(5);
+
+    for (var attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<LifeOS.Infrastructure.Persistence.LifeOSDbContext>();
+
+            logger.LogInformation("Attempting database migration (attempt {Attempt}/{MaxRetries})...", attempt, maxRetries);
+
+            // EnsureCreated is skipped when migrations exist - MigrateAsync handles creation
+            await context.Database.MigrateAsync();
+
+            logger.LogInformation("Database migrations applied successfully.");
+            return;
+        }
+        catch (Exception ex) when (attempt < maxRetries)
+        {
+            logger.LogWarning(ex, "Database migration attempt {Attempt} failed. Retrying in {Delay} seconds...", attempt, delay.TotalSeconds);
+            await Task.Delay(delay);
+            delay *= 2; // Exponential backoff
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Database migration failed after {MaxRetries} attempts.", maxRetries);
+            throw;
+        }
+    }
 }
 
 void ConfigureRecurringJobs()

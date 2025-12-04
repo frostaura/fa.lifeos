@@ -31,6 +31,10 @@ export interface ExportMeta {
     accountProjections: number;
     netWorthProjections: number;
     longevitySnapshots: number;
+    achievements: number;
+    userAchievements: number;
+    userXP: number;
+    netWorthSnapshots: number;
   };
 }
 

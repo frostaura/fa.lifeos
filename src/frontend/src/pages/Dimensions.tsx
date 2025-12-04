@@ -28,15 +28,15 @@ export function Dimensions() {
   const dimensions: DimensionItemResponse[] = data?.data || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 overflow-x-hidden">
       <div>
-        <h1 className="text-3xl font-bold text-text-primary">Dimensions</h1>
-        <p className="text-text-secondary mt-1">
+        <h1 className="text-base md:text-lg font-bold text-text-primary">Dimensions</h1>
+        <p className="text-text-secondary mt-0.5 text-xs">
           Track and optimize all areas of your life
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {dimensions.map((dim) => {
           const Icon = getDimensionIcon(dim.attributes.code);
           const color = getDimensionColor(dim.attributes.code);
@@ -46,44 +46,42 @@ export function Dimensions() {
             <Link key={dim.id} to={`/dimensions/${dim.id}`}>
               <GlassCard
                 variant="elevated"
-                className="p-6 h-full hover:shadow-glow-sm transition-all group"
+                className="p-3 h-full hover:shadow-glow-sm transition-all group"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <div
-                    className="p-3 rounded-xl"
+                    className="p-2 rounded-lg"
                     style={{ backgroundColor: `${color}20` }}
                   >
-                    <Icon className="w-6 h-6" style={{ color }} />
+                    <Icon className="w-4 h-4" style={{ color }} />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-primary transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-text-tertiary group-hover:text-text-primary transition-colors" />
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-semibold text-text-primary mb-1">
+                <h3 className="text-sm font-semibold text-text-primary mb-0.5 truncate">
                   {dim.attributes.name}
                 </h3>
-                <p className="text-text-tertiary text-sm mb-4">
+                <p className="text-text-tertiary text-xs mb-2 truncate">
                   {dim.attributes.description || 'No description'}
                 </p>
 
                 {/* Score */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1">
                   <div>
-                    <span className="text-3xl font-bold text-text-primary">
+                    <span className="text-base font-bold text-text-primary">
                       {score}
                     </span>
-                    <span className="text-text-tertiary text-sm">/100</span>
+                    <span className="text-text-tertiary text-xs">/100</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-sm text-text-secondary">
-                      Weight: {Math.round(dim.attributes.weight * 100)}%
-                    </span>
-                  </div>
+                  <span className="text-xs text-text-secondary">
+                    {Math.round(dim.attributes.weight * 100)}%
+                  </span>
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-4 h-2 bg-glass-light rounded-full overflow-hidden">
+                <div className="mt-2 h-1.5 bg-glass-light rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{

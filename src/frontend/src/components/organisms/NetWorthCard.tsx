@@ -19,23 +19,23 @@ export function NetWorthCard({ value, change = 0, changePercent = 0, className }
   const trendColor = isPositive ? 'text-semantic-success' : 'text-semantic-error';
 
   return (
-    <GlassCard variant="elevated" className={cn('p-6', className)}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-text-secondary">Net Worth</h2>
+    <GlassCard variant="elevated" className={cn('p-4 md:p-6', className)}>
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <h2 className="text-base md:text-lg font-semibold text-text-secondary whitespace-nowrap">Net Worth</h2>
         <CurrencySelector size="sm" />
       </div>
-      <div className="flex flex-col items-center justify-center min-h-[8rem]">
-        <span className="text-4xl lg:text-5xl font-bold text-text-primary">
+      <div className="flex flex-col items-center justify-center min-h-[6rem] md:min-h-[8rem]">
+        <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary whitespace-nowrap">
           {formatCurrency(value, currency)}
         </span>
         <div className={cn('flex items-center gap-1 mt-2', trendColor)}>
-          <TrendIcon className="w-4 h-4" />
-          <span className="font-medium">
+          <TrendIcon className="w-3 h-3 md:w-4 md:h-4" />
+          <span className="font-medium text-xs md:text-sm whitespace-nowrap">
             {isPositive ? '+' : ''}{changePercent.toFixed(1)}% YTD
           </span>
         </div>
         {change !== 0 && (
-          <span className="text-text-tertiary text-sm mt-1">
+          <span className="text-text-tertiary text-xs md:text-sm mt-1 whitespace-nowrap">
             {isPositive ? '+' : ''}{formatCurrency(change, currency)}
           </span>
         )}

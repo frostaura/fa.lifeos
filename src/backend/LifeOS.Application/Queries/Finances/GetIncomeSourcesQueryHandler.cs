@@ -21,6 +21,7 @@ public class GetIncomeSourcesQueryHandler : IRequestHandler<GetIncomeSourcesQuer
         var incomeSources = await _context.IncomeSources
             .AsNoTracking()
             .Include(i => i.TaxProfile)
+            .Include(i => i.TargetAccount)
             .Where(i => i.UserId == request.UserId)
             .OrderBy(i => i.Name)
             .ToListAsync(cancellationToken);
@@ -85,7 +86,9 @@ public class GetIncomeSourcesQueryHandler : IRequestHandler<GetIncomeSourcesQuer
                     AnnualIncreaseRate = i.AnnualIncreaseRate,
                     EmployerName = i.EmployerName,
                     Notes = i.Notes,
-                    IsActive = i.IsActive
+                    IsActive = i.IsActive,
+                    TargetAccountId = i.TargetAccountId,
+                    TargetAccountName = i.TargetAccount?.Name
                 }
             }).ToList(),
             Meta = new IncomeSourceMeta
@@ -107,6 +110,7 @@ public class GetIncomeSourcesQueryHandler : IRequestHandler<GetIncomeSourcesQuer
             PaymentFrequency.Monthly => amount,
             PaymentFrequency.Quarterly => amount / 3m,
             PaymentFrequency.Annually => amount / 12m,
+            PaymentFrequency.Once => 0m, // One-time items excluded from monthly totals
             _ => amount
         };
     }

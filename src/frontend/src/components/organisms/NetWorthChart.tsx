@@ -23,6 +23,7 @@ interface NetWorthChartProps {
 interface TooltipPayloadItem {
   value: number;
   dataKey: string;
+  payload?: NetWorthDataPoint;
 }
 
 interface CustomTooltipProps {
@@ -35,12 +36,39 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
 
+  const accounts = payload[0]?.payload?.accounts;
+
   return (
-    <div className="bg-background-tertiary border border-glass-border rounded-lg p-3 shadow-lg">
+    <div className="bg-background-tertiary border border-glass-border rounded-lg p-3 shadow-lg max-w-sm">
       <p className="text-text-tertiary text-xs mb-1">{label}</p>
       <p className="text-text-primary font-semibold">
         {formatCurrency(payload[0].value, currency)}
       </p>
+      
+      {/* Account Balances Table */}
+      {accounts && accounts.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-glass-border">
+          <p className="text-text-tertiary text-xs mb-2 font-medium">Account Balances</p>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {accounts
+              .filter((a) => a.balance !== 0)
+              .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
+              .map((account) => (
+                <div key={account.accountId} className="flex items-center justify-between gap-4 text-xs">
+                  <span className="text-text-secondary truncate max-w-[140px]" title={account.accountName}>
+                    {account.accountName}
+                  </span>
+                  <span className={cn(
+                    'font-medium whitespace-nowrap',
+                    account.balance >= 0 ? 'text-semantic-success' : 'text-semantic-error'
+                  )}>
+                    {formatCurrency(account.balance, currency)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

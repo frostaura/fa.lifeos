@@ -56,10 +56,15 @@ public class ExpenseDefinitionsController : ControllerBase
             request.AmountValue,
             request.AmountFormula,
             request.Frequency,
+            request.StartDate,
             request.Category,
             request.IsTaxDeductible,
             request.LinkedAccountId,
-            request.InflationAdjusted));
+            request.InflationAdjusted,
+            request.EndConditionType,
+            request.EndConditionAccountId,
+            request.EndDate,
+            request.EndAmountThreshold));
 
         return Created($"/api/expense-definitions/{result.Data.Id}", result);
     }
@@ -79,11 +84,16 @@ public class ExpenseDefinitionsController : ControllerBase
             request.AmountValue,
             request.AmountFormula,
             request.Frequency,
+            request.StartDate,
             request.Category,
             request.IsTaxDeductible,
             request.LinkedAccountId,
             request.InflationAdjusted,
-            request.IsActive));
+            request.IsActive,
+            request.EndConditionType,
+            request.EndConditionAccountId,
+            request.EndDate,
+            request.EndAmountThreshold));
 
         if (!success)
             return NotFound(new { error = new { code = "NOT_FOUND", message = "Expense definition not found" } });

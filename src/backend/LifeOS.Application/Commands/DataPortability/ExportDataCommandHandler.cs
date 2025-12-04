@@ -62,7 +62,11 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             SimulationEvents = await ExportSimulationEventsAsync(request.UserId, cancellationToken),
             AccountProjections = await ExportAccountProjectionsAsync(request.UserId, cancellationToken),
             NetWorthProjections = await ExportNetWorthProjectionsAsync(request.UserId, cancellationToken),
-            LongevitySnapshots = await ExportLongevitySnapshotsAsync(request.UserId, cancellationToken)
+            LongevitySnapshots = await ExportLongevitySnapshotsAsync(request.UserId, cancellationToken),
+            Achievements = await ExportAchievementsAsync(cancellationToken),
+            UserAchievements = await ExportUserAchievementsAsync(request.UserId, cancellationToken),
+            UserXP = await ExportUserXPAsync(request.UserId, cancellationToken),
+            NetWorthSnapshots = await ExportNetWorthSnapshotsAsync(request.UserId, cancellationToken)
         };
 
         var entityCounts = new EntityCountsDto
@@ -88,7 +92,11 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             SimulationEvents = exportData.SimulationEvents.Count,
             AccountProjections = exportData.AccountProjections.Count,
             NetWorthProjections = exportData.NetWorthProjections.Count,
-            LongevitySnapshots = exportData.LongevitySnapshots.Count
+            LongevitySnapshots = exportData.LongevitySnapshots.Count,
+            Achievements = exportData.Achievements.Count,
+            UserAchievements = exportData.UserAchievements.Count,
+            UserXP = exportData.UserXP != null ? 1 : 0,
+            NetWorthSnapshots = exportData.NetWorthSnapshots.Count
         };
 
         var totalEntities = entityCounts.Dimensions + entityCounts.MetricDefinitions + 
@@ -98,7 +106,8 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             entityCounts.ExpenseDefinitions + entityCounts.InvestmentContributions + entityCounts.FinancialGoals +
             entityCounts.FxRates + entityCounts.Transactions + entityCounts.SimulationScenarios +
             entityCounts.SimulationEvents + entityCounts.AccountProjections + entityCounts.NetWorthProjections +
-            entityCounts.LongevitySnapshots;
+            entityCounts.LongevitySnapshots + entityCounts.Achievements + entityCounts.UserAchievements +
+            entityCounts.UserXP + entityCounts.NetWorthSnapshots;
 
         _logger.LogInformation("Export completed: {TotalEntities} entities exported", totalEntities);
 
@@ -381,7 +390,8 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 AnnualIncreaseRate = i.AnnualIncreaseRate,
                 EmployerName = i.EmployerName,
                 Notes = i.Notes,
-                IsActive = i.IsActive
+                IsActive = i.IsActive,
+                TargetAccountId = i.TargetAccountId
             })
             .ToListAsync(ct);
     }
@@ -401,10 +411,15 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 AmountValue = e.AmountValue,
                 AmountFormula = e.AmountFormula,
                 Frequency = e.Frequency.ToString(),
+                StartDate = e.StartDate,
                 Category = e.Category,
                 IsTaxDeductible = e.IsTaxDeductible,
                 InflationAdjusted = e.InflationAdjusted,
-                IsActive = e.IsActive
+                IsActive = e.IsActive,
+                EndConditionType = e.EndConditionType.ToString(),
+                EndConditionAccountId = e.EndConditionAccountId,
+                EndDate = e.EndDate,
+                EndAmountThreshold = e.EndAmountThreshold
             })
             .ToListAsync(ct);
     }
@@ -418,6 +433,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             {
                 Id = i.Id,
                 TargetAccountId = i.TargetAccountId,
+                SourceAccountId = i.SourceAccountId,
                 Name = i.Name,
                 Currency = i.Currency,
                 Amount = i.Amount,
@@ -425,7 +441,12 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 Category = i.Category,
                 AnnualIncreaseRate = i.AnnualIncreaseRate,
                 Notes = i.Notes,
-                IsActive = i.IsActive
+                IsActive = i.IsActive,
+                StartDate = i.StartDate,
+                EndConditionType = i.EndConditionType.ToString(),
+                EndConditionAccountId = i.EndConditionAccountId,
+                EndDate = i.EndDate,
+                EndAmountThreshold = i.EndAmountThreshold
             })
             .ToListAsync(ct);
     }
@@ -614,6 +635,84 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 Breakdown = l.Breakdown,
                 InputMetricsSnapshot = l.InputMetricsSnapshot,
                 ConfidenceLevel = l.ConfidenceLevel
+            })
+            .ToListAsync(ct);
+    }
+
+    private async Task<List<AchievementExportDto>> ExportAchievementsAsync(CancellationToken ct)
+    {
+        return await _context.Achievements
+            .AsNoTracking()
+            .Where(a => a.IsActive)
+            .Select(a => new AchievementExportDto
+            {
+                Id = a.Id,
+                Code = a.Code,
+                Name = a.Name,
+                Description = a.Description,
+                Icon = a.Icon,
+                XpValue = a.XpValue,
+                Category = a.Category,
+                Tier = a.Tier,
+                UnlockCondition = a.UnlockCondition,
+                IsActive = a.IsActive,
+                SortOrder = a.SortOrder
+            })
+            .ToListAsync(ct);
+    }
+
+    private async Task<List<UserAchievementExportDto>> ExportUserAchievementsAsync(Guid userId, CancellationToken ct)
+    {
+        return await _context.UserAchievements
+            .AsNoTracking()
+            .Include(ua => ua.Achievement)
+            .Where(ua => ua.UserId == userId)
+            .Select(ua => new UserAchievementExportDto
+            {
+                Id = ua.Id,
+                AchievementCode = ua.Achievement.Code,
+                UnlockedAt = ua.UnlockedAt,
+                Progress = ua.Progress,
+                UnlockContext = ua.UnlockContext
+            })
+            .ToListAsync(ct);
+    }
+
+    private async Task<UserXPExportDto?> ExportUserXPAsync(Guid userId, CancellationToken ct)
+    {
+        var userXp = await _context.UserXPs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+
+        if (userXp == null)
+            return null;
+
+        return new UserXPExportDto
+        {
+            Id = userXp.Id,
+            TotalXp = userXp.TotalXp,
+            Level = userXp.Level,
+            WeeklyXp = userXp.WeeklyXp,
+            WeekStartDate = userXp.WeekStartDate
+        };
+    }
+
+    private async Task<List<NetWorthSnapshotExportDto>> ExportNetWorthSnapshotsAsync(Guid userId, CancellationToken ct)
+    {
+        return await _context.NetWorthSnapshots
+            .AsNoTracking()
+            .Where(n => n.UserId == userId)
+            .Select(n => new NetWorthSnapshotExportDto
+            {
+                Id = n.Id,
+                SnapshotDate = n.SnapshotDate,
+                TotalAssets = n.TotalAssets,
+                TotalLiabilities = n.TotalLiabilities,
+                NetWorth = n.NetWorth,
+                HomeCurrency = n.HomeCurrency,
+                BreakdownByType = n.BreakdownByType,
+                BreakdownByCurrency = n.BreakdownByCurrency,
+                AccountCount = n.AccountCount
             })
             .ToListAsync(ct);
     }

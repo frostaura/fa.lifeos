@@ -37,6 +37,10 @@ public record EntityCountsDto
     public int AccountProjections { get; init; }
     public int NetWorthProjections { get; init; }
     public int LongevitySnapshots { get; init; }
+    public int Achievements { get; init; }
+    public int UserAchievements { get; init; }
+    public int UserXP { get; init; }
+    public int NetWorthSnapshots { get; init; }
 }
 
 public record ImportRequestDto

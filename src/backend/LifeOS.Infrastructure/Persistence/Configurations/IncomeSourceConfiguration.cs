@@ -63,6 +63,11 @@ public class IncomeSourceConfiguration : IEntityTypeConfiguration<IncomeSource>
             .HasForeignKey(e => e.TaxProfileId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.TargetAccount)
+            .WithMany()
+            .HasForeignKey(e => e.TargetAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(e => e.UserId);
         builder.HasIndex(e => e.UserId)
             .HasFilter("\"IsActive\" = TRUE")

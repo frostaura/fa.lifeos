@@ -106,7 +106,8 @@ export function LoanPayoffCalculator() {
     if (!selectedAccount) return null;
     
     const balance = Math.abs(selectedAccount.balance);
-    const rate = selectedAccount.interestRateAnnual || 0;
+    // Convert percentage to decimal (e.g., 11.70 -> 0.117)
+    const rate = (selectedAccount.interestRateAnnual || 0) / 100;
     const extra = parseFloat(extraPayment) || 0;
     
     return calculatePayoff(balance, rate, extra);

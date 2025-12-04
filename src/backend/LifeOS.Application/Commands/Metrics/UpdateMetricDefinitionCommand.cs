@@ -17,6 +17,7 @@ public record UpdateMetricDefinitionCommand(
     decimal? MinValue,
     decimal? MaxValue,
     decimal? TargetValue,
+    TargetDirection? TargetDirection,
     string? Icon,
     string[]? Tags,
     bool? IsDerived,
@@ -70,6 +71,9 @@ public class UpdateMetricDefinitionCommandHandler : IRequestHandler<UpdateMetric
 
         if (request.TargetValue.HasValue)
             definition.TargetValue = request.TargetValue.Value;
+
+        if (request.TargetDirection.HasValue)
+            definition.TargetDirection = request.TargetDirection.Value;
 
         if (request.Icon != null)
             definition.Icon = request.Icon;

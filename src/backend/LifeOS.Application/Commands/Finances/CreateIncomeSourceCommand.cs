@@ -15,5 +15,6 @@ public record CreateIncomeSourceCommand(
     DateOnly? NextPaymentDate,
     decimal? AnnualIncreaseRate,
     string? EmployerName,
-    string? Notes
+    string? Notes,
+    Guid? TargetAccountId
 ) : IRequest<IncomeSourceDetailResponse>;

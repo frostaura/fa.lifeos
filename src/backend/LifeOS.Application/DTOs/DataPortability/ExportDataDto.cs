@@ -27,6 +27,10 @@ public record ExportDataDto
     public List<AccountProjectionExportDto> AccountProjections { get; init; } = new();
     public List<NetWorthProjectionExportDto> NetWorthProjections { get; init; } = new();
     public List<LongevitySnapshotExportDto> LongevitySnapshots { get; init; } = new();
+    public List<AchievementExportDto> Achievements { get; init; } = new();
+    public List<UserAchievementExportDto> UserAchievements { get; init; } = new();
+    public UserXPExportDto? UserXP { get; init; }
+    public List<NetWorthSnapshotExportDto> NetWorthSnapshots { get; init; } = new();
 }
 
 public record ProfileExportDto
@@ -220,6 +224,7 @@ public record IncomeSourceExportDto
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
     public bool IsActive { get; init; }
+    public Guid? TargetAccountId { get; init; }
 }
 
 public record ExpenseDefinitionExportDto
@@ -232,16 +237,22 @@ public record ExpenseDefinitionExportDto
     public decimal? AmountValue { get; init; }
     public string? AmountFormula { get; init; }
     public string Frequency { get; init; } = "Monthly";
+    public DateOnly? StartDate { get; init; }
     public string Category { get; init; } = "Other";
     public bool IsTaxDeductible { get; init; }
     public bool InflationAdjusted { get; init; }
     public bool IsActive { get; init; }
+    public string EndConditionType { get; init; } = "None";
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record InvestmentContributionExportDto
 {
     public Guid Id { get; init; }
     public Guid? TargetAccountId { get; init; }
+    public Guid? SourceAccountId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Currency { get; init; } = "ZAR";
     public decimal Amount { get; init; }
@@ -250,6 +261,11 @@ public record InvestmentContributionExportDto
     public decimal? AnnualIncreaseRate { get; init; }
     public string? Notes { get; init; }
     public bool IsActive { get; init; }
+    public DateOnly? StartDate { get; init; }
+    public string EndConditionType { get; init; } = "None";
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record FinancialGoalExportDto
@@ -365,4 +381,50 @@ public record LongevitySnapshotExportDto
     public string? Breakdown { get; init; }
     public string? InputMetricsSnapshot { get; init; }
     public string? ConfidenceLevel { get; init; }
+}
+
+public record AchievementExportDto
+{
+    public Guid Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string Icon { get; init; } = string.Empty;
+    public int XpValue { get; init; }
+    public string Category { get; init; } = string.Empty;
+    public string Tier { get; init; } = "bronze";
+    public string UnlockCondition { get; init; } = string.Empty;
+    public bool IsActive { get; init; }
+    public int SortOrder { get; init; }
+}
+
+public record UserAchievementExportDto
+{
+    public Guid Id { get; init; }
+    public string AchievementCode { get; init; } = string.Empty;
+    public DateTime UnlockedAt { get; init; }
+    public int Progress { get; init; }
+    public string? UnlockContext { get; init; }
+}
+
+public record UserXPExportDto
+{
+    public Guid Id { get; init; }
+    public long TotalXp { get; init; }
+    public int Level { get; init; }
+    public int WeeklyXp { get; init; }
+    public DateOnly WeekStartDate { get; init; }
+}
+
+public record NetWorthSnapshotExportDto
+{
+    public Guid Id { get; init; }
+    public DateOnly SnapshotDate { get; init; }
+    public decimal TotalAssets { get; init; }
+    public decimal TotalLiabilities { get; init; }
+    public decimal NetWorth { get; init; }
+    public string HomeCurrency { get; init; } = "ZAR";
+    public string BreakdownByType { get; init; } = "{}";
+    public string BreakdownByCurrency { get; init; } = "{}";
+    public int AccountCount { get; init; }
 }

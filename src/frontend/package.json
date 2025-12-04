@@ -4,7 +4,7 @@
   "description": "LifeOS Frontend - Comprehensive Life Management Platform",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
@@ -19,7 +19,6 @@
   "license": "ISC",
   "devDependencies": {
     "@reduxjs/toolkit": "^2.11.0",
-    "@tailwindcss/postcss": "^4.1.17",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
@@ -30,9 +29,19 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.6",
     "recharts": "^3.5.0",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^3.4.17",
     "terser": "^5.44.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@monaco-editor/react": "^4.7.0",
+    "@simplewebauthn/browser": "^13.2.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.555.0",
+    "react-hook-form": "^7.67.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.1.13"
   }
 }

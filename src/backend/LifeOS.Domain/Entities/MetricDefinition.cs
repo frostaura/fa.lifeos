@@ -18,6 +18,7 @@ public class MetricDefinition : BaseEntity
     public decimal? MinValue { get; set; }
     public decimal? MaxValue { get; set; }
     public decimal? TargetValue { get; set; }
+    public TargetDirection TargetDirection { get; set; } = TargetDirection.AtOrAbove;
     
     public string? Icon { get; set; }
     public string[]? Tags { get; set; }

@@ -50,6 +50,9 @@ public class UpdateIncomeSourceCommandHandler : IRequestHandler<UpdateIncomeSour
         if (request.IsActive.HasValue)
             incomeSource.IsActive = request.IsActive.Value;
 
+        if (request.TargetAccountId.HasValue)
+            incomeSource.TargetAccountId = request.TargetAccountId.Value;
+
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }

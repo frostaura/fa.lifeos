@@ -45,6 +45,7 @@ public class GetMetricDefinitionByCodeQueryHandler : IRequestHandler<GetMetricDe
                     MinValue = definition.MinValue,
                     MaxValue = definition.MaxValue,
                     TargetValue = definition.TargetValue,
+                    TargetDirection = definition.TargetDirection.ToString(),
                     Icon = definition.Icon,
                     Tags = definition.Tags,
                     IsDerived = definition.IsDerived,
