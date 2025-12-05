@@ -613,7 +613,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     existing.InterestRateAnnual = item.InterestRateAnnual;
                     existing.InterestCompounding = Enum.TryParse<CompoundingFrequency>(item.InterestCompounding, true, out var cf) ? cf : CompoundingFrequency.Monthly;
                     existing.MonthlyFee = item.MonthlyFee ?? 0;
-                    existing.Metadata = item.Metadata;
+                    existing.Metadata = item.Metadata ?? "{}";
                     existing.IsActive = item.IsActive;
                 }
             }
@@ -634,7 +634,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         InterestRateAnnual = item.InterestRateAnnual,
                         InterestCompounding = Enum.TryParse<CompoundingFrequency>(item.InterestCompounding, true, out var cf) ? cf : CompoundingFrequency.Monthly,
                         MonthlyFee = item.MonthlyFee ?? 0,
-                        Metadata = item.Metadata,
+                        Metadata = item.Metadata ?? "{}",
                         IsActive = item.IsActive
                     };
                     _context.Accounts.Add(entity);
