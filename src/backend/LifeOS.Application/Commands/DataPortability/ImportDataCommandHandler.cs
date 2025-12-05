@@ -13,6 +13,15 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 {
     private readonly ILifeOSDbContext _context;
     private readonly ILogger<ImportDataCommandHandler> _logger;
+    
+    // ID mapping dictionaries to resolve foreign key references during import
+    private Dictionary<Guid, Guid> _dimensionIdMap = new();
+    private Dictionary<Guid, Guid> _accountIdMap = new();
+    private Dictionary<Guid, Guid> _taxProfileIdMap = new();
+    private Dictionary<Guid, Guid> _milestoneIdMap = new();
+    private Dictionary<Guid, Guid> _scenarioIdMap = new();
+    private Dictionary<Guid, Guid> _achievementIdMap = new();
+    private Dictionary<Guid, Guid> _taskIdMap = new();
 
     public ImportDataCommandHandler(ILifeOSDbContext context, ILogger<ImportDataCommandHandler> logger)
     {
@@ -25,6 +34,15 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Starting data import for user {UserId} in {Mode} mode (DryRun: {DryRun})", 
             request.UserId, request.Mode, request.DryRun);
+
+        // Reset ID mappings for each import
+        _dimensionIdMap = new Dictionary<Guid, Guid>();
+        _accountIdMap = new Dictionary<Guid, Guid>();
+        _taxProfileIdMap = new Dictionary<Guid, Guid>();
+        _milestoneIdMap = new Dictionary<Guid, Guid>();
+        _scenarioIdMap = new Dictionary<Guid, Guid>();
+        _achievementIdMap = new Dictionary<Guid, Guid>();
+        _taskIdMap = new Dictionary<Guid, Guid>();
 
         var results = new Dictionary<string, ImportEntityResultDto>();
         var totalImported = 0;
@@ -291,6 +309,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _dimensionIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 // Update existing entity in replace mode
@@ -320,6 +341,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         IsActive = item.IsActive
                     };
                     _context.Dimensions.Add(entity);
+                    
+                    // Map old ID to new ID after entity is tracked
+                    _dimensionIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -335,6 +359,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve dimension ID from mapping
+            var resolvedDimensionId = ResolveMappedId(_dimensionIdMap, item.DimensionId);
+            
             var existing = await _context.MetricDefinitions.FirstOrDefaultAsync(m => m.Code == item.Code, ct);
             
             if (existing != null)
@@ -343,7 +370,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
+                    existing.DimensionId = resolvedDimensionId;
                     existing.Name = item.Name;
                     existing.Description = item.Description;
                     existing.Unit = item.Unit;
@@ -366,7 +393,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new MetricDefinition
                     {
-                        DimensionId = item.DimensionId,
+                        DimensionId = resolvedDimensionId,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
@@ -391,6 +418,15 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
     }
+    
+    /// <summary>
+    /// Resolves a mapped ID from the original export ID. Returns the mapped ID if found, or the original ID if not found.
+    /// </summary>
+    private static Guid? ResolveMappedId(Dictionary<Guid, Guid> map, Guid? originalId)
+    {
+        if (!originalId.HasValue) return null;
+        return map.TryGetValue(originalId.Value, out var mappedId) ? mappedId : originalId;
+    }
 
     private async Task<ImportEntityResultDto> ImportScoreDefinitionsAsync(List<ScoreDefinitionExportDto> items, bool isReplace, bool dryRun, CancellationToken ct)
     {
@@ -399,6 +435,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve dimension ID from mapping
+            var resolvedDimensionId = ResolveMappedId(_dimensionIdMap, item.DimensionId);
+            
             var existing = await _context.ScoreDefinitions.FirstOrDefaultAsync(s => s.Code == item.Code, ct);
             
             if (existing != null)
@@ -407,7 +446,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
+                    existing.DimensionId = resolvedDimensionId;
                     existing.Name = item.Name;
                     existing.Description = item.Description;
                     existing.Formula = item.Formula ?? string.Empty;
@@ -422,7 +461,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new ScoreDefinition
                     {
-                        DimensionId = item.DimensionId,
+                        DimensionId = resolvedDimensionId,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
@@ -451,6 +490,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _taxProfileIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
@@ -485,6 +527,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         IsActive = item.IsActive
                     };
                     _context.TaxProfiles.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _taxProfileIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -552,6 +597,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _accountIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
@@ -590,6 +638,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         IsActive = item.IsActive
                     };
                     _context.Accounts.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _accountIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -605,15 +656,23 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve dimension ID from mapping
+            var resolvedDimensionId = ResolveMappedId(_dimensionIdMap, item.DimensionId);
+            // DimensionId is required for Milestone, so if mapping fails use original
+            var finalDimensionId = resolvedDimensionId ?? item.DimensionId;
+            
             var existing = await _context.Milestones.FirstOrDefaultAsync(m => m.UserId == userId && m.Title == item.Title, ct);
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _milestoneIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
+                    existing.DimensionId = finalDimensionId;
                     existing.Description = item.Description;
                     existing.TargetDate = item.TargetDate;
                     existing.TargetMetricCode = item.TargetMetricCode;
@@ -630,7 +689,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new Milestone
                     {
                         UserId = userId,
-                        DimensionId = item.DimensionId,
+                        DimensionId = finalDimensionId,
                         Title = item.Title,
                         Description = item.Description,
                         TargetDate = item.TargetDate,
@@ -641,6 +700,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         CreatedAt = item.CreatedAt
                     };
                     _context.Milestones.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _milestoneIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -656,16 +718,23 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve dimension and milestone IDs from mappings
+            var resolvedDimensionId = ResolveMappedId(_dimensionIdMap, item.DimensionId);
+            var resolvedMilestoneId = ResolveMappedId(_milestoneIdMap, item.MilestoneId);
+            
             var existing = await _context.Tasks.FirstOrDefaultAsync(t => t.UserId == userId && t.Title == item.Title, ct);
             
             if (existing != null)
             {
+                // Map old ID to existing ID for streaks
+                _taskIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
-                    existing.MilestoneId = item.MilestoneId;
+                    existing.DimensionId = resolvedDimensionId;
+                    existing.MilestoneId = resolvedMilestoneId;
                     existing.Description = item.Description;
                     existing.TaskType = Enum.TryParse<TaskType>(item.TaskType, true, out var tt) ? tt : TaskType.Habit;
                     existing.Frequency = Enum.TryParse<Frequency>(item.Frequency, true, out var f) ? f : Frequency.AdHoc;
@@ -688,8 +757,8 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new LifeTask
                     {
                         UserId = userId,
-                        DimensionId = item.DimensionId,
-                        MilestoneId = item.MilestoneId,
+                        DimensionId = resolvedDimensionId,
+                        MilestoneId = resolvedMilestoneId,
                         Title = item.Title,
                         Description = item.Description,
                         TaskType = Enum.TryParse<TaskType>(item.TaskType, true, out var tt) ? tt : TaskType.Habit,
@@ -706,6 +775,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         CreatedAt = item.CreatedAt
                     };
                     _context.Tasks.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _taskIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -721,12 +793,15 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve task ID from mapping
+            var resolvedTaskId = ResolveMappedId(_taskIdMap, item.TaskId);
+            
             if (!dryRun)
             {
                 var entity = new Streak
                 {
                     UserId = userId,
-                    TaskId = item.TaskId,
+                    TaskId = resolvedTaskId,
                     MetricCode = item.MetricCode,
                     CurrentStreakLength = item.CurrentStreakLength,
                     LongestStreakLength = item.LongestStreakLength,
@@ -824,17 +899,22 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        // Get all account IDs and tax profile IDs for this user to validate foreign keys
-        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
-        var taxProfileIds = await _context.TaxProfiles.Where(t => t.UserId == userId).Select(t => t.Id).ToListAsync(ct);
-
         foreach (var item in items)
         {
             var existing = await _context.IncomeSources.FirstOrDefaultAsync(i => i.UserId == userId && i.Name == item.Name, ct);
             
-            // Validate foreign keys - set to null if they don't exist
-            var targetAccountId = item.TargetAccountId.HasValue && accountIds.Contains(item.TargetAccountId.Value) ? item.TargetAccountId : null;
-            var taxProfileId = item.TaxProfileId.HasValue && taxProfileIds.Contains(item.TaxProfileId.Value) ? item.TaxProfileId : null;
+            // Resolve IDs from mapping - if mapped, use mapped ID; otherwise the original ID will be lost
+            var resolvedTargetAccountId = ResolveMappedId(_accountIdMap, item.TargetAccountId);
+            var resolvedTaxProfileId = ResolveMappedId(_taxProfileIdMap, item.TaxProfileId);
+            
+            // Only use the resolved ID if we have a mapping or if the original was null
+            // If the original ID wasn't in the mapping, the entity doesn't exist, so set to null
+            var targetAccountId = item.TargetAccountId.HasValue && _accountIdMap.ContainsKey(item.TargetAccountId.Value) 
+                ? resolvedTargetAccountId 
+                : null;
+            var taxProfileId = item.TaxProfileId.HasValue && _taxProfileIdMap.ContainsKey(item.TaxProfileId.Value) 
+                ? resolvedTaxProfileId 
+                : null;
             
             if (existing != null)
             {
@@ -889,16 +969,21 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        // Get all account IDs for this user to validate foreign keys
-        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
-
         foreach (var item in items)
         {
             var existing = await _context.ExpenseDefinitions.FirstOrDefaultAsync(e => e.UserId == userId && e.Name == item.Name, ct);
             
-            // Validate foreign keys - set to null if account doesn't exist
-            var linkedAccountId = item.LinkedAccountId.HasValue && accountIds.Contains(item.LinkedAccountId.Value) ? item.LinkedAccountId : null;
-            var endConditionAccountId = item.EndConditionAccountId.HasValue && accountIds.Contains(item.EndConditionAccountId.Value) ? item.EndConditionAccountId : null;
+            // Resolve IDs from mapping
+            var resolvedLinkedAccountId = ResolveMappedId(_accountIdMap, item.LinkedAccountId);
+            var resolvedEndConditionAccountId = ResolveMappedId(_accountIdMap, item.EndConditionAccountId);
+            
+            // Only use the resolved ID if we have a mapping (meaning the account was imported)
+            var linkedAccountId = item.LinkedAccountId.HasValue && _accountIdMap.ContainsKey(item.LinkedAccountId.Value) 
+                ? resolvedLinkedAccountId 
+                : null;
+            var endConditionAccountId = item.EndConditionAccountId.HasValue && _accountIdMap.ContainsKey(item.EndConditionAccountId.Value) 
+                ? resolvedEndConditionAccountId 
+                : null;
             
             if (existing != null)
             {
@@ -961,17 +1046,25 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         var imported = 0;
         var skipped = 0;
 
-        // Get all account IDs for this user to validate foreign keys
-        var accountIds = await _context.Accounts.Where(a => a.UserId == userId).Select(a => a.Id).ToListAsync(ct);
-
         foreach (var item in items)
         {
             var existing = await _context.InvestmentContributions.FirstOrDefaultAsync(i => i.UserId == userId && i.Name == item.Name, ct);
             
-            // Validate foreign keys - set to null if account doesn't exist
-            var targetAccountId = item.TargetAccountId.HasValue && accountIds.Contains(item.TargetAccountId.Value) ? item.TargetAccountId : null;
-            var sourceAccountId = item.SourceAccountId.HasValue && accountIds.Contains(item.SourceAccountId.Value) ? item.SourceAccountId : null;
-            var endConditionAccountId = item.EndConditionAccountId.HasValue && accountIds.Contains(item.EndConditionAccountId.Value) ? item.EndConditionAccountId : null;
+            // Resolve IDs from mapping
+            var resolvedTargetAccountId = ResolveMappedId(_accountIdMap, item.TargetAccountId);
+            var resolvedSourceAccountId = ResolveMappedId(_accountIdMap, item.SourceAccountId);
+            var resolvedEndConditionAccountId = ResolveMappedId(_accountIdMap, item.EndConditionAccountId);
+            
+            // Only use the resolved ID if we have a mapping
+            var targetAccountId = item.TargetAccountId.HasValue && _accountIdMap.ContainsKey(item.TargetAccountId.Value) 
+                ? resolvedTargetAccountId 
+                : null;
+            var sourceAccountId = item.SourceAccountId.HasValue && _accountIdMap.ContainsKey(item.SourceAccountId.Value) 
+                ? resolvedSourceAccountId 
+                : null;
+            var endConditionAccountId = item.EndConditionAccountId.HasValue && _accountIdMap.ContainsKey(item.EndConditionAccountId.Value) 
+                ? resolvedEndConditionAccountId 
+                : null;
             
             if (existing != null)
             {
@@ -1128,13 +1221,17 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         foreach (var item in items)
         {
+            // Resolve account IDs from mapping
+            var resolvedSourceAccountId = ResolveMappedId(_accountIdMap, item.SourceAccountId);
+            var resolvedTargetAccountId = ResolveMappedId(_accountIdMap, item.TargetAccountId);
+            
             if (!dryRun)
             {
                 var entity = new Transaction
                 {
                     UserId = userId,
-                    SourceAccountId = item.SourceAccountId,
-                    TargetAccountId = item.TargetAccountId,
+                    SourceAccountId = resolvedSourceAccountId,
+                    TargetAccountId = resolvedTargetAccountId,
                     Currency = item.Currency,
                     Amount = item.Amount,
                     AmountHomeCurrency = item.AmountHomeCurrency,
@@ -1168,6 +1265,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _scenarioIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
@@ -1198,6 +1298,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         LastRunAt = item.LastRunAt
                     };
                     _context.SimulationScenarios.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _scenarioIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
@@ -1213,15 +1316,16 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         if (!dryRun)
         {
-            // Get all valid account and scenario IDs
-            var accountIds = await _context.Accounts.Select(a => a.Id).ToListAsync(ct);
-            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
-
             foreach (var item in items)
             {
-                // Skip if scenario doesn't exist, or if AffectedAccountId is set but doesn't exist
-                if (!scenarioIds.Contains(item.ScenarioId) || 
-                    (item.AffectedAccountId.HasValue && !accountIds.Contains(item.AffectedAccountId.Value)))
+                // Resolve IDs from mapping - use mapped ID if available, otherwise skip
+                var resolvedScenarioId = _scenarioIdMap.TryGetValue(item.ScenarioId, out var mappedScenarioId) ? mappedScenarioId : (Guid?)null;
+                var resolvedAccountId = item.AffectedAccountId.HasValue && _accountIdMap.ContainsKey(item.AffectedAccountId.Value)
+                    ? ResolveMappedId(_accountIdMap, item.AffectedAccountId)
+                    : null;
+                
+                // Skip if scenario wasn't in the import (no mapping exists)
+                if (!resolvedScenarioId.HasValue)
                 {
                     skipped++;
                     continue;
@@ -1229,7 +1333,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new SimulationEvent
                 {
-                    ScenarioId = item.ScenarioId,
+                    ScenarioId = resolvedScenarioId.Value,
                     Name = item.Name,
                     Description = item.Description,
                     TriggerType = Enum.TryParse<SimTriggerType>(item.TriggerType, true, out var tt) ? tt : SimTriggerType.Date,
@@ -1240,7 +1344,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     Currency = item.Currency,
                     AmountType = Enum.TryParse<AmountType>(item.AmountType, true, out var at) ? at : AmountType.Fixed,
                     AmountValue = item.AmountValue,
-                    AffectedAccountId = item.AffectedAccountId,
+                    AffectedAccountId = resolvedAccountId,
                     AppliesOnce = item.AppliesOnce,
                     SortOrder = item.SortOrder,
                     IsActive = item.IsActive
@@ -1264,14 +1368,14 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         if (!dryRun)
         {
-            // Get all valid account and scenario IDs
-            var accountIds = await _context.Accounts.Select(a => a.Id).ToListAsync(ct);
-            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
-
             foreach (var item in items)
             {
-                // Skip if account or scenario doesn't exist
-                if (!accountIds.Contains(item.AccountId) || !scenarioIds.Contains(item.ScenarioId))
+                // Resolve IDs from mapping - use mapped ID if available, otherwise skip
+                var resolvedScenarioId = _scenarioIdMap.TryGetValue(item.ScenarioId, out var mappedScenarioId) ? mappedScenarioId : (Guid?)null;
+                var resolvedAccountId = _accountIdMap.TryGetValue(item.AccountId, out var mappedAccountId) ? mappedAccountId : (Guid?)null;
+                
+                // Skip if account or scenario wasn't in the import
+                if (!resolvedAccountId.HasValue || !resolvedScenarioId.HasValue)
                 {
                     skipped++;
                     continue;
@@ -1279,8 +1383,8 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new AccountProjection
                 {
-                    ScenarioId = item.ScenarioId,
-                    AccountId = item.AccountId,
+                    ScenarioId = resolvedScenarioId.Value,
+                    AccountId = resolvedAccountId.Value,
                     PeriodDate = item.PeriodDate,
                     Balance = item.Balance,
                     BalanceHomeCurrency = item.BalanceHomeCurrency ?? item.Balance,
@@ -1307,13 +1411,13 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         if (!dryRun)
         {
-            // Get all valid scenario IDs
-            var scenarioIds = await _context.SimulationScenarios.Select(s => s.Id).ToListAsync(ct);
-
             foreach (var item in items)
             {
-                // Skip if scenario doesn't exist
-                if (!scenarioIds.Contains(item.ScenarioId))
+                // Resolve scenario ID from mapping - use mapped ID if available, otherwise skip
+                var resolvedScenarioId = _scenarioIdMap.TryGetValue(item.ScenarioId, out var mappedScenarioId) ? mappedScenarioId : (Guid?)null;
+                
+                // Skip if scenario wasn't in the import
+                if (!resolvedScenarioId.HasValue)
                 {
                     skipped++;
                     continue;
@@ -1321,7 +1425,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new NetWorthProjection
                 {
-                    ScenarioId = item.ScenarioId,
+                    ScenarioId = resolvedScenarioId.Value,
                     PeriodDate = item.PeriodDate,
                     TotalAssets = item.TotalAssets,
                     TotalLiabilities = item.TotalLiabilities,
@@ -1380,6 +1484,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             
             if (existing != null)
             {
+                // Map old ID to existing ID
+                _achievementIdMap[item.Id] = existing.Id;
+                
                 if (!isReplace) { skipped++; continue; }
                 
                 if (!dryRun)
@@ -1413,6 +1520,9 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         SortOrder = item.SortOrder
                     };
                     _context.Achievements.Add(entity);
+                    
+                    // Map old ID to new ID
+                    _achievementIdMap[item.Id] = entity.Id;
                 }
             }
             imported++;
