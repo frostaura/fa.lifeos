@@ -22,7 +22,7 @@ public class ImportDataTests : IDisposable
     private readonly Mock<ILogger<ImportDataCommandHandler>> _loggerMock;
     private readonly LifeOSDbContext _context;
     private readonly ImportDataCommandHandler _handler;
-    private Guid _testUserId;
+    private Guid _testUserId = Guid.NewGuid(); // Default random GUID for entities without User FK constraint
 
     public ImportDataTests()
     {
