@@ -49,20 +49,20 @@ export function MetricSparkline({
   // Use currentValue prop if provided, otherwise fall back to last chart point
   const { isOnTarget } = useMemo(() => {
     if (targetValue === undefined) {
-      return { isOnTarget: null, latestValue: null };
+      return { isOnTarget: null };
     }
     
     // Use provided currentValue, or fall back to last point in chart data
     const valueToCheck = currentValue ?? (sortedData.length > 0 ? sortedData[sortedData.length - 1].value : null);
     
     if (valueToCheck === null) {
-      return { isOnTarget: null, latestValue: null };
+      return { isOnTarget: null };
     }
     
     const onTarget = targetDirection === 'AtOrAbove' 
       ? valueToCheck >= targetValue 
       : valueToCheck <= targetValue;
-    return { isOnTarget: onTarget, latestValue: valueToCheck };
+    return { isOnTarget: onTarget };
   }, [sortedData, targetValue, targetDirection, currentValue]);
 
   // Determine line color based on target status
