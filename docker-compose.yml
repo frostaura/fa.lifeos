@@ -30,8 +30,13 @@ services:
       - Jwt__SecretKey=LifeOS-Development-Secret-Key-Must-Be-At-Least-32-Characters-Long!
       - Jwt__Issuer=lifeos-api
       - Jwt__Audience=lifeos-client
-      - Cors__AllowedOrigins__0=http://localhost:5173
-      - Cors__AllowedOrigins__1=http://localhost:3000
+      - Cors__AllowedOrigins__0=${CORS_ORIGIN_0:-http://localhost:5173}
+      - Cors__AllowedOrigins__1=${CORS_ORIGIN_1:-http://localhost:3000}
+      - Fido2__ServerDomain=${FIDO2_SERVER_DOMAIN:-localhost}
+      - Fido2__ServerName=LifeOS
+      - Fido2__Origins__0=${FIDO2_ORIGIN:-http://localhost:5173}
+      - Fido2__Origins__1=${FIDO2_ORIGIN_1:-http://localhost:5001}
+      - Fido2__Origins__2=${FIDO2_ORIGIN_2:-http://localhost:5000}
     depends_on:
       postgres:
         condition: service_healthy
