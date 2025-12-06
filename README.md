@@ -205,6 +205,29 @@ The API is configured via `appsettings.json` and environment variables:
 | `ConnectionStrings__DefaultConnection` | Database connection string | - |
 | `Jwt__SecretKey` | JWT signing key | - |
 | `Cors__AllowedOrigins__0` | Allowed CORS origin | http://localhost:5173 |
+| `Fido2__ServerDomain` | WebAuthn RP ID (domain for biometric auth) | localhost |
+| `Fido2__Origins__0` | Allowed WebAuthn origin | http://localhost:5173 |
+
+### WebAuthn/Biometric Authentication
+
+LifeOS uses WebAuthn (FIDO2) for passwordless biometric authentication. The configuration must match your deployment domain:
+
+**For local development:**
+```bash
+FIDO2_SERVER_DOMAIN=localhost
+FIDO2_ORIGIN=http://localhost:5173
+```
+
+**For production (e.g., lifeos.frostaura.net):**
+```bash
+FIDO2_SERVER_DOMAIN=lifeos.frostaura.net
+FIDO2_ORIGIN=https://lifeos.frostaura.net
+CORS_ORIGIN_0=https://lifeos.frostaura.net
+```
+
+> **Important:** If you see the error "The RP ID 'localhost' is invalid for this domain", you need to set the `FIDO2_SERVER_DOMAIN` environment variable to match your deployment domain.
+>
+> For detailed configuration instructions, see [WEBAUTHN_CONFIG.md](./WEBAUTHN_CONFIG.md)
 
 ## 📡 API Endpoints
 
