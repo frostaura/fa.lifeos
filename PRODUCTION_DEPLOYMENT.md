@@ -15,6 +15,8 @@ WebAuthn configuration is now environment-aware and can be configured via enviro
 cat > .env << 'EOF'
 FIDO2_SERVER_DOMAIN=lifeos.frostaura.net
 FIDO2_ORIGIN=https://lifeos.frostaura.net
+FIDO2_ORIGIN_1=https://lifeos.frostaura.net
+FIDO2_ORIGIN_2=https://lifeos.frostaura.net
 CORS_ORIGIN_0=https://lifeos.frostaura.net
 CORS_ORIGIN_1=https://lifeos.frostaura.net
 EOF
@@ -28,7 +30,10 @@ docker compose up -d
 # Set environment variables
 export FIDO2_SERVER_DOMAIN=lifeos.frostaura.net
 export FIDO2_ORIGIN=https://lifeos.frostaura.net
+export FIDO2_ORIGIN_1=https://lifeos.frostaura.net
+export FIDO2_ORIGIN_2=https://lifeos.frostaura.net
 export CORS_ORIGIN_0=https://lifeos.frostaura.net
+export CORS_ORIGIN_1=https://lifeos.frostaura.net
 
 # Deploy
 docker compose up -d
@@ -38,7 +43,10 @@ docker compose up -d
 ```bash
 FIDO2_SERVER_DOMAIN=lifeos.frostaura.net \
 FIDO2_ORIGIN=https://lifeos.frostaura.net \
+FIDO2_ORIGIN_1=https://lifeos.frostaura.net \
+FIDO2_ORIGIN_2=https://lifeos.frostaura.net \
 CORS_ORIGIN_0=https://lifeos.frostaura.net \
+CORS_ORIGIN_1=https://lifeos.frostaura.net \
 docker compose up -d
 ```
 

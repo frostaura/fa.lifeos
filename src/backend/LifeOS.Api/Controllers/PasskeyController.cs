@@ -271,20 +271,30 @@ public class PasskeyController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> BeginLogin([FromBody] BeginLoginRequest? request)
     {
-        // For discoverable credentials, we don't need to specify allowed credentials
-        var options = _fido2.GetAssertionOptions(
-            new List<PublicKeyCredentialDescriptor>(),  // Empty for discoverable credentials
-            UserVerificationRequirement.Required);
+        try
+        {
+            // For discoverable credentials, we don't need to specify allowed credentials
+            var options = _fido2.GetAssertionOptions(
+                new List<PublicKeyCredentialDescriptor>(),  // Empty for discoverable credentials
+                UserVerificationRequirement.Required);
 
-        // Store in cache using challenge as key
-        var challengeKey = Base64UrlEncode(options.Challenge);
-        await _cache.SetStringAsync(
-            $"fido2:login:{challengeKey}", 
-            options.ToJson(),
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
+            // Store in cache using challenge as key
+            var challengeKey = Base64UrlEncode(options.Challenge);
+            await _cache.SetStringAsync(
+                $"fido2:login:{challengeKey}", 
+                options.ToJson(),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
 
-        // Return Fido2's properly serialized JSON
-        return Content(options.ToJson(), "application/json");
+            _logger.LogInformation("Passkey login begin successful");
+            
+            // Return Fido2's properly serialized JSON
+            return Content(options.ToJson(), "application/json");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting passkey authentication");
+            return BadRequest(new { error = new { code = "LOGIN_BEGIN_ERROR", message = ex.Message } });
+        }
     }
 
     /// <summary>
