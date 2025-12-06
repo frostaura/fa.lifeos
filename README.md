@@ -327,12 +327,43 @@ LifeOS uses a custom glassmorphic design system with these key components:
 
 ## 🔒 Security Features
 
-- **JWT Authentication** - Secure token-based auth
-- **Password Hashing** - Argon2id hashing
+- **WebAuthn Authentication** - Passwordless biometric auth (Face ID, Touch ID, Windows Hello)
+- **JWT Tokens** - Secure access + refresh token pattern
+- **Password Hashing** - Argon2id hashing (legacy, optional)
 - **CORS Protection** - Configurable origins
 - **Rate Limiting** - API throttling
 - **Input Validation** - Request validation
 - **HTTPS** - TLS in production
+
+### WebAuthn Configuration
+
+LifeOS uses WebAuthn (FIDO2) for secure, passwordless biometric authentication.
+
+**For Production:**
+```bash
+# Set environment variables
+export FIDO2_SERVER_DOMAIN=yourdomain.com
+export FIDO2_ORIGIN=https://yourdomain.com
+export CORS_ORIGIN_0=https://yourdomain.com
+
+# Deploy
+docker compose up -d
+
+# Verify configuration
+curl https://yourdomain.com/api/auth/passkey/config
+```
+
+**For Troubleshooting:**
+```bash
+# Check backend logs
+docker logs lifeos-backend | grep FIDO2
+
+# Test authentication endpoint
+curl -X POST https://yourdomain.com/api/auth/passkey/login/begin \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed WebAuthn diagnostics and [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) for deployment instructions.
 
 ## 🛠️ Development
 

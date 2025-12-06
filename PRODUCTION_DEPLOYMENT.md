@@ -57,6 +57,18 @@ docker compose up -d
 # Run the verification script
 ./scripts/verify-webauthn-config.sh
 
+# Or check configuration endpoint
+curl https://lifeos.frostaura.net/api/auth/passkey/config
+
+# Expected response:
+# {
+#   "status": "healthy",
+#   "configuration": {
+#     "serverDomain": "lifeos.frostaura.net",
+#     "origins": ["https://lifeos.frostaura.net", ...]
+#   }
+# }
+
 # Or manually test
 curl -X POST https://lifeos.frostaura.net/api/auth/passkey/login/begin \
   -H "Content-Type: application/json" \
@@ -120,12 +132,26 @@ export CORS_ORIGIN_0=https://lifeos.frostaura.net
 docker compose restart backend
 ```
 
+### Error: "Failed to start authentication"
+**Fix:** Check backend logs and configuration
+```bash
+# Check logs for FIDO2 configuration errors
+docker logs lifeos-backend 2>&1 | grep FIDO2
+
+# Check configuration endpoint
+curl https://lifeos.frostaura.net/api/auth/passkey/config
+
+# See TROUBLESHOOTING.md for detailed diagnostics
+```
+
 ### Changes not taking effect
 **Fix:** Ensure containers are recreated after env var changes
 ```bash
 docker compose down
 docker compose up -d
 ```
+
+For more detailed troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ## Resources
 
