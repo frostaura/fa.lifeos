@@ -32,17 +32,17 @@ builder.Services.AddSession(options =>
 });
 
 // Add FIDO2 for passkey/biometric authentication
+var fido2Settings = new LifeOS.Api.Configuration.Fido2Settings();
+builder.Configuration.GetSection(LifeOS.Api.Configuration.Fido2Settings.SectionName).Bind(fido2Settings);
+builder.Services.Configure<LifeOS.Api.Configuration.Fido2Settings>(
+    builder.Configuration.GetSection(LifeOS.Api.Configuration.Fido2Settings.SectionName));
+
 builder.Services.AddFido2(options =>
 {
-    options.ServerDomain = builder.Configuration["Fido2:ServerDomain"] ?? "localhost";
-    options.ServerName = "LifeOS";
-    options.Origins = new HashSet<string>
-    {
-        builder.Configuration["Fido2:Origin"] ?? "http://localhost:5173",
-        "http://localhost:5001",
-        "http://localhost:5000"
-    };
-    options.TimestampDriftTolerance = 300000; // 5 minutes
+    options.ServerDomain = fido2Settings.ServerDomain;
+    options.ServerName = fido2Settings.ServerName;
+    options.Origins = new HashSet<string>(fido2Settings.Origins);
+    options.TimestampDriftTolerance = fido2Settings.TimestampDriftTolerance;
 });
 
 // Add JWT Authentication
