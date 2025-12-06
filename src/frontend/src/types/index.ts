@@ -277,7 +277,7 @@ export interface CreateIncomeSourceRequest {
   annualIncreaseRate?: number;
   employerName?: string;
   notes?: string;
-  targetAccountId: string; // Required: where the income is deposited
+  targetAccountId?: string; // Optional: where the income is deposited (defaults to first bank account)
 }
 
 // Expense Definition Types
@@ -392,8 +392,8 @@ export interface CreateInvestmentContributionRequest {
   currency: string;
   amount: number;
   frequency: PaymentFrequency;
-  targetAccountId: string; // Required: where the investment goes
-  sourceAccountId: string; // Required: where the money comes from
+  targetAccountId?: string; // Optional: where the investment goes (defaults to first investment account)
+  sourceAccountId?: string; // Optional: where the money comes from (defaults to first bank account)
   category?: string;
   annualIncreaseRate?: number;
   notes?: string;
