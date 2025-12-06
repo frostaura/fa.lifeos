@@ -47,7 +47,7 @@ export function MetricSparkline({
 
   // Calculate if current value meets target
   // Use currentValue prop if provided, otherwise fall back to last chart point
-  const { isOnTarget, latestValue } = useMemo(() => {
+  const { isOnTarget } = useMemo(() => {
     if (targetValue === undefined) {
       return { isOnTarget: null, latestValue: null };
     }

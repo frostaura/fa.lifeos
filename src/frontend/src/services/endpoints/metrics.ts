@@ -116,6 +116,7 @@ interface MetricDefinitionApiResponse {
       unit: string;
       valueType: string;
       targetValue?: number;
+      targetDirection?: string;
       isActive: boolean;
       latestValue?: number;
       latestRecordedAt?: string;
