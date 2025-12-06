@@ -73,6 +73,9 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 });
 
+// Add FIDO2 configuration validator as a hosted service
+builder.Services.AddHostedService<LifeOS.Api.Services.Fido2ConfigurationValidator>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

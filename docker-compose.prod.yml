@@ -1,0 +1,23 @@
+# Production Docker Compose Override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overrides development settings for production deployment.
+# It sets up proper FIDO2 configuration for lifeos.frostaura.net
+
+services:
+  backend:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      # Production FIDO2 settings for lifeos.frostaura.net
+      - Fido2__ServerDomain=lifeos.frostaura.net
+      - Fido2__ServerName=LifeOS
+      - Fido2__Origins__0=https://lifeos.frostaura.net
+      - Fido2__Origins__1=https://lifeos.frostaura.net
+      - Fido2__Origins__2=https://lifeos.frostaura.net
+      # Production CORS settings
+      - Cors__AllowedOrigins__0=https://lifeos.frostaura.net
+      - Cors__AllowedOrigins__1=https://lifeos.frostaura.net
+
+  # Note: In production, postgres credentials should be set via environment variables
+  # or secrets management, not hardcoded in this file

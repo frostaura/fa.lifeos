@@ -24,12 +24,14 @@ public class PasskeyController : ControllerBase
     private readonly JwtSettings _jwtSettings;
     private readonly IDistributedCache _cache;
     private readonly ILogger<PasskeyController> _logger;
+    private readonly Fido2Settings _fido2Settings;
 
     public PasskeyController(
         LifeOSDbContext context,
         IFido2 fido2,
         IJwtService jwtService,
         IOptions<JwtSettings> jwtSettings,
+        IOptions<Fido2Settings> fido2Settings,
         IDistributedCache cache,
         ILogger<PasskeyController> logger)
     {
@@ -37,8 +39,62 @@ public class PasskeyController : ControllerBase
         _fido2 = fido2;
         _jwtService = jwtService;
         _jwtSettings = jwtSettings.Value;
+        _fido2Settings = fido2Settings.Value;
         _cache = cache;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Get WebAuthn configuration status and health
+    /// </summary>
+    [HttpGet("config")]
+    [AllowAnonymous]
+    public IActionResult GetConfig()
+    {
+        var requestOrigin = Request.Headers.Origin.ToString();
+        var requestHost = Request.Host.ToString();
+        
+        // Check for common misconfigurations
+        var warnings = new List<string>();
+        var isProduction = !requestHost.Contains("localhost");
+        
+        if (isProduction && _fido2Settings.ServerDomain == "localhost")
+        {
+            warnings.Add("CRITICAL: Server domain is 'localhost' but accessed from production URL. Set FIDO2_SERVER_DOMAIN environment variable.");
+        }
+        
+        if (!string.IsNullOrEmpty(requestOrigin) && !_fido2Settings.Origins.Contains(requestOrigin))
+        {
+            warnings.Add($"WARNING: Request origin '{requestOrigin}' is not in allowed origins list. Set FIDO2_ORIGIN environment variable.");
+        }
+        
+        if (isProduction && _fido2Settings.Origins.Any(o => o.StartsWith("http://") && !o.Contains("localhost")))
+        {
+            warnings.Add("WARNING: HTTP origins detected in production. Use HTTPS for security.");
+        }
+
+        var status = warnings.Any(w => w.StartsWith("CRITICAL")) ? "misconfigured" : 
+                     warnings.Any() ? "warning" : "healthy";
+
+        return Ok(new
+        {
+            status,
+            configuration = new
+            {
+                serverDomain = _fido2Settings.ServerDomain,
+                serverName = _fido2Settings.ServerName,
+                origins = _fido2Settings.Origins,
+                timestampDriftTolerance = _fido2Settings.TimestampDriftTolerance
+            },
+            request = new
+            {
+                origin = requestOrigin,
+                host = requestHost,
+                isProduction
+            },
+            warnings,
+            documentation = "https://github.com/frostaura/fa.lifeos/blob/main/WEBAUTHN_CONFIG.md"
+        });
     }
 
     /// <summary>
@@ -48,67 +104,95 @@ public class PasskeyController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> BeginRegistration([FromBody] BeginRegistrationRequest request)
     {
-        // Check if user exists
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-        if (existingUser != null)
+        try
         {
-            // Check if they already have a passkey
-            var hasPasskey = await _context.WebAuthnCredentials.AnyAsync(c => c.UserId == existingUser.Id);
-            if (hasPasskey)
+            _logger.LogInformation("Starting passkey registration for email: {Email}. Request origin: {Origin}", 
+                request.Email, 
+                Request.Headers.Origin.ToString());
+
+            // Check if user exists
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (existingUser != null)
             {
-                return BadRequest(new { error = new { code = "ALREADY_REGISTERED", message = "This email already has a passkey registered" } });
+                // Check if they already have a passkey
+                var hasPasskey = await _context.WebAuthnCredentials.AnyAsync(c => c.UserId == existingUser.Id);
+                if (hasPasskey)
+                {
+                    return BadRequest(new { error = new { code = "ALREADY_REGISTERED", message = "This email already has a passkey registered" } });
+                }
             }
+
+            // Create user handle
+            var userHandle = Guid.NewGuid().ToByteArray();
+            
+            var user = new Fido2User
+            {
+                Id = userHandle,
+                Name = request.Email,
+                DisplayName = request.DisplayName ?? request.Email.Split('@')[0]
+            };
+
+            // Get existing credentials for this user (if upgrading)
+            var existingCredentials = existingUser != null
+                ? await _context.WebAuthnCredentials
+                    .Where(c => c.UserId == existingUser.Id)
+                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
+                    .ToListAsync()
+                : new List<PublicKeyCredentialDescriptor>();
+
+            var authenticatorSelection = new AuthenticatorSelection
+            {
+                AuthenticatorAttachment = AuthenticatorAttachment.Platform,  // Prefer platform (biometric)
+                UserVerification = UserVerificationRequirement.Required
+            };
+
+            var options = _fido2.RequestNewCredential(
+                user, 
+                existingCredentials, 
+                authenticatorSelection, 
+                AttestationConveyancePreference.None);
+
+            // Store in cache using challenge as key (challenge is unique per request)
+            // Use base64url encoding to match what the client will send back
+            var challengeKey = Base64UrlEncode(options.Challenge);
+            _logger.LogInformation("Storing registration with challenge key: {ChallengeKey}. RpId: {RpId}", 
+                challengeKey, options.Rp.Id);
+            
+            var cacheData = new RegistrationCacheData
+            {
+                OptionsJson = options.ToJson(),
+                Email = request.Email,
+                DisplayName = request.DisplayName ?? request.Email.Split('@')[0]
+            };
+            
+            await _cache.SetStringAsync(
+                $"fido2:register:{challengeKey}", 
+                JsonSerializer.Serialize(cacheData),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
+
+            // Return Fido2's properly serialized JSON
+            return Content(options.ToJson(), "application/json");
         }
-
-        // Create user handle
-        var userHandle = Guid.NewGuid().ToByteArray();
-        
-        var user = new Fido2User
+        catch (Exception ex)
         {
-            Id = userHandle,
-            Name = request.Email,
-            DisplayName = request.DisplayName ?? request.Email.Split('@')[0]
-        };
-
-        // Get existing credentials for this user (if upgrading)
-        var existingCredentials = existingUser != null
-            ? await _context.WebAuthnCredentials
-                .Where(c => c.UserId == existingUser.Id)
-                .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
-                .ToListAsync()
-            : new List<PublicKeyCredentialDescriptor>();
-
-        var authenticatorSelection = new AuthenticatorSelection
-        {
-            AuthenticatorAttachment = AuthenticatorAttachment.Platform,  // Prefer platform (biometric)
-            UserVerification = UserVerificationRequirement.Required
-        };
-
-        var options = _fido2.RequestNewCredential(
-            user, 
-            existingCredentials, 
-            authenticatorSelection, 
-            AttestationConveyancePreference.None);
-
-        // Store in cache using challenge as key (challenge is unique per request)
-        // Use base64url encoding to match what the client will send back
-        var challengeKey = Base64UrlEncode(options.Challenge);
-        _logger.LogInformation("Storing registration with challenge key: {ChallengeKey}", challengeKey);
-        
-        var cacheData = new RegistrationCacheData
-        {
-            OptionsJson = options.ToJson(),
-            Email = request.Email,
-            DisplayName = request.DisplayName ?? request.Email.Split('@')[0]
-        };
-        
-        await _cache.SetStringAsync(
-            $"fido2:register:{challengeKey}", 
-            JsonSerializer.Serialize(cacheData),
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
-
-        // Return Fido2's properly serialized JSON
-        return Content(options.ToJson(), "application/json");
+            _logger.LogError(ex, "Error starting passkey registration for email: {Email}. Request origin: {Origin}", 
+                request.Email, 
+                Request.Headers.Origin.ToString());
+            
+            var errorDetails = new
+            {
+                error = new
+                {
+                    code = "REGISTRATION_BEGIN_ERROR",
+                    message = GetFriendlyErrorMessage(ex),
+                    details = ex.Message,
+                    origin = Request.Headers.Origin.ToString(),
+                    helpUrl = "https://github.com/frostaura/fa.lifeos/blob/main/WEBAUTHN_CONFIG.md"
+                }
+            };
+            
+            return BadRequest(errorDetails);
+        }
     }
 
     /// <summary>
@@ -273,6 +357,10 @@ public class PasskeyController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Starting passkey authentication. Request origin: {Origin}, User-Agent: {UserAgent}", 
+                Request.Headers.Origin.ToString(), 
+                Request.Headers.UserAgent.ToString());
+
             // For discoverable credentials, we don't need to specify allowed credentials
             var options = _fido2.GetAssertionOptions(
                 new List<PublicKeyCredentialDescriptor>(),  // Empty for discoverable credentials
@@ -285,15 +373,31 @@ public class PasskeyController : ControllerBase
                 options.ToJson(),
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
 
-            _logger.LogInformation("Passkey login begin successful");
+            _logger.LogInformation("Passkey login begin successful. RpId: {RpId}", options.RpId);
             
             // Return Fido2's properly serialized JSON
             return Content(options.ToJson(), "application/json");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error starting passkey authentication");
-            return BadRequest(new { error = new { code = "LOGIN_BEGIN_ERROR", message = ex.Message } });
+            _logger.LogError(ex, "Error starting passkey authentication. Request origin: {Origin}", 
+                Request.Headers.Origin.ToString());
+            
+            // Provide helpful error message for common configuration issues
+            var errorMessage = ex.Message;
+            var errorDetails = new
+            {
+                error = new
+                {
+                    code = "LOGIN_BEGIN_ERROR",
+                    message = GetFriendlyErrorMessage(ex),
+                    details = ex.Message,
+                    origin = Request.Headers.Origin.ToString(),
+                    helpUrl = "https://github.com/frostaura/fa.lifeos/blob/main/WEBAUTHN_CONFIG.md"
+                }
+            };
+            
+            return BadRequest(errorDetails);
         }
     }
 
@@ -499,6 +603,34 @@ public class PasskeyController : ControllerBase
             .Replace('+', '-')
             .Replace('/', '_')
             .TrimEnd('=');
+    }
+    
+    private string GetFriendlyErrorMessage(Exception ex)
+    {
+        var message = ex.Message.ToLower();
+        
+        // Check for common configuration issues
+        if (message.Contains("rp id") || message.Contains("rpid") || message.Contains("domain"))
+        {
+            return "WebAuthn configuration error: The server domain doesn't match your browser URL. " +
+                   "This usually means the FIDO2_SERVER_DOMAIN environment variable needs to be set correctly. " +
+                   "See WEBAUTHN_CONFIG.md for configuration instructions.";
+        }
+        
+        if (message.Contains("origin"))
+        {
+            return "WebAuthn origin mismatch: The request origin is not in the allowed origins list. " +
+                   "Check FIDO2_ORIGIN environment variables. " +
+                   $"Current origin: {Request.Headers.Origin}";
+        }
+        
+        if (message.Contains("timeout"))
+        {
+            return "WebAuthn timeout: The authentication request timed out. Please try again.";
+        }
+        
+        // Generic fallback
+        return $"Authentication initialization failed: {ex.Message}";
     }
 }
 
