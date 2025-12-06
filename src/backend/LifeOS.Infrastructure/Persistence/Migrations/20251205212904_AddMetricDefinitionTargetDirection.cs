@@ -12,7 +12,7 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.AddColumn<int>(
                 name: "TargetDirection",
-                table: "MetricDefinitions",
+                table: "metric_definitions",
                 type: "integer",
                 nullable: false,
                 defaultValue: 0);
@@ -23,7 +23,7 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "TargetDirection",
-                table: "MetricDefinitions");
+                table: "metric_definitions");
         }
     }
 }

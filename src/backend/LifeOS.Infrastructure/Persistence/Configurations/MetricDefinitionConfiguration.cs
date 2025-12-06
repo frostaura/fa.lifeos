@@ -48,6 +48,9 @@ public class MetricDefinitionConfiguration : IEntityTypeConfiguration<MetricDefi
         builder.Property(e => e.TargetValue)
             .HasPrecision(18, 4);
 
+        builder.Property(e => e.TargetDirection)
+            .HasDefaultValue(TargetDirection.AtOrAbove);
+
         builder.Property(e => e.Icon)
             .HasMaxLength(50);
 
