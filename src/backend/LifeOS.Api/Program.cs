@@ -92,7 +92,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// HTTPS redirection disabled - API runs in containers behind reverse proxy
+// app.UseHttpsRedirection();
 app.UseCors("LifeOSPolicy");
 app.UseRateLimiter();
 
@@ -121,11 +122,12 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
     ConfigureRecurringJobs();
 }
 
-app.MapControllers();
-
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-   .WithName("HealthCheck");
+   .WithName("HealthCheck")
+   .AllowAnonymous();
+
+app.MapControllers();
 
 // Apply migrations on startup (safe for all environments)
 await MigrateDatabaseAsync(app);
