@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LifeOS.Infrastructure.Persistence.Migrations
+namespace LifeOS.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -135,6 +135,7 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     MinValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     MaxValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     TargetValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
+                    TargetDirection = table.Column<int>(type: "integer", nullable: false),
                     Icon = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     Tags = table.Column<string[]>(type: "text[]", nullable: true),
                     IsDerived = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
@@ -612,11 +613,16 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     AmountValue = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     AmountFormula = table.Column<string>(type: "text", nullable: true),
                     Frequency = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: true),
                     Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     IsTaxDeductible = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     LinkedAccountId = table.Column<Guid>(type: "uuid", nullable: true),
                     InflationAdjusted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    EndConditionType = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false, defaultValue: "None"),
+                    EndConditionAccountId = table.Column<Guid>(type: "uuid", nullable: true),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    EndAmountThreshold = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -624,6 +630,12 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_expense_definitions", x => x.Id);
                     table.CheckConstraint("chk_expense_amount", "(\"AmountType\" = 'Formula' AND \"AmountFormula\" IS NOT NULL) OR (\"AmountType\" != 'Formula' AND \"AmountValue\" IS NOT NULL)");
+                    table.ForeignKey(
+                        name: "FK_expense_definitions_accounts_EndConditionAccountId",
+                        column: x => x.EndConditionAccountId,
+                        principalTable: "accounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_expense_definitions_accounts_LinkedAccountId",
                         column: x => x.LinkedAccountId,
@@ -642,28 +654,47 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 name: "InvestmentContributions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Currency = table.Column<string>(type: "text", nullable: false),
-                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
-                    Frequency = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false, defaultValue: "ZAR"),
+                    Amount = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    Frequency = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     TargetAccountId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Category = table.Column<string>(type: "text", nullable: true),
-                    AnnualIncreaseRate = table.Column<decimal>(type: "numeric", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    SourceAccountId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    AnnualIncreaseRate = table.Column<decimal>(type: "numeric(5,4)", precision: 5, scale: 4, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     Notes = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    EndConditionType = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false, defaultValue: "None"),
+                    EndConditionAccountId = table.Column<Guid>(type: "uuid", nullable: true),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    EndAmountThreshold = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_InvestmentContributions", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_InvestmentContributions_accounts_EndConditionAccountId",
+                        column: x => x.EndConditionAccountId,
+                        principalTable: "accounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_InvestmentContributions_accounts_SourceAccountId",
+                        column: x => x.SourceAccountId,
+                        principalTable: "accounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_InvestmentContributions_accounts_TargetAccountId",
                         column: x => x.TargetAccountId,
                         principalTable: "accounts",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_InvestmentContributions_users_UserId",
                         column: x => x.UserId,
@@ -894,12 +925,19 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                     EmployerName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     Notes = table.Column<string>(type: "text", nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    TargetAccountId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_income_sources", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_income_sources_accounts_TargetAccountId",
+                        column: x => x.TargetAccountId,
+                        principalTable: "accounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_income_sources_tax_profiles_TaxProfileId",
                         column: x => x.TaxProfileId,
@@ -1048,6 +1086,11 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 filter: "\"IsActive\" = TRUE");
 
             migrationBuilder.CreateIndex(
+                name: "IX_expense_definitions_EndConditionAccountId",
+                table: "expense_definitions",
+                column: "EndConditionAccountId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_expense_definitions_LinkedAccountId",
                 table: "expense_definitions",
                 column: "LinkedAccountId");
@@ -1082,9 +1125,24 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 filter: "\"IsActive\" = TRUE");
 
             migrationBuilder.CreateIndex(
+                name: "IX_income_sources_TargetAccountId",
+                table: "income_sources",
+                column: "TargetAccountId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_income_sources_TaxProfileId",
                 table: "income_sources",
                 column: "TaxProfileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvestmentContributions_EndConditionAccountId",
+                table: "InvestmentContributions",
+                column: "EndConditionAccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvestmentContributions_SourceAccountId",
+                table: "InvestmentContributions",
+                column: "SourceAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_InvestmentContributions_TargetAccountId",

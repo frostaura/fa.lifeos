@@ -3,20 +3,17 @@ using System;
 using LifeOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LifeOS.Infrastructure.Persistence.Migrations
+namespace LifeOS.Infrastructure.Migrations
 {
     [DbContext(typeof(LifeOSDbContext))]
-    [Migration("20251201172759_InitialCreate")]
-    partial class InitialCreate
+    partial class LifeOSDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -491,6 +488,23 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(3)")
                         .HasDefaultValue("ZAR");
 
+                    b.Property<decimal?>("EndAmountThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid?>("EndConditionAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EndConditionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("None");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -519,6 +533,9 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -526,6 +543,8 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EndConditionAccountId");
 
                     b.HasIndex("LinkedAccountId");
 
@@ -729,6 +748,9 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid?>("TargetAccountId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("TaxProfileId")
                         .HasColumnType("uuid");
 
@@ -739,6 +761,8 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TargetAccountId");
 
                     b.HasIndex("TaxProfileId");
 
@@ -753,36 +777,73 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal?>("AnnualIncreaseRate")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
 
                     b.Property<string>("Category")
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("ZAR");
 
-                    b.Property<int>("Frequency")
-                        .HasColumnType("integer");
+                    b.Property<decimal?>("EndAmountThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid?>("EndConditionAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EndConditionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("None");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("SourceAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
 
                     b.Property<Guid?>("TargetAccountId")
                         .HasColumnType("uuid");
@@ -795,11 +856,15 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EndConditionAccountId");
+
+                    b.HasIndex("SourceAccountId");
+
                     b.HasIndex("TargetAccountId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("InvestmentContributions");
+                    b.ToTable("InvestmentContributions", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.LifeTask", b =>
@@ -1097,6 +1162,9 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
                     b.Property<string[]>("Tags")
                         .HasColumnType("text[]");
+
+                    b.Property<int>("TargetDirection")
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("TargetValue")
                         .HasPrecision(18, 4)
@@ -2191,6 +2259,11 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("LifeOS.Domain.Entities.ExpenseDefinition", b =>
                 {
+                    b.HasOne("LifeOS.Domain.Entities.Account", "EndConditionAccount")
+                        .WithMany()
+                        .HasForeignKey("EndConditionAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LifeOS.Domain.Entities.Account", "LinkedAccount")
                         .WithMany("ExpenseDefinitions")
                         .HasForeignKey("LinkedAccountId")
@@ -2201,6 +2274,8 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("EndConditionAccount");
 
                     b.Navigation("LinkedAccount");
 
@@ -2220,6 +2295,11 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("LifeOS.Domain.Entities.IncomeSource", b =>
                 {
+                    b.HasOne("LifeOS.Domain.Entities.Account", "TargetAccount")
+                        .WithMany()
+                        .HasForeignKey("TargetAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LifeOS.Domain.Entities.TaxProfile", "TaxProfile")
                         .WithMany("IncomeSources")
                         .HasForeignKey("TaxProfileId")
@@ -2231,6 +2311,8 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("TargetAccount");
+
                     b.Navigation("TaxProfile");
 
                     b.Navigation("User");
@@ -2238,15 +2320,30 @@ namespace LifeOS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("LifeOS.Domain.Entities.InvestmentContribution", b =>
                 {
+                    b.HasOne("LifeOS.Domain.Entities.Account", "EndConditionAccount")
+                        .WithMany()
+                        .HasForeignKey("EndConditionAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LifeOS.Domain.Entities.Account", "SourceAccount")
+                        .WithMany()
+                        .HasForeignKey("SourceAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LifeOS.Domain.Entities.Account", "TargetAccount")
                         .WithMany()
-                        .HasForeignKey("TargetAccountId");
+                        .HasForeignKey("TargetAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("LifeOS.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("EndConditionAccount");
+
+                    b.Navigation("SourceAccount");
 
                     b.Navigation("TargetAccount");
 

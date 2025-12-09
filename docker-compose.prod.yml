@@ -19,21 +19,20 @@ services:
       start_period: 10s
 
   backend:
-    build:
-      context: ./src/backend
-      dockerfile: Dockerfile
+    image: frostaura/lifeos-backend:latest
     container_name: lifeos-backend
-    ports:
-      - "5001:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=fa_lifeos;Username=lifeos;Password=lifeos_general_password
-      - Jwt__SecretKey=LifeOS-Development-Secret-Key-Must-Be-At-Least-32-Characters-Long!
+      - Jwt__SecretKey=LifeOS-Development-Secret-Key-Must-Be-At-Least-32-Characters-Long!Password1234$
       - Jwt__Issuer=lifeos-api
       - Jwt__Audience=lifeos-client
-      - Cors__AllowedOrigins__0=http://localhost:5173
+      - Cors__AllowedOrigins__0=https://localhost:5173
       - Cors__AllowedOrigins__1=http://localhost:3000
+      - Cors__AllowedOrigins__2=https://lifeos.frostaura.net
+      - Fido2__ServerDomain=lifeos.frostaura.net
+      - Fido2__Origin=https://lifeos.frostaura.net
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,17 +44,16 @@ services:
       start_period: 30s
 
   frontend:
-    build:
-      context: ./src/frontend
-      dockerfile: Dockerfile
+    image: frostaura/lifeos-frontend:latest
     container_name: lifeos-frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./src/frontend/src:/app/src
     depends_on:
       backend:
         condition: service_healthy
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel run --token eyJhIjoiNzE2NjBmZWQ5MmY3NWMzNDhkOGNhY2JkMTBlNTViMmMiLCJ0IjoiMzdmY2U4MWEtZWEzMy00NTU3LTg2YzYtYTAyNGE0MmNjM2VhIiwicyI6Ik1XSTJZbUpoTTJNdE1HUmlNQzAwTmpBMExXSXdNR1V0WlRObFltSmxZbVJqTlRNeiJ9
+
 volumes:
-  fa_lifeos_data:
+  falifeosdata:

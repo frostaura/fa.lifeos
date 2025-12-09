@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LifeOS.Infrastructure.Persistence.Migrations
+namespace LifeOS.Infrastructure.Migrations
 {
     [DbContext(typeof(LifeOSDbContext))]
-    [Migration("20251204185221_AddInvestmentContributionStartDate")]
-    partial class AddInvestmentContributionStartDate
+    [Migration("20251209202423_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
