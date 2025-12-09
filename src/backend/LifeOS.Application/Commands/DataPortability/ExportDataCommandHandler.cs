@@ -39,7 +39,10 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 Username = user.Username,
                 HomeCurrency = user.HomeCurrency,
                 DateOfBirth = user.DateOfBirth,
-                LifeExpectancyBaseline = (int)user.LifeExpectancyBaseline
+                LifeExpectancyBaseline = (int)user.LifeExpectancyBaseline,
+                InflationRateAnnual = ParseDefaultAssumptionDecimal(user.DefaultAssumptions, "inflationRateAnnual"),
+                DefaultGrowthRate = ParseDefaultAssumptionDecimal(user.DefaultAssumptions, "defaultGrowthRate"),
+                RetirementAge = ParseDefaultAssumptionInt(user.DefaultAssumptions, "retirementAge")
             },
             Dimensions = await ExportDimensionsAsync(request.UserId, cancellationToken),
             MetricDefinitions = await ExportMetricDefinitionsAsync(request.UserId, cancellationToken),
@@ -99,7 +102,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             NetWorthSnapshots = exportData.NetWorthSnapshots.Count
         };
 
-        var totalEntities = entityCounts.Dimensions + entityCounts.MetricDefinitions + 
+        var totalEntities = entityCounts.Dimensions + entityCounts.MetricDefinitions +
             entityCounts.ScoreDefinitions + entityCounts.TaxProfiles + entityCounts.LongevityModels +
             entityCounts.Accounts + entityCounts.Milestones + entityCounts.Tasks + entityCounts.Streaks +
             entityCounts.MetricRecords + entityCounts.ScoreRecords + entityCounts.IncomeSources +
@@ -253,6 +256,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 InitialBalance = a.InitialBalance,
                 CurrentBalance = a.CurrentBalance,
                 BalanceUpdatedAt = a.BalanceUpdatedAt,
+                Institution = a.Institution,
                 IsLiability = a.IsLiability,
                 InterestRateAnnual = a.InterestRateAnnual,
                 InterestCompounding = a.InterestCompounding.ToString(),
@@ -715,5 +719,43 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
                 AccountCount = n.AccountCount
             })
             .ToListAsync(ct);
+    }
+
+    private static decimal? ParseDefaultAssumptionDecimal(string json, string key)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+
+            var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(key, out var element))
+            {
+                return element.GetDecimal();
+            }
+        }
+        catch
+        {
+            // Parsing failed, return null
+        }
+        return null;
+    }
+
+    private static int? ParseDefaultAssumptionInt(string json, string key)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+
+            var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(key, out var element))
+            {
+                return element.GetInt32();
+            }
+        }
+        catch
+        {
+            // Parsing failed, return null
+        }
+        return null;
     }
 }

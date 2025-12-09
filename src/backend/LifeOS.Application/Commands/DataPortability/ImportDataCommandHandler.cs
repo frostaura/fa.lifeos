@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using LifeOS.Application.Common.Interfaces;
 using LifeOS.Application.DTOs.DataPortability;
 using LifeOS.Domain.Entities;
@@ -42,6 +43,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
         try
         {
+            // Import profile data first
+            if (!request.DryRun)
+            {
+                await ImportProfileAsync(request.UserId, data.Profile, cancellationToken);
+            }
+
             if (isReplaceMode && !request.DryRun)
             {
                 await DeleteAllUserDataAsync(request.UserId, cancellationToken);
@@ -629,6 +636,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     existing.InitialBalance = item.InitialBalance;
                     existing.CurrentBalance = item.CurrentBalance;
                     existing.BalanceUpdatedAt = item.BalanceUpdatedAt;
+                    existing.Institution = item.Institution;
                     existing.IsLiability = item.IsLiability;
                     existing.InterestRateAnnual = item.InterestRateAnnual;
                     existing.InterestCompounding = Enum.TryParse<CompoundingFrequency>(item.InterestCompounding, true, out var cf) ? cf : CompoundingFrequency.Monthly;
@@ -651,6 +659,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         InitialBalance = item.InitialBalance,
                         CurrentBalance = item.CurrentBalance,
                         BalanceUpdatedAt = item.BalanceUpdatedAt,
+                        Institution = item.Institution,
                         IsLiability = item.IsLiability,
                         InterestRateAnnual = item.InterestRateAnnual,
                         InterestCompounding = Enum.TryParse<CompoundingFrequency>(item.InterestCompounding, true, out var cf) ? cf : CompoundingFrequency.Monthly,
@@ -1662,5 +1671,38 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
         }
 
         return new ImportEntityResultDto { Imported = imported, Skipped = skipped, Errors = 0 };
+    }
+
+    private async Task ImportProfileAsync(Guid userId, ProfileExportDto? profile, CancellationToken ct)
+    {
+        if (profile == null)
+        {
+            _logger.LogInformation("No profile data to import for user {UserId}", userId);
+            return;
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user == null)
+        {
+            _logger.LogWarning("User {UserId} not found during profile import", userId);
+            return;
+        }
+
+        // Update basic properties
+        user.HomeCurrency = profile.HomeCurrency;
+        user.DateOfBirth = profile.DateOfBirth;
+        user.LifeExpectancyBaseline = profile.LifeExpectancyBaseline;
+
+        // Reconstruct DefaultAssumptions JSON
+        var assumptions = new
+        {
+            inflationRateAnnual = profile.InflationRateAnnual ?? 0.05m,
+            defaultGrowthRate = profile.DefaultGrowthRate ?? 0.07m,
+            retirementAge = profile.RetirementAge ?? 65
+        };
+        user.DefaultAssumptions = JsonSerializer.Serialize(assumptions);
+
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("Updated profile for user {UserId}", userId);
     }
 }

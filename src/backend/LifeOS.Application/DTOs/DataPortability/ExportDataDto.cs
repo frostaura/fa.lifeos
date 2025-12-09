@@ -128,6 +128,7 @@ public record AccountExportDto
     public decimal InitialBalance { get; init; }
     public decimal CurrentBalance { get; init; }
     public DateTime BalanceUpdatedAt { get; init; }
+    public string? Institution { get; init; }
     public bool IsLiability { get; init; }
     public decimal? InterestRateAnnual { get; init; }
     public string? InterestCompounding { get; init; }
