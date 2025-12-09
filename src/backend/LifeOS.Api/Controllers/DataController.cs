@@ -87,6 +87,8 @@ public class DataController : ControllerBase
 
         _logger.LogInformation("User {UserId} requested data import in {Mode} mode (DryRun: {DryRun})", 
             userId, mode, request.DryRun);
+        
+        _logger.LogInformation("Import data dimensions count: {Count}", request.Data?.Data?.Dimensions?.Count ?? -1);
 
         try
         {

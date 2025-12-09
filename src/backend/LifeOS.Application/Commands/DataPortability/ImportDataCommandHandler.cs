@@ -48,8 +48,24 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             }
 
             // Import in FK-safe order
+            _logger.LogInformation("Importing {Count} dimensions", data.Dimensions?.Count ?? 0);
             results["dimensions"] = await ImportDimensionsAsync(data.Dimensions, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["dimensions"], ref totalImported, ref totalSkipped, ref totalErrors);
+            
+            // Save dimensions first (they have no dependencies)
+            if (!request.DryRun)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Successfully saved dimensions");
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogError(ex, "Failed to save dimensions: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    throw new InvalidOperationException($"Import failed while saving dimensions: {ex.InnerException?.Message ?? ex.Message}", ex);
+                }
+            }
 
             results["metricDefinitions"] = await ImportMetricDefinitionsAsync(data.MetricDefinitions, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["metricDefinitions"], ref totalImported, ref totalSkipped, ref totalErrors);
@@ -66,16 +82,18 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             results["accounts"] = await ImportAccountsAsync(request.UserId, data.Accounts, isReplaceMode, request.DryRun, cancellationToken);
             UpdateCounts(results["accounts"], ref totalImported, ref totalSkipped, ref totalErrors);
             
-            // Save base entities (dimensions, accounts, etc.) before importing dependent entities
+            // Save remaining base entities (accounts, tax profiles, etc.)
             if (!request.DryRun)
             {
                 try
                 {
                     await _context.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Successfully saved base entities");
                 }
                 catch (DbUpdateException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to save base entities: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    _logger.LogError(ex, "Failed to save base entities: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    throw new InvalidOperationException($"Import failed while saving base entities: {ex.InnerException?.Message ?? ex.Message}", ex);
                 }
             }
 
@@ -136,10 +154,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 try
                 {
                     await _context.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Successfully saved achievements");
                 }
                 catch (DbUpdateException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to save achievements: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    _logger.LogError(ex, "Failed to save achievements: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    throw new InvalidOperationException($"Import failed while saving achievements: {ex.InnerException?.Message ?? ex.Message}", ex);
                 }
             }
 
@@ -157,11 +177,12 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 try
                 {
                     await _context.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Successfully saved all imported entities");
                 }
                 catch (DbUpdateException ex)
                 {
-                    _logger.LogWarning(ex, "Some entities could not be saved due to foreign key constraints. Import completed with warnings.");
-                    totalErrors++;
+                    _logger.LogError(ex, "Failed to save imported entities: {Message}", ex.InnerException?.Message ?? ex.Message);
+                    throw new InvalidOperationException($"Import failed while saving entities: {ex.InnerException?.Message ?? ex.Message}", ex);
                 }
             }
 
@@ -282,6 +303,13 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
     private async Task<ImportEntityResultDto> ImportDimensionsAsync(List<DimensionExportDto> items, bool isReplace, bool dryRun, CancellationToken ct)
     {
+        if (items == null || items.Count == 0)
+        {
+            _logger.LogWarning("ImportDimensionsAsync received null or empty items list");
+            return new ImportEntityResultDto { Imported = 0, Skipped = 0, Errors = 0 };
+        }
+
+        _logger.LogInformation("ImportDimensionsAsync processing {Count} items", items.Count);
         var imported = 0;
         var skipped = 0;
 
@@ -293,15 +321,23 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 if (!isReplace) { skipped++; continue; }
                 
-                // Update existing entity in replace mode
+                // In replace mode with global entities, we need to preserve the import ID
+                // Delete existing and recreate with correct ID
                 if (!dryRun)
                 {
-                    existing.Name = item.Name;
-                    existing.Description = item.Description;
-                    existing.Icon = item.Icon;
-                    existing.DefaultWeight = item.DefaultWeight;
-                    existing.SortOrder = item.SortOrder;
-                    existing.IsActive = item.IsActive;
+                    _context.Dimensions.Remove(existing);
+                    var entity = new Dimension
+                    {
+                        Id = item.Id,
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Icon = item.Icon,
+                        DefaultWeight = item.DefaultWeight,
+                        SortOrder = item.SortOrder,
+                        IsActive = item.IsActive
+                    };
+                    _context.Dimensions.Add(entity);
                 }
             }
             else
@@ -311,6 +347,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new Dimension
                     {
+                        Id = item.Id,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
@@ -341,23 +378,32 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 if (!isReplace) { skipped++; continue; }
                 
+                // In replace mode with global entities, we need to preserve the import ID
+                // Delete existing and recreate with correct ID
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
-                    existing.Name = item.Name;
-                    existing.Description = item.Description;
-                    existing.Unit = item.Unit;
-                    existing.ValueType = Enum.TryParse<MetricValueType>(item.ValueType, true, out var vt) ? vt : MetricValueType.Number;
-                    existing.AggregationType = Enum.TryParse<AggregationType>(item.AggregationType, true, out var at) ? at : AggregationType.Last;
-                    existing.MinValue = item.MinValue;
-                    existing.MaxValue = item.MaxValue;
-                    existing.TargetValue = item.TargetValue;
-                    existing.Icon = item.Icon;
-                    existing.Tags = item.Tags;
-                    existing.EnumValues = item.EnumValues;
-                    existing.IsDerived = item.IsDerived;
-                    existing.DerivationFormula = item.DerivedFormula;
-                    existing.IsActive = item.IsActive;
+                    _context.MetricDefinitions.Remove(existing);
+                    var entity = new MetricDefinition
+                    {
+                        Id = item.Id,
+                        DimensionId = item.DimensionId,
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Unit = item.Unit,
+                        ValueType = Enum.TryParse<MetricValueType>(item.ValueType, true, out var vt) ? vt : MetricValueType.Number,
+                        AggregationType = Enum.TryParse<AggregationType>(item.AggregationType, true, out var at) ? at : AggregationType.Last,
+                        MinValue = item.MinValue,
+                        MaxValue = item.MaxValue,
+                        TargetValue = item.TargetValue,
+                        Icon = item.Icon,
+                        Tags = item.Tags,
+                        EnumValues = item.EnumValues,
+                        IsDerived = item.IsDerived,
+                        DerivationFormula = item.DerivedFormula,
+                        IsActive = item.IsActive
+                    };
+                    _context.MetricDefinitions.Add(entity);
                 }
             }
             else
@@ -366,6 +412,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new MetricDefinition
                     {
+                        Id = item.Id,
                         DimensionId = item.DimensionId,
                         Code = item.Code,
                         Name = item.Name,
@@ -405,15 +452,24 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 if (!isReplace) { skipped++; continue; }
                 
+                // In replace mode with global entities, we need to preserve the import ID
+                // Delete existing and recreate with correct ID
                 if (!dryRun)
                 {
-                    existing.DimensionId = item.DimensionId;
-                    existing.Name = item.Name;
-                    existing.Description = item.Description;
-                    existing.Formula = item.Formula ?? string.Empty;
-                    existing.MinScore = item.MinScore;
-                    existing.MaxScore = item.MaxScore;
-                    existing.IsActive = item.IsActive;
+                    _context.ScoreDefinitions.Remove(existing);
+                    var entity = new ScoreDefinition
+                    {
+                        Id = item.Id,
+                        DimensionId = item.DimensionId,
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Formula = item.Formula ?? string.Empty,
+                        MinScore = item.MinScore,
+                        MaxScore = item.MaxScore,
+                        IsActive = item.IsActive
+                    };
+                    _context.ScoreDefinitions.Add(entity);
                 }
             }
             else
@@ -422,6 +478,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new ScoreDefinition
                     {
+                        Id = item.Id,
                         DimensionId = item.DimensionId,
                         Code = item.Code,
                         Name = item.Name,
@@ -472,6 +529,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new TaxProfile
                     {
+                        Id = item.Id,
                         UserId = userId,
                         Name = item.Name,
                         TaxYear = item.TaxYear,
@@ -506,15 +564,24 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 if (!isReplace) { skipped++; continue; }
                 
+                // In replace mode with global entities, we need to preserve the import ID
+                // Delete existing and recreate with correct ID
                 if (!dryRun)
                 {
-                    existing.Name = item.Name;
-                    existing.Description = item.Description;
-                    existing.InputMetrics = item.InputMetrics ?? Array.Empty<string>();
-                    existing.ModelType = item.ModelType;
-                    existing.Parameters = item.Parameters ?? "{}";
-                    existing.OutputUnit = item.OutputUnit;
-                    existing.IsActive = item.IsActive;
+                    _context.LongevityModels.Remove(existing);
+                    var entity = new LongevityModel
+                    {
+                        Id = item.Id,
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        InputMetrics = item.InputMetrics ?? Array.Empty<string>(),
+                        ModelType = item.ModelType,
+                        Parameters = item.Parameters ?? "{}",
+                        OutputUnit = item.OutputUnit,
+                        IsActive = item.IsActive
+                    };
+                    _context.LongevityModels.Add(entity);
                 }
             }
             else
@@ -523,6 +590,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new LongevityModel
                     {
+                        Id = item.Id,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
@@ -575,6 +643,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new Account
                     {
+                        Id = item.Id,
                         UserId = userId,
                         Name = item.Name,
                         AccountType = Enum.TryParse<AccountType>(item.AccountType, true, out var atype) ? atype : AccountType.Bank,
@@ -629,6 +698,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new Milestone
                     {
+                        Id = item.Id,
                         UserId = userId,
                         DimensionId = item.DimensionId,
                         Title = item.Title,
@@ -687,6 +757,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new LifeTask
                     {
+                        Id = item.Id,
                         UserId = userId,
                         DimensionId = item.DimensionId,
                         MilestoneId = item.MilestoneId,
@@ -725,6 +796,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 var entity = new Streak
                 {
+                    Id = item.Id,
                     UserId = userId,
                     TaskId = item.TaskId,
                     MetricCode = item.MetricCode,
@@ -755,6 +827,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 var entity = new MetricRecord
                 {
+                    Id = item.Id,
                     UserId = userId,
                     MetricCode = item.MetricCode,
                     ValueNumber = item.ValueNumber,
@@ -801,6 +874,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new ScoreRecord
                     {
+                        Id = item.Id,
                         UserId = userId,
                         ScoreCode = item.ScoreCode,
                         ScoreValue = item.ScoreValue,
@@ -861,6 +935,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new IncomeSource
                     {
+                        Id = item.Id,
                         UserId = userId,
                         TaxProfileId = taxProfileId,
                         Name = item.Name,
@@ -929,6 +1004,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new ExpenseDefinition
                     {
+                        Id = item.Id,
                         UserId = userId,
                         LinkedAccountId = linkedAccountId,
                         Name = item.Name,
@@ -1001,6 +1077,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new InvestmentContribution
                     {
+                        Id = item.Id,
                         UserId = userId,
                         TargetAccountId = targetAccountId,
                         SourceAccountId = sourceAccountId,
@@ -1059,6 +1136,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new FinancialGoal
                     {
+                        Id = item.Id,
                         UserId = userId,
                         Name = item.Name,
                         TargetAmount = item.TargetAmount,
@@ -1106,6 +1184,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new FxRate
                     {
+                        Id = item.Id,
                         BaseCurrency = item.BaseCurrency,
                         QuoteCurrency = item.QuoteCurrency,
                         Rate = item.Rate,
@@ -1132,6 +1211,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 var entity = new Transaction
                 {
+                    Id = item.Id,
                     UserId = userId,
                     SourceAccountId = item.SourceAccountId,
                     TargetAccountId = item.TargetAccountId,
@@ -1187,6 +1267,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new SimulationScenario
                     {
+                        Id = item.Id,
                         UserId = userId,
                         Name = item.Name,
                         Description = item.Description,
@@ -1229,6 +1310,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new SimulationEvent
                 {
+                    Id = item.Id,
                     ScenarioId = item.ScenarioId,
                     Name = item.Name,
                     Description = item.Description,
@@ -1279,6 +1361,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new AccountProjection
                 {
+                    Id = item.Id,
                     ScenarioId = item.ScenarioId,
                     AccountId = item.AccountId,
                     PeriodDate = item.PeriodDate,
@@ -1321,6 +1404,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
 
                 var entity = new NetWorthProjection
                 {
+                    Id = item.Id,
                     ScenarioId = item.ScenarioId,
                     PeriodDate = item.PeriodDate,
                     TotalAssets = item.TotalAssets,
@@ -1352,6 +1436,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 var entity = new LongevitySnapshot
                 {
+                    Id = item.Id,
                     UserId = userId,
                     CalculatedAt = item.CalculatedAt,
                     BaselineLifeExpectancy = item.BaselineLifeExpectancy,
@@ -1382,17 +1467,26 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 if (!isReplace) { skipped++; continue; }
                 
+                // In replace mode with global entities, we need to preserve the import ID
+                // Delete existing and recreate with correct ID
                 if (!dryRun)
                 {
-                    existing.Name = item.Name;
-                    existing.Description = item.Description;
-                    existing.Icon = item.Icon;
-                    existing.XpValue = item.XpValue;
-                    existing.Category = item.Category;
-                    existing.Tier = item.Tier;
-                    existing.UnlockCondition = item.UnlockCondition;
-                    existing.IsActive = item.IsActive;
-                    existing.SortOrder = item.SortOrder;
+                    _context.Achievements.Remove(existing);
+                    var entity = new Achievement
+                    {
+                        Id = item.Id,
+                        Code = item.Code,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Icon = item.Icon,
+                        XpValue = item.XpValue,
+                        Category = item.Category,
+                        Tier = item.Tier,
+                        UnlockCondition = item.UnlockCondition,
+                        IsActive = item.IsActive,
+                        SortOrder = item.SortOrder
+                    };
+                    _context.Achievements.Add(entity);
                 }
             }
             else
@@ -1401,6 +1495,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new Achievement
                     {
+                        Id = item.Id,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
@@ -1456,6 +1551,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new UserAchievement
                     {
+                        Id = item.Id,
                         UserId = userId,
                         AchievementId = achievement.Id,
                         UnlockedAt = item.UnlockedAt,
@@ -1502,6 +1598,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             {
                 var entity = new UserXP
                 {
+                    Id = item.Id,
                     UserId = userId,
                     TotalXp = item.TotalXp,
                     Level = item.Level,
@@ -1547,6 +1644,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     var entity = new NetWorthSnapshot
                     {
+                        Id = item.Id,
                         UserId = userId,
                         SnapshotDate = item.SnapshotDate,
                         TotalAssets = item.TotalAssets,
