@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: lifeos_general_password
       POSTGRES_DB: fa_lifeos
     volumes:
-      - falifeosdata:/var/lib/postgresql/data
+      - fa_lifeos_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "PGPASSWORD=lifeos_general_password psql -U lifeos -d fa_lifeos -c 'SELECT 1' || exit 1" ]
       interval: 5s
