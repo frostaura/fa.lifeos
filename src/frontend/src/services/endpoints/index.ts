@@ -118,3 +118,24 @@ export type {
   LongevityModel,
   UpdateLongevityModelRequest,
 } from './longevity';
+// Tasks
+export {
+  tasksApi,
+  useGetTasksQuery,
+  useGetTaskQuery,
+  useCreateTaskMutation,
+  useUpdateTaskMutation,
+  useDeleteTaskMutation,
+  useCompleteTaskMutation as useCompleteTaskDetailMutation,
+} from './tasks';
+export type {
+  LifeTaskAttributes,
+  LifeTaskItem,
+  TaskListResponse,
+  TaskDetailResponse,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  CompleteTaskRequest,
+  CompleteTaskResponse,
+  GetTasksParams,
+} from './tasks';

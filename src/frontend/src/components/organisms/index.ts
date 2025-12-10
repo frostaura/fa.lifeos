@@ -13,3 +13,8 @@ export { LoanPayoffCalculator } from './LoanPayoffCalculator';
 export { SimulationWizard } from './SimulationWizard';
 export { WealthHealthWidget } from './WealthHealthWidget';
 export { AchievementsWidget } from './AchievementsWidget';
+export { TaskRow } from './TaskRow';
+export { TasksSection } from './TasksSection';
+export { AddEditTaskModal } from './AddEditTaskModal';
+export { DimensionInfoSection } from './DimensionInfoSection';
+export { LinkedMetricsSection } from './LinkedMetricsSection';

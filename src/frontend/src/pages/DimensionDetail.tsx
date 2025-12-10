@@ -9,15 +9,16 @@ import {
   Target,
   CheckCircle2,
   Clock,
-  ListTodo,
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useGetDimensionQuery, useGetMilestonesQuery, useDeleteMilestoneMutation } from '@/services';
+import { useGetDimensionQuery, useGetMilestonesQuery, useDeleteMilestoneMutation, useGetMetricDefinitionsQuery } from '@/services';
 import { getDimensionIcon, getDimensionColor } from '@utils/dimensionIcons';
 import { confirmToast } from '@utils/confirmToast';
-import type { TaskReference } from '@/types';
 import { AddMilestoneModal } from './placeholders/AddMilestoneModal';
+import { DimensionInfoSection } from '@components/organisms/DimensionInfoSection';
+import { LinkedMetricsSection } from '@components/organisms/LinkedMetricsSection';
+import { TasksSection } from '@components/organisms/TasksSection';
 
 export function DimensionDetail() {
   const { dimensionId } = useParams<{ dimensionId: string }>();
@@ -28,6 +29,7 @@ export function DimensionDetail() {
     dimensionId ? { dimensionId } : undefined,
     { skip: !dimensionId }
   );
+  const { data: metricsData } = useGetMetricDefinitionsQuery();
   const [deleteMilestone, { isLoading: isDeleting }] = useDeleteMilestoneMutation();
 
   const handleDeleteMilestone = async (milestoneId: string) => {
@@ -69,13 +71,15 @@ export function DimensionDetail() {
   }
 
   const dimension = data.data;
-  const { attributes, relationships } = dimension;
+  const { attributes } = dimension;
   const Icon = getDimensionIcon(attributes.code);
   const color = getDimensionColor(attributes.code);
   
-  // Use milestones from RTK Query if available, otherwise fall back to relationships
+  // Use milestones from RTK Query
   const milestones = milestonesData?.data || [];
-  const activeTasks: TaskReference[] = relationships?.activeTasks || [];
+  
+  // Get linked metrics count for this dimension
+  const linkedMetricsCount = metricsData?.filter(m => m.dimensionId === dimensionId).length || 0;
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -101,6 +105,20 @@ export function DimensionDetail() {
       default:
         return <Target className="w-4 h-4 text-gray-500" />;
     }
+  };
+
+  // Calculate milestone progress if it has a linked metric
+  const getMilestoneProgress = (milestone: typeof milestones[0]) => {
+    if (!milestone.attributes.targetMetricCode || !milestone.attributes.targetMetricValue) {
+      return null;
+    }
+    const metric = metricsData?.find(m => m.code === milestone.attributes.targetMetricCode);
+    if (!metric || metric.latestValue === undefined || metric.latestValue === null) {
+      return { progress: 0, currentValue: null, metric };
+    }
+    
+    const progress = Math.min(100, (metric.latestValue / milestone.attributes.targetMetricValue) * 100);
+    return { progress, currentValue: metric.latestValue, metric };
   };
 
   return (
@@ -132,6 +150,9 @@ export function DimensionDetail() {
           </div>
         </div>
       </div>
+
+      {/* Dimension Info Section (Collapsible) */}
+      <DimensionInfoSection dimensionCode={attributes.code} />
 
       {/* Dimension Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -170,16 +191,21 @@ export function DimensionDetail() {
           <p className="text-text-tertiary text-sm mb-1">Active Items</p>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-text-primary">
-              {milestones.length + activeTasks.length}
+              {milestones.filter(m => m.attributes.status === 'active').length + linkedMetricsCount}
             </span>
           </div>
           <p className="text-text-tertiary text-sm mt-2">
-            {milestones.length} milestones, {activeTasks.length} tasks
+            {milestones.filter(m => m.attributes.status === 'active').length} milestones, {linkedMetricsCount} metrics
           </p>
         </GlassCard>
       </div>
 
-      {/* Milestones Section */}
+      {/* Linked Metrics Section */}
+      {dimensionId && (
+        <LinkedMetricsSection dimensionId={dimensionId} dimensionColor={color} />
+      )}
+
+      {/* Milestones Section with Metric Progress */}
       <GlassCard variant="elevated" className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -200,71 +226,77 @@ export function DimensionDetail() {
           <p className="text-text-tertiary">No milestones for this dimension</p>
         ) : (
           <div className="space-y-3">
-            {milestones.map((milestone) => (
-              <div
-                key={milestone.id}
-                className="flex items-center justify-between p-3 bg-glass-light rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(milestone.attributes.status)}
-                  <div>
-                    <span className="text-text-primary">{milestone.attributes.title}</span>
-                    {milestone.attributes.targetDate && (
-                      <p className="text-xs text-text-tertiary mt-0.5">
-                        Target: {new Date(milestone.attributes.targetDate).toLocaleDateString()}
-                      </p>
-                    )}
+            {milestones.map((milestone) => {
+              const progressData = getMilestoneProgress(milestone);
+              
+              return (
+                <div
+                  key={milestone.id}
+                  className="p-3 bg-glass-light rounded-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      {getStatusIcon(milestone.attributes.status)}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-text-primary">{milestone.attributes.title}</span>
+                        {milestone.attributes.targetDate && (
+                          <p className="text-xs text-text-tertiary mt-0.5">
+                            Target: {new Date(milestone.attributes.targetDate).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-sm capitalize ${getStatusColor(milestone.attributes.status)}`}
+                      >
+                        {milestone.attributes.status.replace('_', ' ')}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteMilestone(milestone.id)}
+                        disabled={isDeleting}
+                        className="p-1.5 rounded-lg hover:bg-red-500/20 transition-colors text-text-tertiary hover:text-red-500"
+                        title="Delete milestone"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+                  
+                  {/* Metric Progress for linked milestones */}
+                  {progressData && progressData.metric && (
+                    <div className="mt-3 ml-7 p-2 bg-glass-medium rounded-lg">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-text-secondary">
+                          Linked: {progressData.metric.name}
+                          {progressData.currentValue !== null && (
+                            <> ({progressData.currentValue} / {milestone.attributes.targetMetricValue} {progressData.metric.unit})</>
+                          )}
+                        </span>
+                        <span className="text-text-tertiary">{Math.round(progressData.progress)}%</span>
+                      </div>
+                      <div className="h-1.5 bg-glass-light rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${progressData.progress}%`,
+                            backgroundColor: progressData.progress >= 100 ? '#22c55e' : color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-sm capitalize ${getStatusColor(milestone.attributes.status)}`}
-                  >
-                    {milestone.attributes.status.replace('_', ' ')}
-                  </span>
-                  <button
-                    onClick={() => handleDeleteMilestone(milestone.id)}
-                    disabled={isDeleting}
-                    className="p-1.5 rounded-lg hover:bg-red-500/20 transition-colors text-text-tertiary hover:text-red-500"
-                    title="Delete milestone"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </GlassCard>
 
-      {/* Tasks Section */}
-      <GlassCard variant="elevated" className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <ListTodo className="w-5 h-5" style={{ color }} />
-          <h2 className="text-xl font-semibold text-text-primary">Active Tasks</h2>
-        </div>
-
-        {activeTasks.length === 0 ? (
-          <p className="text-text-tertiary">No active tasks for this dimension</p>
-        ) : (
-          <div className="space-y-3">
-            {activeTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between p-3 bg-glass-light rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <ListTodo className="w-4 h-4 text-text-tertiary" />
-                  <span className="text-text-primary">{task.title}</span>
-                </div>
-                <span className="text-sm text-text-secondary capitalize">
-                  {task.taskType.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </GlassCard>
+      {/* Tasks Section (Full CRUD) */}
+      {dimensionId && (
+        <TasksSection dimensionId={dimensionId} dimensionColor={color} />
+      )}
 
       {/* Add Milestone Modal */}
       {dimensionId && (

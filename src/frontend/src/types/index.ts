@@ -538,3 +538,45 @@ export interface UpdateDimensionWeightRequest {
   weight: number;
   autoRebalance?: boolean;
 }
+
+// Task Types for Dimensions feature
+export interface LifeTask {
+  id: string;
+  title: string;
+  description?: string;
+  taskType: 'habit' | 'one_off' | 'scheduled_event';
+  frequency: 'daily' | 'weekly' | 'monthly' | 'ad_hoc';
+  dimensionId?: string;
+  dimensionCode?: string;
+  milestoneId?: string;
+  linkedMetricCode?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  startDate: string;
+  endDate?: string;
+  isCompleted: boolean;
+  completedAt?: string;
+  isActive: boolean;
+  tags?: string[];
+  streakDays?: number;
+}
+
+// Linked Metrics Display for Dimensions
+export interface LinkedMetricDisplay {
+  code: string;
+  name: string;
+  currentValue: number | null;
+  targetValue: number | null;
+  targetDirection: 'AtOrAbove' | 'AtOrBelow';
+  unit: string;
+  progressPercent: number;
+}
+
+// Dimension Info for collapsible info section
+export interface DimensionInfo {
+  dimensionCode: string;
+  title: string;
+  description: string;
+  keyAreas: string[];
+  tips?: string[];
+}

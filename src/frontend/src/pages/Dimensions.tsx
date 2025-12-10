@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { GlassCard } from '@components/atoms/GlassCard';
-import { ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
-import { useGetDimensionsQuery } from '@/services';
+import { ChevronRight, AlertCircle, Loader2, Target, ListTodo } from 'lucide-react';
+import { useGetDimensionsQuery, useGetMilestonesQuery, useGetTasksQuery } from '@/services';
 import { getDimensionIcon, getDimensionColor } from '@utils/dimensionIcons';
 import type { DimensionItemResponse } from '@/types';
 
 export function Dimensions() {
   const { data, isLoading, error } = useGetDimensionsQuery();
+  const { data: milestonesData } = useGetMilestonesQuery();
+  const { data: tasksData } = useGetTasksQuery({ isActive: true, perPage: 200 });
 
   if (isLoading) {
     return (
@@ -26,6 +28,17 @@ export function Dimensions() {
   }
 
   const dimensions: DimensionItemResponse[] = data?.data || [];
+  const milestones = milestonesData?.data || [];
+  const tasks = tasksData?.data || [];
+
+  // Create counts per dimension
+  const getMilestoneCounts = (dimensionId: string) => {
+    return milestones.filter(m => m.attributes.dimensionId === dimensionId).length;
+  };
+
+  const getTaskCounts = (dimensionId: string) => {
+    return tasks.filter(t => t.attributes.dimensionId === dimensionId).length;
+  };
 
   return (
     <div className="space-y-4 overflow-x-hidden">
@@ -41,6 +54,8 @@ export function Dimensions() {
           const Icon = getDimensionIcon(dim.attributes.code);
           const color = getDimensionColor(dim.attributes.code);
           const score = dim.attributes.currentScore;
+          const milestoneCount = getMilestoneCounts(dim.id);
+          const taskCount = getTaskCounts(dim.id);
 
           return (
             <Link key={dim.id} to={`/dimensions/${dim.id}`}>
@@ -89,6 +104,18 @@ export function Dimensions() {
                       backgroundColor: color,
                     }}
                   />
+                </div>
+
+                {/* Task and Milestone counts */}
+                <div className="mt-3 pt-2 border-t border-glass-border flex items-center gap-3 text-xs text-text-tertiary">
+                  <div className="flex items-center gap-1">
+                    <ListTodo className="w-3 h-3" />
+                    <span>{taskCount} tasks</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Target className="w-3 h-3" />
+                    <span>{milestoneCount} milestones</span>
+                  </div>
                 </div>
               </GlassCard>
             </Link>
