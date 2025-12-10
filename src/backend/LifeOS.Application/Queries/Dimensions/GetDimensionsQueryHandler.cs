@@ -1,5 +1,6 @@
 using LifeOS.Application.Common.Interfaces;
 using LifeOS.Application.DTOs.Dimensions;
+using LifeOS.Application.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace LifeOS.Application.Queries.Dimensions;
 public class GetDimensionsQueryHandler : IRequestHandler<GetDimensionsQuery, DimensionListResponse>
 {
     private readonly ILifeOSDbContext _context;
+    private readonly IScoreCalculator _scoreCalculator;
 
-    public GetDimensionsQueryHandler(ILifeOSDbContext context)
+    public GetDimensionsQueryHandler(ILifeOSDbContext context, IScoreCalculator scoreCalculator)
     {
         _context = context;
+        _scoreCalculator = scoreCalculator;
     }
 
     public async Task<DimensionListResponse> Handle(GetDimensionsQuery request, CancellationToken cancellationToken)
@@ -24,9 +27,12 @@ public class GetDimensionsQueryHandler : IRequestHandler<GetDimensionsQuery, Dim
 
         var totalWeight = dimensions.Sum(d => d.DefaultWeight);
 
-        return new DimensionListResponse
+        // Calculate scores for all dimensions
+        var dimensionResponses = new List<DimensionItemResponse>();
+        foreach (var d in dimensions)
         {
-            Data = dimensions.Select(d => new DimensionItemResponse
+            var score = await _scoreCalculator.CalculateDimensionScoreAsync(request.UserId, d.Id, cancellationToken);
+            dimensionResponses.Add(new DimensionItemResponse
             {
                 Id = d.Id,
                 Type = "dimension",
@@ -40,9 +46,14 @@ public class GetDimensionsQueryHandler : IRequestHandler<GetDimensionsQuery, Dim
                     DefaultWeight = d.DefaultWeight,
                     SortOrder = d.SortOrder,
                     IsActive = d.IsActive,
-                    CurrentScore = 0 // Mock score for now
+                    CurrentScore = (int)Math.Round(score)
                 }
-            }).ToList(),
+            });
+        }
+
+        return new DimensionListResponse
+        {
+            Data = dimensionResponses,
             Meta = new DimensionListMeta
             {
                 TotalWeight = totalWeight

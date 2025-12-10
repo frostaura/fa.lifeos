@@ -318,7 +318,7 @@ export function FinancesOverview() {
         id,
         name: data.name,
         type: data.type as Account['type'],
-        balance: data.balance,
+        currentBalance: data.balance,
         currency: data.currency,
         institution: data.institution,
         isLiability: data.isLiability || false,

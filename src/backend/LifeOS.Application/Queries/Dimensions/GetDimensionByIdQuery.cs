@@ -3,4 +3,4 @@ using MediatR;
 
 namespace LifeOS.Application.Queries.Dimensions;
 
-public record GetDimensionByIdQuery(Guid Id) : IRequest<DimensionDetailResponse?>;
+public record GetDimensionByIdQuery(Guid UserId, Guid Id) : IRequest<DimensionDetailResponse?>;

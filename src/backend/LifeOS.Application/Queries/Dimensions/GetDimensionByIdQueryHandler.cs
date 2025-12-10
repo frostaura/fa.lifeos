@@ -1,5 +1,6 @@
 using LifeOS.Application.Common.Interfaces;
 using LifeOS.Application.DTOs.Dimensions;
+using LifeOS.Application.Services;
 using LifeOS.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,10 +10,12 @@ namespace LifeOS.Application.Queries.Dimensions;
 public class GetDimensionByIdQueryHandler : IRequestHandler<GetDimensionByIdQuery, DimensionDetailResponse?>
 {
     private readonly ILifeOSDbContext _context;
+    private readonly IScoreCalculator _scoreCalculator;
 
-    public GetDimensionByIdQueryHandler(ILifeOSDbContext context)
+    public GetDimensionByIdQueryHandler(ILifeOSDbContext context, IScoreCalculator scoreCalculator)
     {
         _context = context;
+        _scoreCalculator = scoreCalculator;
     }
 
     public async Task<DimensionDetailResponse?> Handle(GetDimensionByIdQuery request, CancellationToken cancellationToken)
@@ -25,6 +28,9 @@ public class GetDimensionByIdQueryHandler : IRequestHandler<GetDimensionByIdQuer
 
         if (dimension == null)
             return null;
+
+        // Calculate the actual dimension score
+        var score = await _scoreCalculator.CalculateDimensionScoreAsync(request.UserId, dimension.Id, cancellationToken);
 
         return new DimensionDetailResponse
         {
@@ -42,7 +48,7 @@ public class GetDimensionByIdQueryHandler : IRequestHandler<GetDimensionByIdQuer
                     DefaultWeight = dimension.DefaultWeight,
                     SortOrder = dimension.SortOrder,
                     IsActive = dimension.IsActive,
-                    CurrentScore = 0
+                    CurrentScore = (int)Math.Round(score)
                 },
                 Relationships = new DimensionRelationships
                 {

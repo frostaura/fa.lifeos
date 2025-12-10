@@ -180,7 +180,7 @@ export const financesApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios', 'FinancialGoals'],
     }),
     
-    updateAccount: builder.mutation<Account, Partial<Account> & { id: string }>({
+    updateAccount: builder.mutation<Account, Partial<Account> & { id: string; currentBalance?: number }>({
       query: ({ id, ...body }) => ({
         url: `/api/accounts/${id}`,
         method: 'PATCH',
