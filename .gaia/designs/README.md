@@ -1,66 +1,49 @@
-# Spec-Driven Development
+# LifeOS Design Documentation
 
-**MANDATORY**: All features MUST have updated design specs BEFORE implementation.
+**Spec-Driven Development**: All features MUST have updated design specs BEFORE implementation.
 
-## The Iron Rule
-1. **DESIGN FIRST** - Update relevant design docs
-2. **REVIEW** - Ensure specs are complete
-3. **IMPLEMENT** - Build according to specs
-4. **NEVER** skip step 1
+## Design Documents
 
-## Available Design Documents
+| Document | Description |
+|----------|-------------|
+| `architecture.md` | System architecture, data flow, project structure |
+| `api.md` | REST API endpoints, request/response formats |
+| `database.md` | Entity schemas, relationships, PostgreSQL tables |
+| `security.md` | JWT auth, RBAC, data protection, validation |
+| `frontend.md` | React components, RTK Query, routing, styling |
 
-### Core Specs (Always Maintain)
-- `architecture.md` - System design and components
-- `api.md` - API endpoints and contracts
-- `database.md` - Schema and data models
-- `security.md` - Authentication and authorization
-- `frontend.md` - UI/UX patterns and components
+## Current Project Stage: **Production**
 
-### Before ANY Implementation
-Ask yourself:
-- Which design docs does this feature touch?
-- Have I updated ALL relevant sections?
-- Are the specs detailed enough to code from?
-- Would another developer understand the design?
+LifeOS is a comprehensive life management platform with:
+- Full financial simulation engine
+- Health & longevity tracking
+- Gamification system (XP, achievements, streaks)
+- Multi-tenant user support
 
-## Design Stages
+## Before ANY Implementation
 
-### 1. Prototype (Start Here)
-Just build it. No design docs needed. README only.
+1. **Update relevant design docs** - Which docs does this feature touch?
+2. **Review specs** - Are they detailed enough to code from?
+3. **Implement** - Build according to specs
+4. **Keep docs current** - Update as implementation evolves
 
-### 2. MVP
-When you have users, add:
-- `api.md` - Endpoint documentation (if applicable)
-- `architecture.md` - High-level system overview (1 page max)
+## Key Design Decisions
 
-### 3. Production
-When scaling matters, add:
-- `database.md` - Schema and relationships (if applicable)
-- `security.md` - Authentication and authorization approach
-- `deployment.md` - How to deploy and monitor
+### Backend
+- **Clean Architecture** with Domain → Application → Infrastructure → API layers
+- **EF Core 9** for database access with PostgreSQL 17
+- **JWT + WebAuthn** for authentication
 
-### 4. Enterprise
-Only when absolutely required:
-- `scalability.md` - Performance requirements and solutions
-- `testing.md` - Test strategy and coverage goals
-- Additional domain-specific docs
+### Frontend
+- **Atomic Design** (atoms/molecules/organisms)
+- **RTK Query** for server state with cache invalidation
+- **Glassmorphic dark theme** with Tailwind CSS
 
-## Guidelines
+### Simulation Engine
+- Month-by-month iteration with compound interest calculations
+- Tax bracket application for income sources
+- End conditions for expenses/investments (date, amount, account settled)
 
-- **Don't pre-create templates** - Add them when needed
-- **Keep it simple** - 1-2 pages per document maximum
-- **Use MCP tools** - Track design decisions with `remember()`
-- **Update as you go** - Docs reflect current state, not future dreams
-
-## Current Project Stage
-
-Track the current stage in MCP:
-```
-mcp__gaia__remember("project", "stage", "prototype")
-```
-
-Then query it when needed:
-```
-mcp__gaia__recall("project stage")
-```
+### Health & Longevity
+- Evidence-based longevity models (threshold, range, linear, boolean)
+- Life expectancy calculation from baseline + metric adjustments

@@ -3,25 +3,18 @@
 ## API Standards
 
 ### Base URL
-- Development: `http://localhost:3000/api`
-- Staging: `https://staging.example.com/api`
-- Production: `https://api.example.com`
-
-### Versioning
-- URL versioning: `/api/v1/`
-- Header versioning: `Accept: application/vnd.api+json;version=1`
+- Development: `http://localhost:5001/api`
+- Frontend Proxy: `http://localhost:5173/api` (proxied via Vite)
 
 ### Authentication
-- Bearer token: `Authorization: Bearer <token>`
-- API Key: `X-API-Key: <key>`
-- Session cookie: `sessionId`
+- Bearer token: `Authorization: Bearer <jwt-token>`
+- API Key: `X-API-Key: <key>` (for external integrations)
 
 ## REST Conventions
 
 ### HTTP Methods
 - `GET` - Read resources
 - `POST` - Create resources
-- `PUT` - Full update
 - `PATCH` - Partial update
 - `DELETE` - Remove resources
 
@@ -37,18 +30,38 @@
 - `429` - Rate limited
 - `500` - Server error
 
-### Response Format
+### Response Format (JSON:API)
 
 #### Success Response
 ```json
 {
   "data": {
-    "id": "123",
-    "type": "user",
-    "attributes": {}
+    "id": "uuid",
+    "type": "account",
+    "attributes": {
+      "name": "Savings Account",
+      "accountType": "Bank",
+      "currentBalance": 50000.00,
+      "currency": "ZAR"
+    }
   },
   "meta": {
     "timestamp": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+#### Collection Response
+```json
+{
+  "data": [
+    { "id": "...", "type": "account", "attributes": {...} }
+  ],
+  "meta": {
+    "page": 1,
+    "perPage": 20,
+    "total": 100,
+    "totalPages": 5
   }
 }
 ```
@@ -60,30 +73,8 @@
     "code": "VALIDATION_ERROR",
     "message": "Invalid input",
     "details": [
-      {
-        "field": "email",
-        "message": "Invalid email format"
-      }
+      { "field": "email", "message": "Invalid email format" }
     ]
-  }
-}
-```
-
-#### Pagination
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "perPage": 20,
-    "total": 100,
-    "totalPages": 5
-  },
-  "links": {
-    "first": "/api/v1/users?page=1",
-    "prev": null,
-    "next": "/api/v1/users?page=2",
-    "last": "/api/v1/users?page=5"
   }
 }
 ```
@@ -91,105 +82,193 @@
 ## Core Endpoints
 
 ### Authentication
-- `POST /auth/login` - User login
-- `POST /auth/logout` - User logout
-- `POST /auth/refresh` - Refresh token
-- `POST /auth/register` - User registration
-- `POST /auth/forgot-password` - Password reset
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/login` | User login |
+| POST | `/api/auth/register` | User registration |
+| POST | `/api/auth/refresh` | Refresh access token |
+| POST | `/api/auth/logout` | Invalidate tokens |
 
-### Users
-- `GET /users` - List users
-- `GET /users/:id` - Get user
-- `POST /users` - Create user
-- `PATCH /users/:id` - Update user
-- `DELETE /users/:id` - Delete user
+### Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard` | Dashboard summary (life score, net worth, dimensions, streaks, tasks) |
+| GET | `/api/dashboard/net-worth/history` | Historical net worth data |
 
-### Resources (Example)
-- `GET /resources` - List with filters
-- `GET /resources/:id` - Get single
-- `POST /resources` - Create new
-- `PATCH /resources/:id` - Update
-- `DELETE /resources/:id` - Delete
+### Dimensions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dimensions` | List all dimensions |
+| GET | `/api/dimensions/{id}` | Get dimension with metrics |
+| POST | `/api/dimensions` | Create dimension |
+| PATCH | `/api/dimensions/{id}` | Update dimension |
+
+### Accounts
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/accounts` | List accounts with net worth meta |
+| GET | `/api/accounts/{id}` | Get account details |
+| POST | `/api/accounts` | Create account |
+| PATCH | `/api/accounts/{id}` | Update account |
+| DELETE | `/api/accounts/{id}` | Delete account |
+
+### Income Sources
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/income-sources` | List income sources |
+| POST | `/api/income-sources` | Create income source |
+| PATCH | `/api/income-sources/{id}` | Update income source |
+| DELETE | `/api/income-sources/{id}` | Delete income source |
+
+### Expense Definitions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/expense-definitions` | List expenses |
+| POST | `/api/expense-definitions` | Create expense |
+| PATCH | `/api/expense-definitions/{id}` | Update expense |
+| DELETE | `/api/expense-definitions/{id}` | Delete expense |
+
+### Investment Contributions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/investment-contributions` | List investments |
+| POST | `/api/investment-contributions` | Create investment |
+| PATCH | `/api/investment-contributions/{id}` | Update investment |
+| DELETE | `/api/investment-contributions/{id}` | Delete investment |
+
+### Tax Profiles
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tax-profiles` | List tax profiles |
+| POST | `/api/tax-profiles` | Create tax profile |
+| PATCH | `/api/tax-profiles/{id}` | Update tax profile |
+| DELETE | `/api/tax-profiles/{id}` | Delete tax profile |
+
+### Financial Goals
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/financial-goals` | List financial goals |
+| POST | `/api/financial-goals` | Create financial goal |
+| PATCH | `/api/financial-goals/{id}` | Update financial goal |
+| DELETE | `/api/financial-goals/{id}` | Delete financial goal |
+
+### Simulations
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/simulations/scenarios` | List scenarios |
+| GET | `/api/simulations/scenarios/{id}` | Get scenario details |
+| POST | `/api/simulations/scenarios` | Create scenario |
+| PATCH | `/api/simulations/scenarios/{id}` | Update scenario |
+| DELETE | `/api/simulations/scenarios/{id}` | Delete scenario |
+| POST | `/api/simulations/scenarios/{id}/run` | Run simulation |
+| GET | `/api/simulations/scenarios/{id}/projections` | Get projections |
+
+### Metrics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/metrics/definitions` | List metric definitions |
+| POST | `/api/metrics/definitions` | Create definition |
+| PATCH | `/api/metrics/definitions/{code}` | Update definition |
+| DELETE | `/api/metrics/definitions/{code}` | Delete definition |
+| POST | `/api/metrics/record` | Record metric values (bulk) |
+| GET | `/api/metrics/{code}/records` | Get metric records |
+| GET | `/api/metrics/history` | Get history with aggregation |
+
+### Health & Longevity
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/longevity` | Get longevity estimate |
+| GET | `/api/longevity/models` | List longevity models |
+| PATCH | `/api/longevity/models/{id}` | Update model parameters |
+
+### Tasks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tasks` | List tasks with filters |
+| GET | `/api/tasks/{id}` | Get task details |
+| POST | `/api/tasks` | Create task |
+| PATCH | `/api/tasks/{id}` | Update task |
+| DELETE | `/api/tasks/{id}` | Delete task |
+| POST | `/api/tasks/{id}/complete` | Complete task |
+
+### Milestones
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/milestones` | List milestones |
+| POST | `/api/milestones` | Create milestone |
+| PATCH | `/api/milestones/{id}` | Update milestone |
+| DELETE | `/api/milestones/{id}` | Delete milestone |
+
+### Achievements & Gamification
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/achievements` | List all achievements |
+| GET | `/api/achievements/user` | Get user achievements |
+| GET | `/api/xp` | Get user XP and level |
+| GET | `/api/streaks` | List user streaks |
+
+### Settings
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/settings/profile` | Get user profile |
+| PATCH | `/api/settings/profile` | Update user profile |
+| GET | `/api/settings/api-keys` | List API keys |
+| POST | `/api/settings/api-keys` | Create API key |
+| DELETE | `/api/settings/api-keys/{id}` | Revoke API key |
+
+### Data Portability
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/data/export` | Export all user data |
+| POST | `/api/data/import` | Import user data |
 
 ## Query Parameters
 
 ### Filtering
 ```
-GET /api/v1/users?status=active&role=admin
+GET /api/accounts?accountType=Bank&isLiability=false
+GET /api/tasks?dimensionId={uuid}&taskType=habit&isCompleted=false
 ```
 
 ### Sorting
 ```
-GET /api/v1/users?sort=-created_at,name
+GET /api/accounts?sort=-currentBalance
+GET /api/tasks?sort=scheduledDate
 ```
 
 ### Pagination
 ```
-GET /api/v1/users?page=2&limit=20
-```
-
-### Field Selection
-```
-GET /api/v1/users?fields=id,name,email
-```
-
-### Relationships
-```
-GET /api/v1/users?include=posts,comments
+GET /api/accounts?page=2&perPage=20
 ```
 
 ## Rate Limiting
 
 ### Headers
-- `X-RateLimit-Limit`: Request limit
+- `X-RateLimit-Limit`: Request limit per window
 - `X-RateLimit-Remaining`: Remaining requests
 - `X-RateLimit-Reset`: Reset timestamp
 
 ### Limits
-- Anonymous: 100 requests/hour
-- Authenticated: 1000 requests/hour
-- Premium: 10000 requests/hour
+- Authenticated: 1000 requests/15 minutes
+- API Key: 5000 requests/hour
 
-## WebSocket Events
+## WebSocket/SignalR
 
 ### Connection
-```javascript
-ws://localhost:3000/socket
+```
+wss://localhost:5001/hubs/notifications
 ```
 
 ### Events
-- `connection` - Client connected
-- `disconnect` - Client disconnected
-- `message` - New message
-- `notification` - Push notification
-- `update` - Real-time update
+| Event | Description |
+|-------|-------------|
+| `ProjectionsUpdated` | Simulation projections recalculated |
+| `CalculationProgress` | Progress updates during simulation |
+| `AchievementUnlocked` | User unlocked new achievement |
 
 ## API Documentation
-
-### OpenAPI/Swagger
-Available at `/api/docs`
-
-### Postman Collection
-Export available at `/api/postman`
-
-## Testing
-
-### Example CURL
-```bash
-curl -X GET https://api.example.com/v1/users \
-  -H "Authorization: Bearer token" \
-  -H "Accept: application/json"
-```
-
-### Example Response
-```json
-{
-  "data": [...],
-  "meta": {...}
-}
-```
-
----
+- Swagger UI: `/swagger`
+- OpenAPI spec: `/swagger/v1/swagger.json`
 
 ## Feature: Enhanced Dimensions API
 

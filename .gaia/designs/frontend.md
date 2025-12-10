@@ -1,340 +1,287 @@
 # Frontend Design Guide
 
-## Technology Stack (Default)
+## Technology Stack
 
 ### Core Framework
-- **Framework**: React 18+
-- **Language**: TypeScript 5+
-- **Build Tool**: Vite
+- **Framework**: React 19.2
+- **Language**: TypeScript 5.9
+- **Build Tool**: Vite 7.2
 - **Package Manager**: npm
-- **Linting**: ESLint + Prettier
 
 ### State Management
-- **Global State**: Redux Toolkit
+- **Global State**: Redux Toolkit 2.11
 - **Server State**: RTK Query
-- **Form State**: React Hook Form
-- **URL State**: React Router v6
+- **URL State**: React Router 7.9
 
-### PWA Requirements (MANDATORY)
-- **Service Worker**: Workbox
-- **Offline Storage**: IndexedDB + Cache API
-- **Sync**: Background Sync API
-- **Install**: Web App Manifest
-- **Updates**: Prompt for new versions
+### UI & Styling
+- **CSS Framework**: Tailwind CSS 4.1
+- **Design System**: Custom glassmorphic dark theme
+- **Charts**: Recharts 3.5
+- **Icons**: Lucide React
+
+### Testing
+- **E2E**: Playwright
 
 ## Project Structure
 
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── common/         # Buttons, Inputs, Cards
-│   ├── layout/         # Header, Footer, Sidebar
-│   └── features/       # Feature-specific components
-├── pages/              # Route components
-├── hooks/              # Custom React hooks
-├── services/           # API and external services
-├── store/              # State management
-├── utils/              # Helper functions
-├── types/              # TypeScript definitions
-├── styles/             # Global styles and themes
-└── assets/             # Images, fonts, icons
+├── components/
+│   ├── atoms/           # Button, Badge, Input, Select, Spinner, GlassCard
+│   ├── molecules/       # AccountRow, MetricSparkline, CurrencySelector
+│   └── organisms/       # LifeScoreCard, NetWorthChart, DimensionGrid
+├── pages/               # Route components (Dashboard, Finances, Health, etc.)
+├── services/            # RTK Query API endpoints
+├── store/               # Redux store configuration
+├── hooks/               # Custom React hooks
+├── types/               # TypeScript definitions
+├── utils/               # Helper functions (cn, formatCurrency, etc.)
+└── router.tsx           # React Router configuration
 ```
 
-## Component Architecture
+## Design System
 
-### Component Types
+### Theme: Glassmorphic Dark Mode
 
-#### Presentational Components
+#### Color Palette
+```css
+:root {
+  /* Backgrounds */
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #25253a;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+
+  /* Accents */
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #22d3ee;
+  --accent-pink: #ec4899;
+
+  /* Semantic */
+  --semantic-success: #22c55e;
+  --semantic-error: #ef4444;
+  --semantic-warning: #eab308;
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+```
+
+### GlassCard Component
 ```tsx
-// Pure UI components with no business logic
-interface ButtonProps {
-  variant: 'primary' | 'secondary';
-  size: 'small' | 'medium' | 'large';
-  onClick: () => void;
+interface GlassCardProps {
+  variant: 'default' | 'elevated';
+  glow?: 'accent' | 'success' | 'error';
+  className?: string;
   children: React.ReactNode;
 }
 
-const Button: React.FC<ButtonProps> = ({ variant, size, onClick, children }) => {
-  return (
-    <button className={`btn btn-${variant} btn-${size}`} onClick={onClick}>
-      {children}
-    </button>
-  );
-};
+// Usage
+<GlassCard variant="elevated" glow="accent">
+  <h2>Net Worth</h2>
+  <p>R1,234,567</p>
+</GlassCard>
 ```
 
-#### Container Components
+### Button Variants
 ```tsx
-// Business logic and state management
-const UserListContainer: React.FC = () => {
-  const { data, loading, error } = useQuery('users');
-
-  if (loading) return <Spinner />;
-  if (error) return <ErrorMessage error={error} />;
-
-  return <UserList users={data} />;
-};
+<Button variant="primary">Save</Button>
+<Button variant="secondary">Cancel</Button>
+<Button variant="ghost">More</Button>
+<Button variant="danger">Delete</Button>
 ```
 
-## Styling Strategy
+## Page Structure
 
-### CSS Architecture
-- **Methodology**: [BEM/Atomic/CSS Modules]
-- **Preprocessor**: [SASS/PostCSS/CSS-in-JS]
-- **Framework**: [Tailwind/Bootstrap/Material-UI]
+### Dashboard (`/`)
+- Life Score card with progress ring
+- Net Worth card with trend
+- Dimensions grid (8 life areas)
+- Net Worth projection chart
+- Active streaks widget
+- Today's tasks widget
 
-### Design Tokens
-```css
-:root {
-  /* Colors */
-  --color-primary: #007bff;
-  --color-secondary: #6c757d;
-  --color-success: #28a745;
-  --color-danger: #dc3545;
+### Finances (`/finances`)
+- Tab navigation: Overview | Tax Profiles | Income/Expenses | Investments | Goals
+- Net worth banner
+- Accounts list with CRUD
+- Projection chart
+- Financial goals widget
 
-  /* Typography */
-  --font-family: 'Inter', sans-serif;
-  --font-size-base: 16px;
-  --line-height-base: 1.5;
+### Health (`/health`)
+- Longevity estimate card
+- Contributing factors breakdown
+- Recommendations list
+- Health metrics grid with sparklines
+- Longevity rules editor
 
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
+### Simulation (`/simulation`)
+- Scenarios list
+- Scenario builder
+- Event modeling
+- Projection visualization
 
-  /* Breakpoints */
-  --breakpoint-sm: 576px;
-  --breakpoint-md: 768px;
-  --breakpoint-lg: 992px;
-  --breakpoint-xl: 1200px;
-}
+### Metrics (`/metrics`)
+- Metric definitions table
+- API playground with Monaco editor
+- Event log
+
+### Settings (`/settings`)
+- Profile settings
+- API keys management
+- Dimension configuration
+- Data portability (export/import)
+
+## RTK Query Setup
+
+### API Slice
+```typescript
+// services/api.ts
+export const api = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/api',
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: [
+    'Dashboard',
+    'Accounts',
+    'Dimensions',
+    'Tasks',
+    'Milestones',
+    'Metrics',
+    'Scenarios',
+    'Projections',
+    'Achievements',
+    'Streaks',
+  ],
+  endpoints: () => ({}),
+});
+```
+
+### Example Endpoints
+```typescript
+// services/endpoints/finances.ts
+export const financeApi = api.injectEndpoints({
+  endpoints: (builder) => ({
+    getAccounts: builder.query<AccountsResponse, void>({
+      query: () => '/accounts',
+      providesTags: ['Accounts'],
+    }),
+    createAccount: builder.mutation<AccountResponse, CreateAccountRequest>({
+      query: (body) => ({ url: '/accounts', method: 'POST', body }),
+      invalidatesTags: ['Accounts', 'Dashboard'],
+    }),
+  }),
+});
 ```
 
 ## Routing
 
-### Route Structure
-```javascript
-const routes = [
-  { path: '/', component: Home },
-  { path: '/login', component: Login, public: true },
-  { path: '/dashboard', component: Dashboard, requiresAuth: true },
-  { path: '/users/:id', component: UserProfile },
-  { path: '/settings/*', component: Settings, children: [...] },
-  { path: '*', component: NotFound }
-];
-```
-
-### Route Guards
-```javascript
-const ProtectedRoute = ({ children, requiresAuth, requiredRole }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) return <LoadingSpinner />;
-  if (requiresAuth && !user) return <Navigate to="/login" />;
-  if (requiredRole && user.role !== requiredRole) return <AccessDenied />;
-
-  return children;
-};
-```
-
-## Data Fetching
-
-### API Integration
+### Route Configuration
 ```typescript
-class ApiService {
-  private baseUrl = process.env.REACT_APP_API_URL;
+// router.tsx
+export const router = createHashRouter([
+  { path: '/login', element: <Login /> },
+  {
+    path: '/',
+    element: <AuthGuard><AppLayout /></AuthGuard>,
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: 'dimensions', element: <Dimensions /> },
+      { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
+      {
+        path: 'finances',
+        element: <FinancesLayout />,
+        children: [
+          { index: true, element: <FinancesOverview /> },
+          { path: 'tax-profiles', element: <TaxProfileSettings /> },
+          { path: 'income-expenses', element: <IncomeExpenseSettings /> },
+          { path: 'investments', element: <InvestmentSettings /> },
+          { path: 'goals', element: <GoalsSettings /> },
+        ],
+      },
+      { path: 'simulation', element: <Simulation /> },
+      { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
+      { path: 'health', element: <Health /> },
+      { path: 'metrics', element: <Metrics /> },
+      { path: 'settings/*', element: <Settings /> },
+    ],
+  },
+  { path: '*', element: <NotFound /> },
+]);
+```
 
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers: this.getHeaders(),
-    });
-    return this.handleResponse(response);
+### Auth Guard
+```typescript
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('accessToken');
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
   }
-
-  private getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`,
-    };
-  }
+  
+  return <>{children}</>;
 }
 ```
 
-### Data Fetching Patterns
+## Responsive Breakpoints
+
+```css
+/* Tailwind defaults */
+sm: 640px   /* Mobile landscape */
+md: 768px   /* Tablet portrait */
+lg: 1024px  /* Tablet landscape / Small desktop */
+xl: 1280px  /* Desktop */
+2xl: 1536px /* Large desktop */
+```
+
+### Layout Guidelines
+- **Mobile (< 768px)**: Single column, stacked cards, compact typography
+- **Tablet (768-1023px)**: Two-column grids, collapsible sidebar
+- **Desktop (1024px+)**: Fixed sidebar, three-column grids, full charts
+
+## Charts
+
+### NetWorthChart
 ```tsx
-// Using React Query
-const useUsers = () => {
-  return useQuery({
-    queryKey: ['users'],
-    queryFn: () => apiService.get('/users'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-// Optimistic Updates
-const updateUser = useMutation({
-  mutationFn: (user) => apiService.put(`/users/${user.id}`, user),
-  onMutate: async (newUser) => {
-    await queryClient.cancelQueries(['users']);
-    const previousUsers = queryClient.getQueryData(['users']);
-    queryClient.setQueryData(['users'], old => [...old, newUser]);
-    return { previousUsers };
-  },
-  onError: (err, newUser, context) => {
-    queryClient.setQueryData(['users'], context.previousUsers);
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries(['users']);
-  },
-});
+<NetWorthChart 
+  data={netWorthHistory}  // Array<{ date: string, value: number, accounts?: [...] }>
+  currency="ZAR"
+  height={300}
+/>
 ```
 
-## Forms & Validation
-
-### Form Management
+### MetricSparkline
 ```tsx
-const schema = yup.object({
-  email: yup.string().email().required(),
-  password: yup.string().min(8).required(),
-});
-
-const LoginForm = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: yupResolver(schema)
-  });
-
-  const onSubmit = async (data) => {
-    await login(data);
-  };
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Input {...register('email')} error={errors.email} />
-      <Input {...register('password')} type="password" error={errors.password} />
-      <Button type="submit">Login</Button>
-    </form>
-  );
-};
+<MetricSparkline
+  data={points}           // Array<{ date: string, value: number }>
+  targetValue={10000}
+  targetDirection="AtOrAbove"
+  currentValue={8500}
+  height={50}
+/>
 ```
 
-## Performance Optimization
+## Accessibility
 
-### Code Splitting
-```javascript
-// Route-based splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-
-// Component-based splitting
-const HeavyComponent = lazy(() => import('./components/HeavyComponent'));
-```
-
-### Optimization Techniques
-- React.memo for expensive components
-- useMemo for expensive calculations
-- useCallback for stable function references
-- Virtual scrolling for long lists
-- Image lazy loading
-- Bundle size analysis
-
-## Testing Strategy
-
-### Testing Pyramid
-```
-         /\
-        /E2E\        Playwright/Cypress
-       /------\
-      /Integra-\     React Testing Library
-     /  tion    \
-    /------------\
-   /    Unit      \  Jest/Vitest
-  /________________\
-```
-
-### Test Examples
-```tsx
-// Unit Test
-describe('Button', () => {
-  it('renders with correct text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText('Click me')).toBeInTheDocument();
-  });
-});
-
-// Integration Test
-describe('LoginForm', () => {
-  it('submits with valid data', async () => {
-    render(<LoginForm />);
-    await userEvent.type(screen.getByLabelText('Email'), 'test@example.com');
-    await userEvent.type(screen.getByLabelText('Password'), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: 'Login' }));
-    expect(mockLogin).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      password: 'password123'
-    });
-  });
-});
-```
-
-## Accessibility (a11y)
-
-### WCAG 2.1 AA Compliance
-- Semantic HTML
-- ARIA labels and roles
-- Keyboard navigation
-- Focus management
-- Color contrast ratios
-- Screen reader support
-
-### Implementation
-```tsx
-<button
-  aria-label="Close dialog"
-  aria-pressed={isPressed}
-  aria-disabled={isDisabled}
-  role="button"
-  tabIndex={0}
-  onKeyDown={handleKeyDown}
->
-  <span aria-hidden="true">×</span>
-</button>
-```
-
-## Build & Deployment
-
-### Environment Configuration
-```javascript
-// .env.development
-REACT_APP_API_URL=http://localhost:3000
-REACT_APP_ENV=development
-
-// .env.production
-REACT_APP_API_URL=https://api.example.com
-REACT_APP_ENV=production
-```
-
-### Build Optimization
-```javascript
-// vite.config.js
-export default {
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          utils: ['lodash', 'date-fns'],
-        },
-      },
-    },
-    minify: 'terser',
-    sourcemap: true,
-  },
-};
-```
-
----
+- All interactive elements keyboard accessible
+- ARIA labels on icon-only buttons
+- Focus visible outlines
+- Color contrast meets WCAG 2.1 AA
+- Screen reader announcements for dynamic content
 
 ## Feature: Enhanced Dimensions Pages
 

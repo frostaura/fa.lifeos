@@ -1,54 +1,240 @@
 # Database Design
 
-## Database Selection (Default)
-- **Primary DB**: PostgreSQL 15+
-- **ORM**: Entity Framework Core
+## Database Selection
+- **Primary DB**: PostgreSQL 17
+- **ORM**: Entity Framework Core 9.0
 - **Provider**: Npgsql
-- **Justification**: ACID compliance, JSONB support, proven scalability
+- **Justification**: ACID compliance, JSONB support for flexible data, proven scalability
 
-## Schema Design
+## Entity Relationship Diagram
 
-### Core Tables/Collections
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CORE ENTITIES                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────┐     1:N    ┌───────────┐     1:N    ┌────────────────┐         │
+│  │  User   │───────────▶│  Account  │───────────▶│  Transaction   │         │
+│  └────┬────┘            └─────┬─────┘            └────────────────┘         │
+│       │                       │                                              │
+│       │ 1:N                   │ 1:N                                          │
+│       ▼                       ▼                                              │
+│  ┌─────────────┐        ┌─────────────────────┐                             │
+│  │ IncomeSource│        │ AccountProjection   │                             │
+│  └─────────────┘        └─────────────────────┘                             │
+│       │                                                                      │
+│       │ N:1                                                                  │
+│       ▼                                                                      │
+│  ┌────────────┐                                                              │
+│  │ TaxProfile │                                                              │
+│  └────────────┘                                                              │
+│                                                                              │
+│  ┌─────────┐     1:N    ┌──────────────────┐                                │
+│  │  User   │───────────▶│SimulationScenario│                                │
+│  └─────────┘            └────────┬─────────┘                                │
+│                                  │ 1:N                                       │
+│                                  ▼                                           │
+│                         ┌─────────────────┐                                  │
+│                         │SimulationEvent  │                                  │
+│                         └─────────────────┘                                  │
+│                                                                              │
+│  ┌───────────┐    1:N   ┌─────────────────┐   1:N   ┌──────────────┐       │
+│  │ Dimension │─────────▶│MetricDefinition │────────▶│ MetricRecord │       │
+│  └───────────┘          └─────────────────┘         └──────────────┘       │
+│       │                                                                      │
+│       │ 1:N                                                                  │
+│       ▼                                                                      │
+│  ┌───────────┐    1:N   ┌─────────────┐                                     │
+│  │ Milestone │─────────▶│  LifeTask   │─────────▶ Streak                    │
+│  └───────────┘          └─────────────┘                                     │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
 
-#### Users
+## Core Tables
+
+### Users
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(50) UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) DEFAULT 'user',
-    status VARCHAR(20) DEFAULT 'active',
+    username VARCHAR(50),
+    password_hash VARCHAR(255),              -- Nullable for biometric-only
+    home_currency VARCHAR(3) DEFAULT 'ZAR',
+    date_of_birth DATE,
+    life_expectancy_baseline DECIMAL(5,2) DEFAULT 80,
+    default_assumptions JSONB DEFAULT '{"inflationRateAnnual": 0.05, "defaultGrowthRate": 0.07, "retirementAge": 65}',
+    role VARCHAR(20) DEFAULT 'User',         -- User | Admin
+    status VARCHAR(20) DEFAULT 'Active',     -- Active | Inactive | Suspended
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_status ON users(status);
 ```
 
-#### Sessions
+### Accounts
 ```sql
-CREATE TABLE sessions (
+CREATE TABLE accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    account_type VARCHAR(20) NOT NULL,       -- Bank | Investment | Loan | Credit | Crypto | Property | Other
+    currency VARCHAR(3) DEFAULT 'ZAR',
+    initial_balance DECIMAL(19,4) DEFAULT 0,
+    current_balance DECIMAL(19,4) DEFAULT 0,
+    balance_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    institution VARCHAR(100),
+    is_liability BOOLEAN DEFAULT FALSE,
+    interest_rate_annual DECIMAL(8,4),       -- Annual rate as percentage (e.g., 10.5)
+    interest_compounding VARCHAR(20),        -- None | Daily | Monthly | Quarterly | Annually | Continuous
+    monthly_fee DECIMAL(19,4) DEFAULT 0,
+    metadata JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_sessions_token ON sessions(token);
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 ```
 
-### Relationships
+### Simulation Scenarios
+```sql
+CREATE TABLE simulation_scenarios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    end_condition TEXT,                      -- Expression like "netWorth >= 10000000"
+    base_assumptions JSONB DEFAULT '{}',
+    is_baseline BOOLEAN DEFAULT FALSE,
+    last_run_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
+### Income Sources
+```sql
+CREATE TABLE income_sources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ZAR',
+    base_amount DECIMAL(19,4) NOT NULL,
+    is_pre_tax BOOLEAN DEFAULT TRUE,
+    tax_profile_id UUID REFERENCES tax_profiles(id),
+    payment_frequency VARCHAR(20) NOT NULL,  -- Weekly | Biweekly | Monthly | Quarterly | Annually | Once
+    next_payment_date DATE,
+    annual_increase_rate DECIMAL(8,4) DEFAULT 0.05,
+    employer_name VARCHAR(100),
+    target_account_id UUID REFERENCES accounts(id),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
-Users ──1:N──> Posts
-Users ──1:N──> Comments
-Posts ──1:N──> Comments
-Users ──N:M──> Roles (via user_roles)
+
+### Expense Definitions
+```sql
+CREATE TABLE expense_definitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ZAR',
+    amount_type VARCHAR(20) DEFAULT 'Fixed', -- Fixed | Percentage | Formula
+    amount_value DECIMAL(19,4),
+    amount_formula TEXT,
+    frequency VARCHAR(20) NOT NULL,
+    start_date DATE,
+    category VARCHAR(50),
+    is_tax_deductible BOOLEAN DEFAULT FALSE,
+    linked_account_id UUID REFERENCES accounts(id),
+    inflation_adjusted BOOLEAN DEFAULT TRUE,
+    end_condition_type VARCHAR(30) DEFAULT 'None', -- None | UntilAccountSettled | UntilDate | UntilAmount
+    end_condition_account_id UUID REFERENCES accounts(id),
+    end_date DATE,
+    end_amount_threshold DECIMAL(19,4),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
+
+### Tax Profiles
+```sql
+CREATE TABLE tax_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) DEFAULT 'Default',
+    tax_year INT NOT NULL,
+    country_code VARCHAR(2) DEFAULT 'ZA',
+    brackets JSONB NOT NULL,                 -- Array of {min, max, rate, baseTax}
+    uif_rate DECIMAL(8,4) DEFAULT 0.01,
+    uif_cap DECIMAL(19,4) DEFAULT 177.12,
+    vat_rate DECIMAL(8,4) DEFAULT 0.15,
+    is_vat_registered BOOLEAN DEFAULT FALSE,
+    tax_rebates JSONB,                       -- {primary: 17235, secondary: 9444, ...}
+    medical_credits JSONB,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Metric Definitions
+```sql
+CREATE TABLE metric_definitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    dimension_id UUID REFERENCES dimensions(id),
+    unit VARCHAR(20),
+    value_type VARCHAR(20) DEFAULT 'Number', -- Number | Integer | Decimal | Boolean | Percentage
+    aggregation_type VARCHAR(20) DEFAULT 'Last', -- Last | Sum | Average | Max | Min
+    enum_values TEXT[],
+    min_value DECIMAL(19,4),
+    max_value DECIMAL(19,4),
+    target_value DECIMAL(19,4),
+    target_direction VARCHAR(20) DEFAULT 'AtOrAbove', -- AtOrAbove | AtOrBelow
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Achievements
+```sql
+CREATE TABLE achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    icon VARCHAR(50),
+    xp_value INT DEFAULT 0,
+    category VARCHAR(30),                    -- financial | health | streak | milestone
+    tier VARCHAR(20) DEFAULT 'bronze',       -- bronze | silver | gold | platinum | diamond
+    unlock_condition TEXT NOT NULL,          -- Expression like "netWorth >= 1000000"
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## Relationships Summary
+
+| Parent | Child | Relationship | FK Column |
+|--------|-------|--------------|-----------|
+| User | Account | 1:N | user_id |
+| User | IncomeSource | 1:N | user_id |
+| User | ExpenseDefinition | 1:N | user_id |
+| User | InvestmentContribution | 1:N | user_id |
+| User | TaxProfile | 1:N | user_id |
+| User | SimulationScenario | 1:N | user_id |
+| User | MetricRecord | 1:N | user_id |
+| User | Streak | 1:N | user_id |
+| User | FinancialGoal | 1:N | user_id |
+| Dimension | MetricDefinition | 1:N | dimension_id |
+| Dimension | Milestone | 1:N | dimension_id |
+| Dimension | LifeTask | 1:N | dimension_id |
+| SimulationScenario | SimulationEvent | 1:N | scenario_id |
+| SimulationScenario | AccountProjection | 1:N | scenario_id |
+| SimulationScenario | NetWorthProjection | 1:N | scenario_id |
+| IncomeSource | TaxProfile | N:1 | tax_profile_id |
+| Account | Transaction | 1:N | source_account_id / target_account_id |
 
 ## Data Types & Constraints
 

@@ -3,120 +3,105 @@
 ## Authentication
 
 ### Methods
-- **Primary**: JWT with refresh tokens
-- **Alternative**: Session-based with secure cookies
-- **MFA**: TOTP (Time-based One-Time Password)
+- **Primary**: JWT with refresh tokens (HS256)
+- **Biometric**: WebAuthn/Passkey support
+- **API Keys**: For external integrations (n8n, Apple Shortcuts)
 
 ### JWT Implementation
-```javascript
+```json
 {
-  header: {
-    alg: "RS256",
-    typ: "JWT"
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
   },
-  payload: {
-    sub: "user_id",
-    iat: 1234567890,
-    exp: 1234567890,
-    scope: ["read", "write"]
+  "payload": {
+    "sub": "user-uuid",
+    "email": "user@example.com",
+    "role": "User",
+    "iat": 1234567890,
+    "exp": 1234567890,
+    "iss": "lifeos-api",
+    "aud": "lifeos-client"
   }
 }
 ```
 
 ### Token Management
-- Access token: 15 minutes
-- Refresh token: 7 days
-- Refresh rotation on use
-- Blacklist on logout
+- **Access token**: 15 minutes expiry
+- **Refresh token**: 7 days expiry
+- **Storage**: httpOnly cookies (recommended) or localStorage
+- **Rotation**: Refresh tokens rotated on use
 
 ## Authorization
 
-### Access Control Models
-- **RBAC** (Role-Based Access Control)
-- **ABAC** (Attribute-Based Access Control)
-- **ACL** (Access Control Lists)
+### Access Control
+- **RBAC** (Role-Based Access Control): User, Admin roles
+- **Resource Ownership**: Users can only access their own data
+- **API Key Scoping**: Limited to specific endpoints
 
-### Permission Structure
-```javascript
-{
-  resource: "posts",
-  action: "write",
-  conditions: {
-    owner: true,
-    status: "draft"
-  }
-}
-```
+### Roles
+| Role | Permissions |
+|------|-------------|
+| User | Full CRUD on own data, read system dimensions/achievements |
+| Admin | All User permissions + system configuration |
 
-### Middleware Example
-```javascript
-requirePermission('posts.write')
-requireRole(['admin', 'editor'])
-requireOwnership('post')
+### Middleware Authorization
+```csharp
+[Authorize]                      // Requires authenticated user
+[Authorize(Roles = "Admin")]     // Requires Admin role
+[RequireOwnership("userId")]     // Validates resource ownership
 ```
 
 ## Data Protection
 
 ### Encryption
-- **At Rest**: AES-256-GCM
-- **In Transit**: TLS 1.3+
-- **Key Management**: AWS KMS/HashiCorp Vault
+- **In Transit**: TLS 1.3+ (HTTPS required in production)
+- **At Rest**: Database-level encryption via PostgreSQL
+- **Passwords**: Argon2id hashing
 
 ### Sensitive Data Handling
-```javascript
-// PII fields to encrypt
-const encryptedFields = [
-  'ssn',
-  'creditCard',
-  'bankAccount',
-  'medicalRecords'
-];
+```csharp
+// Fields that are never returned in API responses
+private static readonly string[] RedactedFields = {
+    "passwordHash",
+    "refreshToken",
+    "apiKeyHash"
+};
 
-// Fields to redact in logs
-const redactedFields = [
-  'password',
-  'token',
-  'apiKey',
-  'secret'
-];
-```
-
-### Password Security
-- **Hashing**: Argon2id or bcrypt (cost 12+)
-- **Requirements**: Min 8 chars, complexity rules
-- **Reset**: Time-limited tokens
-- **History**: Prevent reuse of last 5
-
-## Input Validation
-
-### Validation Rules
-```javascript
-// Example schema
-const userSchema = {
-  email: {
-    type: 'email',
-    required: true,
-    maxLength: 255
-  },
-  password: {
-    type: 'string',
-    required: true,
-    minLength: 8,
-    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
-  },
-  age: {
-    type: 'number',
-    min: 13,
-    max: 120
-  }
+// Fields that are hashed, not encrypted
+private static readonly string[] HashedFields = {
+    "password",
+    "apiKey"
 };
 ```
 
-### Sanitization
-- HTML encoding for display
-- SQL parameterization
-- NoSQL injection prevention
-- Command injection prevention
+### Password Requirements
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+- Hashed with Argon2id
+
+## Input Validation
+
+### Request Validation
+All API requests are validated using FluentValidation:
+```csharp
+public class CreateAccountValidator : AbstractValidator<CreateAccountRequest>
+{
+    public CreateAccountValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.AccountType).IsInEnum();
+        RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.CurrentBalance).NotNull();
+    }
+}
+```
+
+### SQL Injection Prevention
+- All queries use Entity Framework Core parameterized queries
+- No raw SQL without parameterization
 
 ## Security Headers
 
