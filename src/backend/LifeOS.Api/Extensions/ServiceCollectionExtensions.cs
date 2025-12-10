@@ -35,7 +35,23 @@ public static class ServiceCollectionExtensions
                 ValidateAudience = true,
                 ValidAudience = jwtSettings.Audience,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                NameClaimType = "sub" // Use 'sub' claim for user identifier
+            };
+            
+            // Configure events for SignalR
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notifications"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -52,21 +68,19 @@ public static class ServiceCollectionExtensions
         {
             options.AddPolicy("LifeOSPolicy", policy =>
             {
-                var origins = corsSettings.AllowedOrigins.Length > 0 
-                    ? corsSettings.AllowedOrigins 
-                    : new[] { "http://localhost:5173", "http://localhost:3000" };
+                var origins = new[] 
+                { 
+                    "http://localhost:5173", 
+                    "http://localhost:3000",
+                    "https://lifeos.frostaura.net",
+                    "http://lifeos.frostaura.net"
+                };
 
                 policy
                     .WithOrigins(origins)
                     .AllowCredentials()
                     .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                    .WithHeaders(
-                        "Content-Type",
-                        "Authorization",
-                        "X-Requested-With",
-                        "X-Request-ID",
-                        "X-API-Key"
-                    )
+                    .AllowAnyHeader() // SignalR requires various dynamic headers
                     .WithExposedHeaders(
                         "X-Request-ID",
                         "X-RateLimit-Limit",

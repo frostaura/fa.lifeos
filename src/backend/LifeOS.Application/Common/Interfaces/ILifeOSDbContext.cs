@@ -1,5 +1,6 @@
 using LifeOS.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace LifeOS.Application.Common.Interfaces;
 
@@ -51,6 +52,9 @@ public interface ILifeOSDbContext
     
     // API Event Logging
     DbSet<ApiEventLog> ApiEventLogs { get; }
+    
+    // Change tracker for concurrency handling
+    ChangeTracker ChangeTracker { get; }
     
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

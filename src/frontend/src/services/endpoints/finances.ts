@@ -177,7 +177,7 @@ export const financesApi = apiSlice.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios'],
+      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios', 'FinancialGoals'],
     }),
     
     updateAccount: builder.mutation<Account, Partial<Account> & { id: string }>({
@@ -186,7 +186,7 @@ export const financesApi = apiSlice.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios'],
+      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios', 'FinancialGoals'],
     }),
     
     deleteAccount: builder.mutation<void, string>({
@@ -194,7 +194,7 @@ export const financesApi = apiSlice.injectEndpoints({
         url: `/api/accounts/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios'],
+      invalidatesTags: ['Accounts', 'Dashboard', 'InvestmentContributions', 'ExpenseDefinitions', 'Scenarios', 'FinancialGoals'],
     }),
     
     // Transactions

@@ -14,6 +14,8 @@ import { cn } from '@utils/cn';
 import type { Account, NetWorthDataPoint, FxRate, Scenario } from '@/types';
 import { AddAccountModal } from './placeholders/AddAccountModal';
 import { AddTransactionModal } from './placeholders/AddTransactionModal';
+import { useCreateAccountMutation, useUpdateAccountMutation, useDeleteAccountMutation } from '@services/endpoints/finances';
+import toast from 'react-hot-toast';
 
 interface AccountApiResponse {
   data: Array<{
@@ -72,28 +74,22 @@ export function Finances() {
 
   const [netWorthHistory, setNetWorthHistory] = useState<NetWorthDataPoint[]>([]);
 
+  // RTK Query mutations
+  const [createAccount] = useCreateAccountMutation();
+  const [updateAccount] = useUpdateAccountMutation();
+  const [deleteAccount] = useDeleteAccountMutation();
+
   const handleDeleteAccount = async (accountId: string) => {
     if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
       return;
     }
     
-    const token = localStorage.getItem('accessToken');
-    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-    
     try {
-      const res = await fetch(`/api/accounts/${accountId}`, {
-        method: 'DELETE',
-        headers,
-      });
-      
-      if (res.ok) {
-        // Remove from local state
-        setAccounts(prev => prev.filter(a => a.id !== accountId));
-        // Trigger refresh to update net worth
-        setRefreshTrigger(prev => prev + 1);
-      } else {
-        alert('Failed to delete account');
-      }
+      await deleteAccount(accountId).unwrap();
+      // Remove from local state
+      setAccounts(prev => prev.filter(a => a.id !== accountId));
+      // Trigger refresh to update net worth
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Error deleting account:', err);
       alert('Failed to delete account');
@@ -235,69 +231,47 @@ export function Finances() {
   }, [refreshTrigger, chartPeriod]);
 
   const handleAddAccount = async (data: { name: string; type: string; balance: number; currency: string; institution?: string; isLiability?: boolean; interestRateAnnual?: number }) => {
-    const token = localStorage.getItem('accessToken');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    };
-
     try {
-      const res = await fetch('/api/accounts', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: data.name,
-          accountType: data.type,
-          currency: data.currency,
-          initialBalance: data.balance,
-          institution: data.institution || null,
-          isLiability: data.isLiability || false,
-          interestRateAnnual: data.interestRateAnnual || null,
-        }),
-      });
-
-      if (res.ok) {
-        setRefreshTrigger(prev => prev + 1);
-      }
+      await createAccount({
+        name: data.name,
+        type: data.type as Account['type'],
+        balance: data.balance,
+        currency: data.currency,
+        institution: data.institution,
+        isLiability: data.isLiability || false,
+        interestRateAnnual: data.interestRateAnnual,
+      }).unwrap();
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to add account:', error);
+      alert('Failed to add account');
     }
   };
 
   const handleUpdateAccount = async (id: string, data: { name: string; type: string; balance: number; currency: string; institution?: string; isLiability?: boolean; interestRateAnnual?: number; monthlyFee?: number }) => {
-    const token = localStorage.getItem('accessToken');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    };
-
     try {
-      const res = await fetch(`/api/accounts/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          name: data.name,
-          accountType: data.type,
-          currency: data.currency,
-          currentBalance: data.balance,
-          institution: data.institution || null,
-          isLiability: data.isLiability || false,
-          interestRateAnnual: data.interestRateAnnual || null,
-          monthlyFee: data.monthlyFee || null,
-        }),
+      toast.loading('Recalculating projections...', { 
+        id: 'projections-calculating',
+        duration: 60000
       });
-
-      if (res.ok) {
-        setEditingAccount(null);
-        setRefreshTrigger(prev => prev + 1);
-      } else {
-        const errorData = await res.json().catch(() => null);
-        const errorMessage = errorData?.message || errorData?.title || `Failed to update account (${res.status})`;
-        alert(errorMessage);
-      }
+      
+      await updateAccount({
+        id,
+        name: data.name,
+        type: data.type as Account['type'],
+        balance: data.balance,
+        currency: data.currency,
+        institution: data.institution,
+        isLiability: data.isLiability || false,
+        interestRateAnnual: data.interestRateAnnual,
+        monthlyFee: data.monthlyFee,
+      }).unwrap();
+      setEditingAccount(null);
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to update account:', error);
-      alert('Failed to update account: Network error');
+      toast.dismiss('projections-calculating');
+      toast.error('Failed to update account');
     }
   };
 

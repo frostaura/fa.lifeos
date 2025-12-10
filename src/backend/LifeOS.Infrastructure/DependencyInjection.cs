@@ -4,6 +4,7 @@ using LifeOS.Infrastructure.BackgroundJobs;
 using LifeOS.Infrastructure.Persistence;
 using LifeOS.Infrastructure.Services.Authentication;
 using LifeOS.Infrastructure.Services.FxRates;
+using LifeOS.Infrastructure.Services.Notifications;
 using LifeOS.Infrastructure.Services.Seeding;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -46,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<IPasswordService, PasswordService>();
 
+        // Notification services
+        services.AddScoped<INotificationService, SignalRNotificationService>();
+
         // Data seeding
         services.AddScoped<IDataSeeder, DataSeeder>();
 
@@ -59,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<StreakEvaluationJob>();
         services.AddScoped<ScheduledSimulationJob>();
         services.AddScoped<NetWorthSnapshotJob>();
+        services.AddScoped<RegenerateSimulationJob>();
 
         // Hangfire Configuration
         if (!string.IsNullOrEmpty(connectionString))

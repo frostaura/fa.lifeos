@@ -36,11 +36,13 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@microsoft/signalr": "^8.0.17",
     "@monaco-editor/react": "^4.7.0",
     "@simplewebauthn/browser": "^13.2.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
     "react-hook-form": "^7.67.0",
+    "react-hot-toast": "^2.6.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.1.13"
   }

@@ -3,6 +3,7 @@ using LifeOS.Application.DTOs.Simulations;
 using LifeOS.Domain.Entities;
 using LifeOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -12,11 +13,16 @@ public class SimulationEngine : ISimulationEngine
 {
     private readonly ILifeOSDbContext _context;
     private readonly IConditionParser _conditionParser;
+    private readonly INotificationService _notificationService;
+    
+    // Track in-progress simulations to prevent concurrent runs for the same scenario
+    private static readonly ConcurrentDictionary<Guid, DateTime> _runningSimulations = new();
 
-    public SimulationEngine(ILifeOSDbContext context, IConditionParser conditionParser)
+    public SimulationEngine(ILifeOSDbContext context, IConditionParser conditionParser, INotificationService notificationService)
     {
         _context = context;
         _conditionParser = conditionParser;
+        _notificationService = notificationService;
     }
 
     public async Task<RunSimulationData> RunSimulationAsync(
@@ -24,6 +30,39 @@ public class SimulationEngine : ISimulationEngine
         Guid scenarioId,
         bool recalculateFromStart = true,
         CancellationToken cancellationToken = default)
+    {
+        // Check if simulation is already running for this scenario
+        if (!_runningSimulations.TryAdd(scenarioId, DateTime.UtcNow))
+        {
+            // Another run is in progress, return early with status
+            return new RunSimulationData
+            {
+                ScenarioId = scenarioId,
+                Status = "skipped",
+                PeriodsCalculated = 0,
+                ExecutionTimeMs = 0,
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                KeyMilestones = new List<MilestoneResult>()
+            };
+        }
+        
+        try
+        {
+            return await RunSimulationInternalAsync(userId, scenarioId, recalculateFromStart, cancellationToken);
+        }
+        finally
+        {
+            // Always remove from running simulations when done
+            _runningSimulations.TryRemove(scenarioId, out _);
+        }
+    }
+    
+    private async Task<RunSimulationData> RunSimulationInternalAsync(
+        Guid userId,
+        Guid scenarioId,
+        bool recalculateFromStart,
+        CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -48,11 +87,15 @@ public class SimulationEngine : ISimulationEngine
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Loaded {accounts.Count} accounts");
+
         // Load income sources
         var incomeSources = await _context.IncomeSources
             .Where(i => i.UserId == userId && i.IsActive)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Loaded {incomeSources.Count} income sources");
 
         // Load expense definitions
         var expenseDefinitions = await _context.ExpenseDefinitions
@@ -60,11 +103,15 @@ public class SimulationEngine : ISimulationEngine
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Loaded {expenseDefinitions.Count} expenses");
+
         // Load investment contributions
         var investmentContributions = await _context.InvestmentContributions
             .Where(i => i.UserId == userId && i.IsActive)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Loaded {investmentContributions.Count} investments");
 
         // Load tax profiles
         var taxProfiles = await _context.TaxProfiles
@@ -78,13 +125,46 @@ public class SimulationEngine : ISimulationEngine
         // Clear existing projections if recalculating
         if (recalculateFromStart)
         {
-            var existingAccountProjections = _context.AccountProjections
-                .Where(p => p.ScenarioId == scenarioId);
-            _context.AccountProjections.RemoveRange(existingAccountProjections);
+            await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", "Clearing old projections...");
+            
+            // Use a retry mechanism to handle concurrent delete attempts gracefully
+            var retryCount = 0;
+            const int maxRetries = 3;
+            
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    // Load and delete existing projections
+                    var existingAccountProjections = await _context.AccountProjections
+                        .Where(p => p.ScenarioId == scenarioId)
+                        .ToListAsync(cancellationToken);
+                    
+                    if (existingAccountProjections.Any())
+                        _context.AccountProjections.RemoveRange(existingAccountProjections);
 
-            var existingNetWorthProjections = _context.NetWorthProjections
-                .Where(p => p.ScenarioId == scenarioId);
-            _context.NetWorthProjections.RemoveRange(existingNetWorthProjections);
+                    var existingNetWorthProjections = await _context.NetWorthProjections
+                        .Where(p => p.ScenarioId == scenarioId)
+                        .ToListAsync(cancellationToken);
+                    
+                    if (existingNetWorthProjections.Any())
+                        _context.NetWorthProjections.RemoveRange(existingNetWorthProjections);
+                    
+                    // Save the deletions first to avoid concurrency issues
+                    await _context.SaveChangesAsync(cancellationToken);
+                    break; // Success, exit retry loop
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                        throw; // Re-throw after max retries
+                    
+                    // Clear change tracker and retry
+                    _context.ChangeTracker.Clear();
+                    await Task.Delay(100 * retryCount, cancellationToken); // Exponential backoff
+                }
+            }
         }
 
         // Determine simulation date range
@@ -126,9 +206,21 @@ public class SimulationEngine : ISimulationEngine
         var currentDate = startDate;
         var monthsCalculated = 0;
         var endConditionMet = false;
+        var totalMonths = ((endDate.Year - startDate.Year) * 12) + (endDate.Month - startDate.Month);
+
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Simulating {totalMonths} months...");
 
         while (currentDate <= endDate && !endConditionMet)
         {
+            // Send progress update every 12 months (yearly) to avoid flooding
+            if (monthsCalculated > 0 && monthsCalculated % 12 == 0)
+            {
+                await _notificationService.NotifyCalculationProgressAsync(
+                    userId, 
+                    "Recalculating Projections", 
+                    $"Processing month {monthsCalculated} of {totalMonths}");
+            }
+
             var monthsElapsed = monthsCalculated;
             var currentAge = userAge + (monthsElapsed / 12);
 
@@ -441,9 +533,41 @@ public class SimulationEngine : ISimulationEngine
         // Update scenario last run time
         scenario.LastRunAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _notificationService.NotifyCalculationProgressAsync(userId, "Recalculating Projections", $"Saving {monthsCalculated} projections...");
+
+        // Use retry logic for final save to handle concurrent modifications
+        var saveRetryCount = 0;
+        const int maxSaveRetries = 3;
+        
+        while (saveRetryCount < maxSaveRetries)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+                break; // Success
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                saveRetryCount++;
+                if (saveRetryCount >= maxSaveRetries)
+                    throw;
+                
+                // Clear entries that failed and retry
+                foreach (var entry in _context.ChangeTracker.Entries())
+                {
+                    if (entry.State == EntityState.Modified || entry.State == EntityState.Deleted)
+                    {
+                        await entry.ReloadAsync(cancellationToken);
+                    }
+                }
+                await Task.Delay(100 * saveRetryCount, cancellationToken);
+            }
+        }
 
         stopwatch.Stop();
+        
+        // Notify user that projections have been updated
+        await _notificationService.NotifyProjectionsUpdatedAsync(userId);
 
         return new RunSimulationData
         {

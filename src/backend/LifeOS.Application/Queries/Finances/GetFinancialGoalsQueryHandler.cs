@@ -140,7 +140,43 @@ public class GetFinancialGoalsQueryHandler
             {
                 monthsToAcquire = simMonths;
             }
-            // Fallback to simple calculation
+            // Fallback to compound growth formula (matching total goals calculation)
+            else if (monthlyInvestmentRate > 0 && g.RemainingAmount > 0)
+            {
+                // Get average annual growth rate from investment accounts
+                var investmentAccounts = _db.Accounts
+                    .Where(a => a.UserId == query.UserId && a.IsActive && !a.IsLiability 
+                        && a.AccountType == AccountType.Investment)
+                    .ToList();
+                
+                var avgAnnualRate = investmentAccounts.Any() 
+                    ? investmentAccounts.Average(a => a.InterestRateAnnual ?? 0) / 100m 
+                    : 0.10m; // Default 10% if no accounts
+                
+                var monthlyRate = avgAnnualRate / 12m;
+                
+                if (monthlyRate > 0)
+                {
+                    // Future Value of Annuity formula: FV = PMT * ((1 + r)^n - 1) / r
+                    // Solving for n: n = ln((FV * r / PMT) + 1) / ln(1 + r)
+                    var targetFV = (double)g.RemainingAmount;
+                    var pmt = (double)monthlyInvestmentRate;
+                    var r = (double)monthlyRate;
+                    
+                    var nMonths = Math.Log((targetFV * r / pmt) + 1) / Math.Log(1 + r);
+                    if (!double.IsNaN(nMonths) && !double.IsInfinity(nMonths) && nMonths > 0)
+                    {
+                        monthsToAcquire = (int)Math.Ceiling(nMonths);
+                    }
+                }
+                
+                // If compound calculation fails, fall back to linear calculation
+                if (!monthsToAcquire.HasValue && effectiveMonthlySavingsRate > 0)
+                {
+                    monthsToAcquire = (int)Math.Ceiling(g.RemainingAmount / effectiveMonthlySavingsRate);
+                }
+            }
+            // Final fallback to simple linear calculation
             else if (effectiveMonthlySavingsRate > 0)
             {
                 monthsToAcquire = (int)Math.Ceiling(g.RemainingAmount / effectiveMonthlySavingsRate);

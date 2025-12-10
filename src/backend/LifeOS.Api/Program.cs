@@ -7,6 +7,7 @@ using LifeOS.Application;
 using LifeOS.Infrastructure;
 using LifeOS.Infrastructure.BackgroundJobs;
 using LifeOS.Infrastructure.Configuration;
+using LifeOS.Infrastructure.Hubs;
 using LifeOS.Infrastructure.Services.Seeding;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +50,9 @@ builder.Services.AddFido2(options =>
 // Add JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+
+// Add SignalR
+builder.Services.AddSignalR();
 
 // Add CORS
 builder.Services.AddLifeOSCors(builder.Configuration);
@@ -123,6 +127,9 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
 }
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/notifications");
 
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
