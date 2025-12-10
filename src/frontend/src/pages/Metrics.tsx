@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, Check, AlertCircle, Clock, RefreshCw, Copy, FileJson, Plus, Edit2, Trash2, ChevronLeft, Activity, CheckCircle, XCircle, Link2 } from 'lucide-react';
 import { cn } from '@utils/cn';
+import { confirmToast } from '@utils/confirmToast';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Button } from '@components/atoms/Button';
 import { Input } from '@components/atoms/Input';
@@ -423,7 +424,10 @@ function RecordsPanel({ definition, onClose }: RecordsPanelProps) {
   };
 
   const handleDeleteRecord = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this record?',
+    });
+    if (confirmed) {
       await deleteRecord(id).unwrap();
       refetch();
     }
@@ -603,7 +607,10 @@ export function Metrics() {
   };
 
   const handleDelete = async (defCode: string) => {
-    if (window.confirm('Are you sure you want to delete this metric definition?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this metric definition?',
+    });
+    if (confirmed) {
       await deleteDefinition(defCode).unwrap();
       refetchDefs();
     }

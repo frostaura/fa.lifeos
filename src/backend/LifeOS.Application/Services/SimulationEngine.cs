@@ -332,6 +332,13 @@ public class SimulationEngine : ISimulationEngine
 
                 if (sourceAccountId.HasValue)
                 {
+                    var sourceIsLiability = accountLiability.GetValueOrDefault(sourceAccountId.Value);
+                    var currentBalance = accountBalances[sourceAccountId.Value];
+                    
+                    // Skip expense if source account has insufficient balance (non-liability accounts can't go negative)
+                    if (!sourceIsLiability && currentBalance < amount)
+                        continue;
+                    
                     accountBalances[sourceAccountId.Value] -= amount;
                     accountExpenses[sourceAccountId.Value] += amount;
                 }
@@ -372,6 +379,13 @@ public class SimulationEngine : ISimulationEngine
                 // Debit from source account (if specified)
                 if (investment.SourceAccountId.HasValue && accountBalances.ContainsKey(investment.SourceAccountId.Value))
                 {
+                    var sourceIsLiability = accountLiability.GetValueOrDefault(investment.SourceAccountId.Value);
+                    var currentBalance = accountBalances[investment.SourceAccountId.Value];
+                    
+                    // Skip investment contribution if source account has insufficient balance (non-liability accounts can't go negative)
+                    if (!sourceIsLiability && currentBalance < contributionAmount)
+                        continue;
+                    
                     accountBalances[investment.SourceAccountId.Value] -= contributionAmount;
                     accountExpenses[investment.SourceAccountId.Value] += contributionAmount;
                 }

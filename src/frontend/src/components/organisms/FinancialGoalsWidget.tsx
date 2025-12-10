@@ -6,6 +6,7 @@ import { ProgressBar } from '@components/atoms/ProgressBar';
 import { Spinner } from '@components/atoms/Spinner';
 import { Plus, Target, X, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@utils/cn';
+import { confirmToast } from '@utils/confirmToast';
 import { formatCurrency } from '@components/molecules/CurrencySelector';
 import {
   useGetFinancialGoalsQuery,
@@ -271,7 +272,10 @@ export function FinancialGoalsWidget() {
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    if (window.confirm('Are you sure you want to delete this goal?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this goal?',
+    });
+    if (confirmed) {
       try {
         await deleteGoal(goalId).unwrap();
       } catch (err) {

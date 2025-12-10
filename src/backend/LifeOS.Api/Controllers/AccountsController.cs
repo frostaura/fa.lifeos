@@ -1,9 +1,13 @@
+using Hangfire;
 using LifeOS.Application.Commands.Accounts;
+using LifeOS.Application.Common.Interfaces;
 using LifeOS.Application.DTOs.Accounts;
 using LifeOS.Application.Queries.Accounts;
+using LifeOS.Infrastructure.BackgroundJobs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace LifeOS.Api.Controllers;
@@ -15,11 +19,19 @@ public class AccountsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AccountsController> _logger;
+    private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly ILifeOSDbContext _dbContext;
 
-    public AccountsController(IMediator mediator, ILogger<AccountsController> logger)
+    public AccountsController(
+        IMediator mediator, 
+        ILogger<AccountsController> logger,
+        IBackgroundJobClient backgroundJobClient,
+        ILifeOSDbContext dbContext)
     {
         _mediator = mediator;
         _logger = logger;
+        _backgroundJobClient = backgroundJobClient;
+        _dbContext = dbContext;
     }
 
     private Guid GetUserId()
@@ -27,6 +39,29 @@ public class AccountsController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
             ?? User.FindFirst("sub")?.Value;
         return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+    }
+
+    /// <summary>
+    /// Enqueue simulation regeneration for the user's baseline scenario
+    /// </summary>
+    private async Task EnqueueSimulationRegenerationAsync(Guid userId)
+    {
+        var baselineScenario = await _dbContext.SimulationScenarios
+            .Where(s => s.UserId == userId && s.IsBaseline)
+            .Select(s => new { s.Id })
+            .FirstOrDefaultAsync();
+
+        if (baselineScenario != null)
+        {
+            _backgroundJobClient.Enqueue<RegenerateSimulationJob>(
+                job => job.ExecuteAsync(userId, baselineScenario.Id));
+            _logger.LogInformation("Enqueued simulation regeneration for user {UserId}, baseline scenario {ScenarioId}", 
+                userId, baselineScenario.Id);
+        }
+        else
+        {
+            _logger.LogDebug("No baseline scenario found for user {UserId}, skipping simulation regeneration", userId);
+        }
     }
 
     /// <summary>
@@ -94,8 +129,9 @@ public class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CreateAccount([FromBody] CreateAccountRequest request)
     {
+        var userId = GetUserId();
         var result = await _mediator.Send(new CreateAccountCommand(
-            GetUserId(),
+            userId,
             request.Name,
             request.AccountType,
             request.Currency,
@@ -106,6 +142,9 @@ public class AccountsController : ControllerBase
             request.InterestCompounding,
             request.MonthlyFee,
             request.Metadata));
+
+        // Trigger simulation regeneration in background
+        await EnqueueSimulationRegenerationAsync(userId);
 
         return CreatedAtAction(nameof(GetAccountById), new { id = result.Data.Id }, result);
     }
@@ -118,8 +157,9 @@ public class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAccount(Guid id, [FromBody] UpdateAccountRequest request)
     {
+        var userId = GetUserId();
         var success = await _mediator.Send(new UpdateAccountCommand(
-            GetUserId(),
+            userId,
             id,
             request.Name,
             request.AccountType,
@@ -136,7 +176,10 @@ public class AccountsController : ControllerBase
         if (!success)
             return NotFound(new { error = new { code = "NOT_FOUND", message = "Account not found" } });
 
-        var result = await _mediator.Send(new GetAccountByIdQuery(GetUserId(), id));
+        // Trigger simulation regeneration in background
+        await EnqueueSimulationRegenerationAsync(userId);
+
+        var result = await _mediator.Send(new GetAccountByIdQuery(userId, id));
         return Ok(result);
     }
 
@@ -148,10 +191,14 @@ public class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAccount(Guid id)
     {
-        var success = await _mediator.Send(new DeleteAccountCommand(GetUserId(), id));
+        var userId = GetUserId();
+        var success = await _mediator.Send(new DeleteAccountCommand(userId, id));
 
         if (!success)
             return NotFound(new { error = new { code = "NOT_FOUND", message = "Account not found" } });
+
+        // Trigger simulation regeneration in background
+        await EnqueueSimulationRegenerationAsync(userId);
 
         return NoContent();
     }

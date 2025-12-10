@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Button } from '@components/atoms/Button';
 import { Spinner } from '@components/atoms/Spinner';
@@ -9,13 +9,68 @@ import { NetWorthGoalTracker } from '@components/organisms/NetWorthGoalTracker';
 import { LoanPayoffCalculator } from '@components/organisms/LoanPayoffCalculator';
 import { AccountRow } from '@components/molecules/AccountRow';
 import { CurrencySelector, formatCurrency } from '@components/molecules/CurrencySelector';
-import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info, Wallet, DollarSign, Target } from 'lucide-react';
 import { cn } from '@utils/cn';
+import { confirmToast } from '@utils/confirmToast';
 import type { Account, NetWorthDataPoint, FxRate, Scenario } from '@/types';
 import { AddAccountModal } from './placeholders/AddAccountModal';
 import { AddTransactionModal } from './placeholders/AddTransactionModal';
 import { useCreateAccountMutation, useUpdateAccountMutation, useDeleteAccountMutation } from '@services/endpoints/finances';
 import toast from 'react-hot-toast';
+
+// Tab navigation items for Finances page
+const financesNav = [
+  { icon: Wallet, label: 'Overview', path: '/finances' },
+  { icon: Calculator, label: 'Tax Profiles', path: '/finances/tax-profiles' },
+  { icon: DollarSign, label: 'Income/Expenses', path: '/finances/income-expenses' },
+  { icon: TrendingUp, label: 'Investments', path: '/finances/investments' },
+  { icon: Target, label: 'Goals', path: '/finances/goals' },
+];
+
+// Layout wrapper for Finances with tab navigation
+export function FinancesLayout() {
+  const location = useLocation();
+  const isOverview = location.pathname === '/finances' || location.pathname === '/finances/';
+
+  return (
+    <div className="space-y-4 overflow-x-hidden">
+      {/* Header with Title */}
+      <div>
+        <h1 className="text-base md:text-lg font-bold text-text-primary">Finances</h1>
+        <p className="text-text-secondary mt-0.5 text-xs">Manage your financial life</p>
+      </div>
+
+      {/* Tab Navigation */}
+      <GlassCard variant="default" className="p-2">
+        <nav className="flex flex-wrap gap-1">
+          {financesNav.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/finances'}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs md:text-sm',
+                  isActive
+                    ? 'bg-accent-purple/20 text-accent-purple'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-background-hover'
+                )
+              }
+            >
+              <item.icon className="w-4 h-4" />
+              <span className="font-medium whitespace-nowrap">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </GlassCard>
+
+      {/* Content Area */}
+      <div>
+        {isOverview ? <FinancesOverview /> : <Outlet />}
+      </div>
+    </div>
+  );
+}
 
 interface AccountApiResponse {
   data: Array<{
@@ -54,7 +109,8 @@ interface ScenarioApiResponse {
   }>;
 }
 
-export function Finances() {
+// Original Finances content renamed to FinancesOverview for the tab-based layout
+export function FinancesOverview() {
   const navigate = useNavigate();
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
@@ -80,7 +136,10 @@ export function Finances() {
   const [deleteAccount] = useDeleteAccountMutation();
 
   const handleDeleteAccount = async (accountId: string) => {
-    if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this account? This action cannot be undone.',
+    });
+    if (!confirmed) {
       return;
     }
     
@@ -364,23 +423,17 @@ export function Finances() {
 
   return (
     <div className="space-y-4 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <div>
-          <h1 className="text-base md:text-lg font-bold text-text-primary">Finances</h1>
-          <p className="text-text-secondary mt-0.5 text-xs">Track your wealth</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <CurrencySelector size="sm" />
-          <Button onClick={() => setIsAddTransactionOpen(true)} variant="secondary" icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
-            <span className="hidden sm:inline">Transaction</span>
-            <span className="sm:hidden">+</span>
-          </Button>
-          <Button onClick={() => setIsAddAccountOpen(true)} icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
-            <span className="hidden sm:inline">Account</span>
-            <span className="sm:hidden">+</span>
-          </Button>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center gap-2">
+        <CurrencySelector size="sm" />
+        <Button onClick={() => setIsAddTransactionOpen(true)} variant="secondary" icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
+          <span className="hidden sm:inline">Transaction</span>
+          <span className="sm:hidden">+</span>
+        </Button>
+        <Button onClick={() => setIsAddAccountOpen(true)} icon={<Plus className="w-3 h-3" />} className="text-xs px-2 py-1">
+          <span className="hidden sm:inline">Account</span>
+          <span className="sm:hidden">+</span>
+        </Button>
       </div>
 
       {/* Net Worth Banner */}

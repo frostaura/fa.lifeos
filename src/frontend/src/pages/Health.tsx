@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Spinner } from '@components/atoms/Spinner';
 import { Button } from '@components/atoms/Button';
@@ -93,27 +93,46 @@ export function Health() {
     { skip: healthMetricCodes.length === 0 }
   );
 
-  // Fetch longevity data
-  useEffect(() => {
-    const fetchLongevity = async () => {
-      const token = localStorage.getItem('accessToken');
-      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+  // Debounced longevity fetch function
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const fetchLongevity = useCallback(async () => {
+    const token = localStorage.getItem('accessToken');
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-      try {
-        const longevityRes = await fetch('/api/longevity', { headers });
-        if (longevityRes.ok) {
-          const data = await longevityRes.json();
-          setLongevity(data.data.attributes);
-        }
-      } catch (err) {
-        console.error('Failed to fetch longevity data:', err);
-      } finally {
-        setLongevityLoading(false);
+    try {
+      const longevityRes = await fetch('/api/longevity', { headers });
+      if (longevityRes.ok) {
+        const data = await longevityRes.json();
+        setLongevity(data.data.attributes);
+      }
+    } catch (err) {
+      console.error('Failed to fetch longevity data:', err);
+    } finally {
+      setLongevityLoading(false);
+    }
+  }, []);
+
+  // Fetch longevity data on mount and when metric data changes (debounced)
+  useEffect(() => {
+    // Clear any pending debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Debounce refetches to avoid excessive API calls (500ms delay)
+    debounceTimerRef.current = setTimeout(() => {
+      setLongevityLoading(true);
+      fetchLongevity();
+    }, 500);
+
+    // Cleanup on unmount or before next effect run
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
-
-    fetchLongevity();
-  }, []);
+  }, [definitions, historyData, fetchLongevity]);
 
   const loading = longevityLoading || definitionsLoading || historyLoading;
 
@@ -276,8 +295,16 @@ export function Health() {
               <p className="text-text-secondary text-xs md:text-sm">Estimated Life Expectancy</p>
               <div className="group relative">
                 <Info className="w-3.5 h-3.5 text-text-tertiary cursor-help" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-bg-primary border border-border-primary rounded-lg text-xs text-text-secondary w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  Based on your baseline life expectancy ({baseYears} years) adjusted by your health metrics using evidence-based longevity models.
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-bg-primary border border-border-primary rounded-lg text-xs text-text-secondary w-80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                  <p className="font-semibold text-text-primary mb-2">How Life Expectancy is Calculated</p>
+                  <ul className="space-y-1.5">
+                    <li><span className="text-accent-purple">Baseline:</span> {baseYears} years (based on your country, age, and demographic data)</li>
+                    <li><span className="text-accent-purple">Factors:</span> Each health metric is evaluated against evidence-based longevity models</li>
+                    <li><span className="text-semantic-success">Positive impact:</span> Metrics in healthy ranges add years to your estimate</li>
+                    <li><span className="text-semantic-error">Negative impact:</span> Metrics outside optimal ranges reduce your estimate</li>
+                    <li><span className="text-accent-purple">Confidence:</span> {longevity?.confidenceLevel || 'N/A'} – based on how many metrics are tracked and data quality</li>
+                  </ul>
+                  <p className="mt-2 text-text-tertiary text-[10px]">Models are derived from published epidemiological research on lifestyle factors and mortality risk.</p>
                 </div>
               </div>
             </div>

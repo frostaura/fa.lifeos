@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useGetDimensionQuery, useGetMilestonesQuery, useDeleteMilestoneMutation } from '@/services';
 import { getDimensionIcon, getDimensionColor } from '@utils/dimensionIcons';
+import { confirmToast } from '@utils/confirmToast';
 import type { TaskReference } from '@/types';
 import { AddMilestoneModal } from './placeholders/AddMilestoneModal';
 
@@ -30,7 +31,10 @@ export function DimensionDetail() {
   const [deleteMilestone, { isLoading: isDeleting }] = useDeleteMilestoneMutation();
 
   const handleDeleteMilestone = async (milestoneId: string) => {
-    if (!window.confirm('Are you sure you want to delete this milestone?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this milestone?',
+    });
+    if (!confirmed) {
       return;
     }
     try {

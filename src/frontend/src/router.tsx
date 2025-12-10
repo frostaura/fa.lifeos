@@ -4,7 +4,7 @@ import { Login } from '@pages/Login';
 import { Dashboard } from '@pages/Dashboard';
 import { Dimensions } from '@pages/Dimensions';
 import { DimensionDetail } from '@pages/DimensionDetail';
-import { Finances } from '@pages/Finances';
+import { FinancesLayout, FinancesOverview } from '@pages/Finances';
 import { AccountDetail } from '@pages/AccountDetail';
 import { Health } from '@pages/Health';
 import { Simulation } from '@pages/Simulation';
@@ -38,7 +38,17 @@ export const router = createHashRouter([
       { index: true, element: <Dashboard /> },
       { path: 'dimensions', element: <Dimensions /> },
       { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
-      { path: 'finances', element: <Finances /> },
+      {
+        path: 'finances',
+        element: <FinancesLayout />,
+        children: [
+          { index: true, element: <FinancesOverview /> },
+          { path: 'tax-profiles', element: <TaxProfileSettings /> },
+          { path: 'income-expenses', element: <IncomeExpenseSettings /> },
+          { path: 'investments', element: <InvestmentSettings /> },
+          { path: 'goals', element: <GoalsSettings /> },
+        ],
+      },
       { path: 'finances/accounts/:accountId', element: <AccountDetail /> },
       { path: 'simulation', element: <Simulation /> },
       { path: 'simulation/new', element: <SimulationBuilder /> },
@@ -54,10 +64,6 @@ export const router = createHashRouter([
           { path: 'profile', element: <ProfileSettings /> },
           { path: 'api-keys', element: <ApiKeySettings /> },
           { path: 'dimensions', element: <DimensionSettings /> },
-          { path: 'tax-profiles', element: <TaxProfileSettings /> },
-          { path: 'income-expenses', element: <IncomeExpenseSettings /> },
-          { path: 'investments', element: <InvestmentSettings /> },
-          { path: 'goals', element: <GoalsSettings /> },
           { path: 'data', element: <DataPortabilitySettings /> },
         ],
       },

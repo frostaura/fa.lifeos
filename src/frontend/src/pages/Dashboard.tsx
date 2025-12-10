@@ -51,19 +51,7 @@ interface DashboardApiResponse {
   };
 }
 
-interface NetWorthHistoryApiResponse {
-  data: {
-    history: Array<{
-      date: string;
-      value: number;
-    }>;
-    summary: {
-      currentNetWorth: number;
-      change: number;
-      changePercent: number;
-    };
-  };
-}
+
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);

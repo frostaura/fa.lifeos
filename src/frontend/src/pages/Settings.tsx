@@ -4,6 +4,7 @@ import { InfoTooltip } from '@components/atoms/InfoTooltip';
 import { User, Key, Grid3X3, Calculator, DollarSign, Copy, Trash2, Plus, Check, Loader2, AlertCircle, TrendingUp, Target, Download, Upload, ArrowUpDown } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@utils/cn';
+import { confirmToast } from '@utils/confirmToast';
 import { TOOLTIP_CONTENT } from '@utils/tooltipContent';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -57,10 +58,6 @@ const settingsNav = [
   { icon: User, label: 'Profile', path: '/settings/profile' },
   { icon: Key, label: 'API Keys', path: '/settings/api-keys' },
   { icon: Grid3X3, label: 'Dimensions', path: '/settings/dimensions' },
-  { icon: Calculator, label: 'Tax Profiles', path: '/settings/tax-profiles' },
-  { icon: DollarSign, label: 'Income/Expenses', path: '/settings/income-expenses' },
-  { icon: TrendingUp, label: 'Investments', path: '/settings/investments' },
-  { icon: Target, label: 'Goals', path: '/settings/goals' },
   { icon: Download, label: 'Data Portability', path: '/settings/data' },
 ];
 
@@ -360,7 +357,10 @@ export function ApiKeySettings() {
   }, [newKey]);
 
   const handleRevoke = async (id: string) => {
-    if (confirm('Are you sure you want to revoke this API key? This cannot be undone.')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to revoke this API key? This cannot be undone.',
+    });
+    if (confirmed) {
       await revokeApiKey(id);
     }
   };
@@ -665,7 +665,10 @@ export function TaxProfileSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this tax profile?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this tax profile?',
+    });
+    if (confirmed) {
       await deleteTaxProfile(id);
     }
   };
@@ -1421,13 +1424,19 @@ export function IncomeExpenseSettings() {
   };
 
   const handleDeleteIncome = async (id: string) => {
-    if (confirm('Are you sure you want to delete this income source?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this income source?',
+    });
+    if (confirmed) {
       await deleteIncomeSource(id);
     }
   };
 
   const handleDeleteExpense = async (id: string) => {
-    if (confirm('Are you sure you want to delete this expense?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this expense?',
+    });
+    if (confirmed) {
       await deleteExpenseDefinition(id);
     }
   };
@@ -3365,7 +3374,10 @@ export function InvestmentSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this investment contribution?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this investment contribution?',
+    });
+    if (confirmed) {
       await deleteContribution(id);
     }
   };
@@ -4274,7 +4286,10 @@ export function GoalsSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this goal?')) {
+    const confirmed = await confirmToast({
+      message: 'Are you sure you want to delete this goal?',
+    });
+    if (confirmed) {
       await deleteGoal(id);
     }
   };

@@ -21,8 +21,11 @@ export function Login() {
     const [success, setSuccess] = useState<string | null>(null);
     const [webAuthnSupported, setWebAuthnSupported] = useState(false);
 
-    // Get the original path the user was trying to access
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+    // Get the original path the user was trying to access (preserving query string and hash)
+    const fromLocation = (location.state as { from?: { pathname: string; search?: string; hash?: string } })?.from;
+    const from = fromLocation 
+        ? `${fromLocation.pathname}${fromLocation.search || ''}${fromLocation.hash || ''}`
+        : '/';
 
     useEffect(() => {
         setWebAuthnSupported(browserSupportsWebAuthn());
