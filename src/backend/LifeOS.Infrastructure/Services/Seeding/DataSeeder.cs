@@ -42,15 +42,17 @@ public class DataSeeder : IDataSeeder
             return;
         }
 
-        _logger.LogInformation("Seeding 8 core dimensions...");
+        _logger.LogInformation("Seeding 8 core dimensions (v1.1)...");
 
+        // v1.1 dimension codes: health_recovery, relationships, work_contribution, 
+        // play_adventure, asset_care, create_craft, growth_mind, community_meaning
         var dimensions = new List<Dimension>
         {
             new Dimension
             {
-                Code = "health",
+                Code = "health_recovery",
                 Name = "Health & Recovery",
-                Description = "Physical health, sleep, exercise, and recovery",
+                Description = "Physical health, sleep, exercise, and recovery. Contributes to: vitality, energy, composure.",
                 Icon = "🏃",
                 DefaultWeight = 0.15m,
                 SortOrder = 1,
@@ -60,7 +62,7 @@ public class DataSeeder : IDataSeeder
             {
                 Code = "relationships",
                 Name = "Relationships",
-                Description = "Family, friends, and meaningful connections",
+                Description = "Family, friends, and meaningful connections. Contributes to: charisma, influence, composure.",
                 Icon = "❤️",
                 DefaultWeight = 0.15m,
                 SortOrder = 2,
@@ -68,9 +70,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "work",
+                Code = "work_contribution",
                 Name = "Work & Contribution",
-                Description = "Career, productivity, and professional impact",
+                Description = "Career, productivity, and professional impact. Contributes to: wisdom, influence, energy.",
                 Icon = "💼",
                 DefaultWeight = 0.15m,
                 SortOrder = 3,
@@ -78,9 +80,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "play",
+                Code = "play_adventure",
                 Name = "Play & Adventure",
-                Description = "Fun, hobbies, travel, and leisure",
+                Description = "Fun, hobbies, travel, and leisure. Contributes to: energy, vitality, charisma.",
                 Icon = "🎮",
                 DefaultWeight = 0.10m,
                 SortOrder = 4,
@@ -88,9 +90,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "assets",
+                Code = "asset_care",
                 Name = "Asset Care",
-                Description = "Managing possessions, home, and environment",
+                Description = "Managing possessions, finances, and environment. Contributes to: wisdom, composure.",
                 Icon = "💰",
                 DefaultWeight = 0.15m,
                 SortOrder = 5,
@@ -98,9 +100,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "create",
+                Code = "create_craft",
                 Name = "Create & Craft",
-                Description = "Creative projects and making things",
+                Description = "Creative projects and making things. Contributes to: wisdom, energy, influence.",
                 Icon = "🎨",
                 DefaultWeight = 0.10m,
                 SortOrder = 6,
@@ -108,9 +110,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "growth",
+                Code = "growth_mind",
                 Name = "Growth & Mind",
-                Description = "Learning, reading, and mental development",
+                Description = "Learning, reading, and mental development. Contributes to: wisdom, strength, composure.",
                 Icon = "📚",
                 DefaultWeight = 0.10m,
                 SortOrder = 7,
@@ -118,9 +120,9 @@ public class DataSeeder : IDataSeeder
             },
             new Dimension
             {
-                Code = "community",
+                Code = "community_meaning",
                 Name = "Community & Meaning",
-                Description = "Purpose, spirituality, and giving back",
+                Description = "Purpose, spirituality, and giving back. Contributes to: charisma, influence, vitality.",
                 Icon = "🤝",
                 DefaultWeight = 0.10m,
                 SortOrder = 8,
@@ -131,7 +133,7 @@ public class DataSeeder : IDataSeeder
         context.Dimensions.AddRange(dimensions);
         await context.SaveChangesAsync();
 
-        _logger.LogInformation("Successfully seeded {Count} dimensions", dimensions.Count);
+        _logger.LogInformation("Successfully seeded {Count} dimensions (v1.1)", dimensions.Count);
     }
 
     private async Task SeedMetricDefinitionsAsync(LifeOSDbContext context)
@@ -142,13 +144,15 @@ public class DataSeeder : IDataSeeder
             return;
         }
 
-        _logger.LogInformation("Seeding metric definitions...");
+        _logger.LogInformation("Seeding metric definitions (v1.1)...");
 
-        // Get dimension IDs
+        // Get dimension IDs - use v1.1 codes with fallback to legacy
         var dimensions = await context.Dimensions.ToDictionaryAsync(d => d.Code, d => d.Id);
 
-        var healthDimensionId = dimensions.GetValueOrDefault("health");
-        var assetsDimensionId = dimensions.GetValueOrDefault("assets");
+        Guid? healthDimensionId = dimensions.TryGetValue("health_recovery", out var hid) ? hid 
+            : dimensions.TryGetValue("health", out hid) ? hid : null;
+        Guid? assetsDimensionId = dimensions.TryGetValue("asset_care", out var aid) ? aid 
+            : dimensions.TryGetValue("assets", out aid) ? aid : null;
 
         var metrics = new List<MetricDefinition>
         {

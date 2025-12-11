@@ -17,4 +17,7 @@ public class Dimension : BaseEntity
     public virtual ICollection<LifeTask> Tasks { get; set; } = new List<LifeTask>();
     public virtual ICollection<MetricDefinition> MetricDefinitions { get; set; } = new List<MetricDefinition>();
     public virtual ICollection<ScoreDefinition> ScoreDefinitions { get; set; } = new List<ScoreDefinition>();
+    
+    // v1.2 Navigation properties
+    public virtual ICollection<DimensionPrimaryStatWeight> PrimaryStatWeights { get; set; } = new List<DimensionPrimaryStatWeight>();
 }

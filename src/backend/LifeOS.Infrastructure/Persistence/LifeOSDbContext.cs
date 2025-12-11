@@ -58,6 +58,23 @@ public class LifeOSDbContext : DbContext, ILifeOSDbContext
     
     // API Event Logging
     public DbSet<ApiEventLog> ApiEventLogs => Set<ApiEventLog>();
+    
+    // v1.1 Identity & Reviews
+    public DbSet<IdentityProfile> IdentityProfiles => Set<IdentityProfile>();
+    public DbSet<PrimaryStatRecord> PrimaryStatRecords => Set<PrimaryStatRecord>();
+    public DbSet<ReviewSnapshot> ReviewSnapshots => Set<ReviewSnapshot>();
+    public DbSet<OnboardingResponse> OnboardingResponses => Set<OnboardingResponse>();
+    
+    // v1.2 Enhancements
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<PrimaryStat> PrimaryStats => Set<PrimaryStat>();
+    public DbSet<DimensionPrimaryStatWeight> DimensionPrimaryStatWeights => Set<DimensionPrimaryStatWeight>();
+    public DbSet<TaskCompletion> TaskCompletions => Set<TaskCompletion>();
+    public DbSet<HealthIndexSnapshot> HealthIndexSnapshots => Set<HealthIndexSnapshot>();
+    public DbSet<AdherenceSnapshot> AdherenceSnapshots => Set<AdherenceSnapshot>();
+    public DbSet<WealthHealthSnapshot> WealthHealthSnapshots => Set<WealthHealthSnapshot>();
+    public DbSet<LifeOsScoreSnapshot> LifeOsScoreSnapshots => Set<LifeOsScoreSnapshot>();
+    public DbSet<SimulationRun> SimulationRuns => Set<SimulationRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

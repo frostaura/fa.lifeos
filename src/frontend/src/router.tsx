@@ -25,11 +25,18 @@ import {
 } from '@pages/Settings';
 import { NotFound } from '@pages/NotFound';
 import { AuthGuard } from '@components/AuthGuard';
+// v1.1 pages
+import { Onboarding } from '@pages/Onboarding';
+import { Reviews } from '@pages/Reviews';
 
 export const router = createHashRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/onboarding',
+    element: <AuthGuard><Onboarding /></AuthGuard>,
   },
   {
     path: '/',
@@ -56,6 +63,8 @@ export const router = createHashRouter([
       { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
       { path: 'health', element: <Health /> },
       { path: 'metrics', element: <Metrics /> },
+      // v1.1 routes
+      { path: 'reviews', element: <Reviews /> },
       {
         path: 'settings',
         element: <Settings />,

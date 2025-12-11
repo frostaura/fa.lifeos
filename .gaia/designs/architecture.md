@@ -3,6 +3,20 @@
 ## Overview
 LifeOS is a comprehensive life management platform built with Clean Architecture principles, providing data-driven insights across multiple life dimensions including finances, health, productivity, and personal growth.
 
+**Version**: 1.1.0 - Identity-Aligned Revision
+
+## v1.1 New Features Summary
+- **8 Custom Life Dimensions**: health_recovery, relationships, work_contribution, play_adventure, asset_care, create_craft, growth_mind, community_meaning
+- **Primary Stats Model**: strength, wisdom, charisma, composure, energy, influence, vitality (0-100)
+- **Identity Profile**: Target Persona archetype with values and stat targets
+- **Scientific Scoring**: Health Index, Behavioral Adherence, Wealth Health, Longevity Years Added
+- **Multi-Currency Financial Engine**: FX rates table, deterministic simulation
+- **Extended Simulation Events**: Source/target accounts, formula events, scenario comparison
+- **Nested Metrics Ingestion**: Hierarchical API payload structure
+- **Enhanced Streaks**: Penalty formula with consecutive misses tracking
+- **Goal-First Onboarding**: Collect baselines, goals, identity traits
+- **Weekly/Monthly Reviews**: Scheduled reports with deltas
+
 ## Core Components
 
 ### Frontend
@@ -93,6 +107,55 @@ fa.lifeos/
 | WealthHealthScoreService | 5-factor financial health scoring |
 | AchievementService | XP, levels, and achievement unlock evaluation |
 | StreakService | Habit streak tracking and management |
+| IdentityProfileService | Primary stats calculation and identity alignment (v1.1) |
+| LongevityModelService | Risk-based longevity years added calculation (v1.1) |
+| ReviewService | Weekly/monthly review generation (v1.1) |
+| MetricsIngestionService | Nested metrics parsing and recording (v1.1) |
+| ScenarioComparisonService | Compare baseline vs scenarios (v1.1) |
+
+## v1.1 Domain Models
+
+### Primary Stats (New)
+Each dimension contributes to 7 primary stats (0-100 scale):
+- **Strength**: Physical capability, endurance
+- **Wisdom**: Knowledge, decision quality
+- **Charisma**: Social influence, communication
+- **Composure**: Emotional regulation, stress handling
+- **Energy**: Vitality, motivation levels
+- **Influence**: Impact on others, leadership
+- **Vitality**: Overall health, longevity
+
+### Identity Profile (New)
+```csharp
+public class IdentityProfile
+{
+    Guid UserId;
+    string Archetype;                    // "God of Mind-Power"
+    string ArchetypeDescription;
+    string[] Values;                     // Core values
+    Dictionary<string, int> PrimaryStatTargets; // stat -> target (0-100)
+    Guid[] LinkedMilestones;
+}
+```
+
+### Dimension-to-Stat Mapping (New)
+```
+health_recovery    → vitality, energy, composure
+relationships      → charisma, influence, composure
+work_contribution  → wisdom, influence, energy
+play_adventure     → energy, vitality, charisma
+asset_care         → wisdom, composure
+create_craft       → wisdom, energy, influence
+growth_mind        → wisdom, strength, composure
+community_meaning  → charisma, influence, vitality
+```
+
+### Scientific Scores (v1.1)
+1. **Health Index** - Metric-based health score (BMI, BP, etc.)
+2. **Behavioral Adherence Index** - Task/habit compliance rate
+3. **Wealth Health Score** - 5-factor financial health
+4. **Longevity Years Added** - Risk model output (capped)
+5. **Composite LifeOS Score** - Weighted combination
 
 ## Clean Architecture Layers
 

@@ -351,5 +351,131 @@ public class MetricsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// v1.1: Record metrics using nested payload structure
+    /// Accepts: { "metrics": { "health_recovery": { "weight_kg": 74.5, ... }, "asset_care": { "finance": { "net_worth_homeccy": 1250000 } } } }
+    /// </summary>
+    [HttpPost("record/nested")]
+    [EnableRateLimiting("metrics")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RecordNestedMetrics(
+        [FromBody] NestedMetricsRequest request,
+        [FromQuery] bool allowDynamicCreation = false)
+    {
+        if (request.Metrics == null || !request.Metrics.Any())
+        {
+            return UnprocessableEntity(new
+            {
+                error = new
+                {
+                    code = "VALIDATION_ERROR",
+                    message = "Metrics object is required"
+                }
+            });
+        }
+
+        var userId = GetUserId();
+        var timestamp = request.Timestamp ?? DateTime.UtcNow;
+        var source = request.Source ?? "nested_api";
+        
+        var flatMetrics = new Dictionary<string, decimal?>();
+        var errors = new List<object>();
+        var skippedCount = 0;
+
+        // Flatten nested structure
+        foreach (var (dimensionCode, dimensionMetrics) in request.Metrics)
+        {
+            if (dimensionMetrics is System.Text.Json.JsonElement jsonElement)
+            {
+                FlattenJsonElement(dimensionCode, jsonElement, flatMetrics, errors, ref skippedCount);
+            }
+        }
+
+        if (!flatMetrics.Any() && errors.Any())
+        {
+            return UnprocessableEntity(new
+            {
+                error = new
+                {
+                    code = "VALIDATION_ERROR",
+                    message = "No valid metrics found",
+                    details = errors
+                }
+            });
+        }
+
+        // Record the flattened metrics using existing command
+        var result = await _mediator.Send(new RecordMetricsCommand(
+            userId,
+            timestamp,
+            source,
+            flatMetrics));
+
+        _logger.LogInformation("Recorded {Recorded} nested metrics from source {Source}", 
+            result.Data.Attributes.Recorded, 
+            source);
+
+        return Ok(new
+        {
+            data = new
+            {
+                recordedCount = result.Data.Attributes.Recorded,
+                skippedCount,
+                errors
+            },
+            meta = new
+            {
+                timestamp = DateTime.UtcNow,
+                processingTimeMs = 0
+            }
+        });
+    }
+
+    private void FlattenJsonElement(
+        string path, 
+        System.Text.Json.JsonElement element, 
+        Dictionary<string, decimal?> metrics,
+        List<object> errors,
+        ref int skippedCount)
+    {
+        if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            foreach (var prop in element.EnumerateObject())
+            {
+                var newPath = $"{path}.{prop.Name}";
+                FlattenJsonElement(newPath, prop.Value, metrics, errors, ref skippedCount);
+            }
+        }
+        else if (element.ValueKind == System.Text.Json.JsonValueKind.Number)
+        {
+            // Extract metric code from path (last segment)
+            var segments = path.Split('.');
+            var metricCode = segments.Length > 1 ? segments[^1] : path;
+            metrics[metricCode] = element.GetDecimal();
+        }
+        else if (element.ValueKind == System.Text.Json.JsonValueKind.Null)
+        {
+            skippedCount++;
+        }
+        else
+        {
+            // Non-numeric values are logged as errors for this numeric-only endpoint
+            var segments = path.Split('.');
+            var metricCode = segments.Length > 1 ? segments[^1] : path;
+            errors.Add(new { code = metricCode, error = "Only numeric values supported in nested endpoint" });
+        }
+    }
+
     #endregion
+}
+
+/// <summary>
+/// v1.1: Nested metrics ingestion request
+/// </summary>
+public record NestedMetricsRequest
+{
+    public DateTime? Timestamp { get; init; }
+    public string? Source { get; init; }
+    public Dictionary<string, object>? Metrics { get; init; }
 }

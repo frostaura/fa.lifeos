@@ -23,4 +23,7 @@ public class SimulationScenario : BaseEntity
     public virtual ICollection<SimulationEvent> Events { get; set; } = new List<SimulationEvent>();
     public virtual ICollection<AccountProjection> AccountProjections { get; set; } = new List<AccountProjection>();
     public virtual ICollection<NetWorthProjection> NetWorthProjections { get; set; } = new List<NetWorthProjection>();
+    
+    // v1.2 Navigation properties
+    public virtual ICollection<SimulationRun> SimulationRuns { get; set; } = new List<SimulationRun>();
 }

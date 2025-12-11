@@ -67,9 +67,22 @@ public class SimulationEventConfiguration : IEntityTypeConfiguration<SimulationE
             .HasForeignKey(e => e.ScenarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Legacy affected account (deprecated in v1.1)
         builder.HasOne(e => e.AffectedAccount)
             .WithMany(a => a.SimulationEvents)
             .HasForeignKey(e => e.AffectedAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // v1.1: Source account for transfers/debits
+        builder.HasOne(e => e.SourceAccount)
+            .WithMany()
+            .HasForeignKey(e => e.SourceAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // v1.1: Target account for transfers/credits
+        builder.HasOne(e => e.TargetAccount)
+            .WithMany()
+            .HasForeignKey(e => e.TargetAccountId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(e => e.ScenarioId);

@@ -34,4 +34,7 @@ public class LifeTask : BaseEntity
     public virtual Dimension? Dimension { get; set; }
     public virtual Milestone? Milestone { get; set; }
     public virtual ICollection<Streak> Streaks { get; set; } = new List<Streak>();
+    
+    // v1.2 Navigation properties
+    public virtual ICollection<TaskCompletion> TaskCompletions { get; set; } = new List<TaskCompletion>();
 }

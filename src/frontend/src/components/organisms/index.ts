@@ -18,3 +18,4 @@ export { TasksSection } from './TasksSection';
 export { AddEditTaskModal } from './AddEditTaskModal';
 export { DimensionInfoSection } from './DimensionInfoSection';
 export { LinkedMetricsSection } from './LinkedMetricsSection';
+export { IdentityRadar } from './IdentityRadar';

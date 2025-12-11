@@ -10,6 +10,15 @@
 - Bearer token: `Authorization: Bearer <jwt-token>`
 - API Key: `X-API-Key: <key>` (for external integrations)
 
+## v1.1 New Endpoints Summary
+- **Identity Profile**: `/api/identity-profile` - CRUD for user identity/persona
+- **Primary Stats**: `/api/primary-stats` - Get/history of primary stats
+- **Nested Metrics Ingestion**: `POST /api/metrics/record` - Enhanced with nested structure
+- **Reviews**: `/api/reviews` - Weekly/monthly review generation
+- **Onboarding**: `/api/onboarding` - Goal-first onboarding flow
+- **Longevity Models**: `/api/longevity/models` - Risk-based models
+- **Scenario Comparison**: `/api/simulations/compare` - Compare baseline vs scenarios
+
 ## REST Conventions
 
 ### HTTP Methods
@@ -180,6 +189,38 @@
 | GET | `/api/longevity` | Get longevity estimate |
 | GET | `/api/longevity/models` | List longevity models |
 | PATCH | `/api/longevity/models/{id}` | Update model parameters |
+| GET | `/api/longevity/years-added` | Get calculated years added (v1.1) |
+
+### Identity Profile (v1.1)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/identity-profile` | Get user identity profile |
+| PUT | `/api/identity-profile` | Create/update identity profile |
+| GET | `/api/primary-stats` | Get current primary stats |
+| GET | `/api/primary-stats/history` | Get primary stats history |
+
+### Reviews (v1.1)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reviews/weekly` | Get current week review |
+| GET | `/api/reviews/monthly` | Get current month review |
+| GET | `/api/reviews/history` | Get past reviews |
+| POST | `/api/reviews/generate` | Force generate review |
+
+### Onboarding (v1.1)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/onboarding/status` | Get onboarding completion status |
+| POST | `/api/onboarding/health-baselines` | Submit health baselines |
+| POST | `/api/onboarding/major-goals` | Submit major goals |
+| POST | `/api/onboarding/identity` | Submit identity traits |
+| POST | `/api/onboarding/complete` | Mark onboarding complete |
+
+### Scenario Comparison (v1.1)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/simulations/compare` | Compare multiple scenarios |
+| GET | `/api/simulations/what-if` | Quick what-if calculation |
 
 ### Tasks
 | Method | Endpoint | Description |
@@ -703,3 +744,252 @@ Task/Milestone operations should invalidate these cache tags:
 - `Dashboard` - Dashboard data (affects today's tasks, scores)
 - `Streaks` - Streak queries (when completing habits)
 - `Metrics` - Metric queries (when recording metric values)
+
+## v1.1 Nested Metrics Ingestion API
+
+### POST /api/metrics/record (Enhanced)
+
+**Purpose**: Accept nested payload structure for bulk metric recording.
+
+**Request Body (Nested Structure)**:
+```json
+{
+  "timestamp": "2024-12-10T08:00:00Z",
+  "source": "apple_health",
+  "metrics": {
+    "health_recovery": {
+      "weight_kg": 74.5,
+      "body_fat_pct": 16.2,
+      "resting_hr_bpm": 58,
+      "sleep_hours": 7.5,
+      "sleep_quality_score": 82
+    },
+    "play_adventure": {
+      "travel_days_count": 2,
+      "outdoor_hours": 4.5
+    },
+    "asset_care": {
+      "finance": {
+        "net_worth_homeccy": 1250000,
+        "savings_rate_pct": 35.5,
+        "emergency_fund_months": 6
+      }
+    },
+    "work_contribution": {
+      "deep_work_hours": 4.2,
+      "meetings_count": 3
+    }
+  }
+}
+```
+
+**Nested Path Resolution**:
+- `metrics.health_recovery.weight_kg` → metric code `weight_kg` in dimension `health_recovery`
+- `metrics.asset_care.finance.net_worth_homeccy` → metric code `finance.net_worth_homeccy` or `net_worth_homeccy`
+
+**Response**:
+```json
+{
+  "data": {
+    "recordedCount": 12,
+    "skippedCount": 0,
+    "errors": []
+  },
+  "meta": {
+    "timestamp": "2024-12-10T08:00:05Z",
+    "processingTimeMs": 45
+  }
+}
+```
+
+**Validation Rules**:
+- Unknown metrics are rejected unless `allowDynamicCreation` query param is true
+- Null values are ignored (not recorded)
+- Timestamps default to now if not provided
+- Source is optional but recommended for traceability
+
+## v1.1 Identity Profile API
+
+### GET /api/identity-profile
+
+**Response**:
+```json
+{
+  "data": {
+    "archetype": "God of Mind-Power",
+    "archetypeDescription": "A disciplined achiever focused on mental mastery and financial independence",
+    "values": ["discipline", "growth", "impact", "freedom"],
+    "primaryStatTargets": {
+      "strength": 75,
+      "wisdom": 95,
+      "charisma": 80,
+      "composure": 90,
+      "energy": 85,
+      "influence": 80,
+      "vitality": 85
+    },
+    "linkedMilestones": [
+      {"id": "uuid", "title": "Reach 74kg target weight"},
+      {"id": "uuid", "title": "Net worth 1M by 40"}
+    ]
+  }
+}
+```
+
+### PUT /api/identity-profile
+
+**Request Body**:
+```json
+{
+  "archetype": "God of Mind-Power",
+  "archetypeDescription": "A disciplined achiever...",
+  "values": ["discipline", "growth", "impact", "freedom"],
+  "primaryStatTargets": {
+    "strength": 75,
+    "wisdom": 95,
+    "charisma": 80,
+    "composure": 90,
+    "energy": 85,
+    "influence": 80,
+    "vitality": 85
+  },
+  "linkedMilestoneIds": ["uuid", "uuid"]
+}
+```
+
+### GET /api/primary-stats
+
+**Response**:
+```json
+{
+  "data": {
+    "currentStats": {
+      "strength": 62,
+      "wisdom": 78,
+      "charisma": 71,
+      "composure": 65,
+      "energy": 70,
+      "influence": 58,
+      "vitality": 74
+    },
+    "targets": {
+      "strength": 75,
+      "wisdom": 95,
+      "charisma": 80,
+      "composure": 90,
+      "energy": 85,
+      "influence": 80,
+      "vitality": 85
+    },
+    "calculatedAt": "2024-12-10T00:00:00Z",
+    "breakdown": {
+      "strength": {
+        "fromDimensions": {
+          "health_recovery": 55,
+          "growth_mind": 70
+        },
+        "weighted": 62
+      }
+    }
+  }
+}
+```
+
+## v1.1 Reviews API
+
+### GET /api/reviews/weekly
+
+**Response**:
+```json
+{
+  "data": {
+    "periodStart": "2024-12-02",
+    "periodEnd": "2024-12-08",
+    "healthIndexDelta": 2.5,
+    "adherenceIndexDelta": -1.2,
+    "wealthHealthDelta": 0.8,
+    "longevityDelta": 0.1,
+    "topStreaks": [
+      {"taskId": "uuid", "taskTitle": "Morning run", "streakDays": 28},
+      {"taskId": "uuid", "taskTitle": "Meditation", "streakDays": 14}
+    ],
+    "recommendedActions": [
+      {"action": "Increase sleep to 8 hours", "priority": "high", "dimension": "health_recovery"},
+      {"action": "Review investment allocations", "priority": "medium", "dimension": "asset_care"}
+    ],
+    "primaryStatsDelta": {
+      "strength": 1,
+      "wisdom": 2,
+      "charisma": 0,
+      "composure": -1,
+      "energy": 1,
+      "influence": 0,
+      "vitality": 1
+    }
+  }
+}
+```
+
+## v1.1 Scenario Comparison API
+
+### POST /api/simulations/compare
+
+**Request Body**:
+```json
+{
+  "baselineScenarioId": "uuid",
+  "compareScenarioIds": ["uuid", "uuid"],
+  "horizonYears": 10,
+  "milestoneTargets": [1000000, 5000000, 10000000]
+}
+```
+
+**Response**:
+```json
+{
+  "data": {
+    "baseline": {
+      "scenarioId": "uuid",
+      "scenarioName": "Current Path",
+      "endNetWorth": 2500000,
+      "milestoneYears": {"1000000": 3.5, "5000000": null}
+    },
+    "comparisons": [
+      {
+        "scenarioId": "uuid",
+        "scenarioName": "Aggressive Savings",
+        "endNetWorth": 4200000,
+        "netWorthDelta": 1700000,
+        "milestoneYears": {"1000000": 2.1, "5000000": 8.5}
+      }
+    ]
+  }
+}
+```
+
+### GET /api/simulations/what-if
+
+**Query Parameters**:
+- `purchaseAmount`: One-off expense amount
+- `purchaseDate`: When to apply
+- `scenarioId`: Base scenario (defaults to baseline)
+
+**Response**:
+```json
+{
+  "data": {
+    "withoutPurchase": {
+      "netWorthAt10Years": 2500000,
+      "firstMillionDate": "2027-06-15"
+    },
+    "withPurchase": {
+      "netWorthAt10Years": 2320000,
+      "firstMillionDate": "2027-09-20",
+      "impact": {
+        "netWorthReduction": 180000,
+        "milestoneDelay": "3 months"
+      }
+    }
+  }
+}
+```

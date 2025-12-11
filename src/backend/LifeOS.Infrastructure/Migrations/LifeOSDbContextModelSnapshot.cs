@@ -280,6 +280,53 @@ namespace LifeOS.Infrastructure.Migrations
                     b.ToTable("achievements", (string)null);
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.AdherenceSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("score");
+
+                    b.Property<int>("TasksCompleted")
+                        .HasColumnType("integer")
+                        .HasColumnName("tasks_completed");
+
+                    b.Property<int>("TasksConsidered")
+                        .HasColumnType("integer")
+                        .HasColumnName("tasks_considered");
+
+                    b.Property<int>("TimeWindowDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("time_window_days");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.ToTable("adherence_snapshots", (string)null);
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.ApiEventLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -450,6 +497,46 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasFilter("\"IsActive\" = TRUE");
 
                     b.ToTable("dimensions", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.DimensionPrimaryStatWeight", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DimensionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dimension_id");
+
+                    b.Property<string>("PrimaryStatCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("primary_stat_code");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PrimaryStatCode");
+
+                    b.HasIndex("DimensionId", "PrimaryStatCode")
+                        .IsUnique();
+
+                    b.ToTable("dimension_primary_stat_weights", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.ExpenseDefinition", b =>
@@ -689,6 +776,98 @@ namespace LifeOS.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.HealthIndexSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Components")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("components");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("score");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.ToTable("health_index_snapshots", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.IdentityProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Archetype")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("archetype");
+
+                    b.Property<string>("ArchetypeDescription")
+                        .HasColumnType("text")
+                        .HasColumnName("archetype_description");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LinkedMilestoneIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("linked_milestones");
+
+                    b.Property<string>("PrimaryStatTargets")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("primary_stat_targets");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Values")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("values");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("identity_profiles", (string)null);
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.IncomeSource", b =>
                 {
                     b.Property<Guid>("Id")
@@ -865,6 +1044,66 @@ namespace LifeOS.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("InvestmentContributions", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.LifeOsScoreSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AdherenceIndex")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("adherence_index");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DimensionScores")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("dimension_scores");
+
+                    b.Property<decimal>("HealthIndex")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("health_index");
+
+                    b.Property<decimal>("LifeScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("life_score");
+
+                    b.Property<decimal>("LongevityYearsAdded")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("longevity_years_added");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal>("WealthHealthScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("wealth_health_score");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.ToTable("lifeos_score_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.LifeTask", b =>
@@ -1440,6 +1679,296 @@ namespace LifeOS.Infrastructure.Migrations
                     b.ToTable("net_worth_snapshots", (string)null);
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.OnboardingResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ResponseData")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_data");
+
+                    b.Property<string>("StepCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("step_code");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("onboarding_responses", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.PrimaryStat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("primary_stats", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.PrimaryStatRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CalculationDetails")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("calculation_details");
+
+                    b.Property<int>("Charisma")
+                        .HasColumnType("integer")
+                        .HasColumnName("charisma");
+
+                    b.Property<int>("Composure")
+                        .HasColumnType("integer")
+                        .HasColumnName("composure");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Energy")
+                        .HasColumnType("integer")
+                        .HasColumnName("energy");
+
+                    b.Property<int>("Influence")
+                        .HasColumnType("integer")
+                        .HasColumnName("influence");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<int>("Strength")
+                        .HasColumnType("integer")
+                        .HasColumnName("strength");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("Vitality")
+                        .HasColumnType("integer")
+                        .HasColumnName("vitality");
+
+                    b.Property<int>("Wisdom")
+                        .HasColumnType("integer")
+                        .HasColumnName("wisdom");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "RecordedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("primary_stat_records", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.ReviewSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("AdherenceIndexCurrent")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("adherence_index_current");
+
+                    b.Property<decimal?>("AdherenceIndexDelta")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("adherence_index_delta");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DimensionScores")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("dimension_scores");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("generated_at");
+
+                    b.Property<decimal?>("HealthIndexCurrent")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("health_index_current");
+
+                    b.Property<decimal?>("HealthIndexDelta")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("health_index_delta");
+
+                    b.Property<decimal?>("LongevityCurrent")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("longevity_current");
+
+                    b.Property<decimal?>("LongevityDelta")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("longevity_delta");
+
+                    b.Property<decimal?>("NetCashFlow")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_cash_flow");
+
+                    b.Property<decimal?>("NetWorthCurrent")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_worth_current");
+
+                    b.Property<decimal?>("NetWorthDelta")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_worth_delta");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date")
+                        .HasColumnName("period_start");
+
+                    b.Property<string>("PrimaryStatsCurrent")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("primary_stats_current");
+
+                    b.Property<string>("PrimaryStatsDelta")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("primary_stats_delta");
+
+                    b.Property<string>("RecommendedActions")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("recommended_actions");
+
+                    b.Property<string>("ReviewType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("review_type");
+
+                    b.Property<decimal?>("SavingsRate")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("savings_rate");
+
+                    b.Property<string>("ScenarioComparison")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("scenario_comparison");
+
+                    b.Property<string>("TopStreaks")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("top_streaks");
+
+                    b.Property<decimal?>("TotalExpenses")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_expenses");
+
+                    b.Property<decimal?>("TotalIncome")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_income");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal?>("WealthHealthCurrent")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("wealth_health_current");
+
+                    b.Property<decimal?>("WealthHealthDelta")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("wealth_health_delta");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReviewType", "PeriodEnd")
+                        .IsDescending(false, false, true);
+
+                    b.ToTable("review_snapshots", (string)null);
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.ScoreDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1636,6 +2165,12 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<Guid?>("SourceAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TargetAccountId")
+                        .HasColumnType("uuid");
+
                     b.Property<short?>("TriggerAge")
                         .HasColumnType("smallint");
 
@@ -1659,9 +2194,67 @@ namespace LifeOS.Infrastructure.Migrations
 
                     b.HasIndex("ScenarioId");
 
+                    b.HasIndex("SourceAccountId");
+
+                    b.HasIndex("TargetAccountId");
+
                     b.HasIndex("TriggerType", "TriggerDate");
 
                     b.ToTable("simulation_events", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.SimulationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scenario_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Summary")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("summary");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ScenarioId", "StartedAt");
+
+                    b.ToTable("simulation_runs", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.SimulationScenario", b =>
@@ -1730,6 +2323,11 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<int>("ConsecutiveMisses")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1744,6 +2342,9 @@ namespace LifeOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastPenaltyCalculatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateOnly?>("LastSuccessDate")
                         .HasColumnType("date");
@@ -1766,6 +2367,12 @@ namespace LifeOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<decimal>("RiskPenaltyScore")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateOnly?>("StreakStartDate")
                         .HasColumnType("date");
@@ -1795,6 +2402,51 @@ namespace LifeOS.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("chk_streak_link", "(\"TaskId\" IS NOT NULL AND \"MetricCode\" IS NULL) OR (\"TaskId\" IS NULL AND \"MetricCode\" IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.TaskCompletion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal?>("ValueNumber")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("value_number");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TaskId", "CompletedAt");
+
+                    b.ToTable("task_completions", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.TaxProfile", b =>
@@ -2027,6 +2679,9 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("numeric(4,1)")
                         .HasDefaultValue(80m);
 
+                    b.Property<bool>("OnboardingCompleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -2108,6 +2763,66 @@ namespace LifeOS.Infrastructure.Migrations
                     b.ToTable("user_achievements", (string)null);
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.UserSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BaselineLifeExpectancyYears")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("baseline_life_expectancy_years");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("DefaultInflationRate")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("default_inflation_rate");
+
+                    b.Property<decimal>("DefaultInvestmentGrowthRate")
+                        .HasPrecision(8, 4)
+                        .HasColumnType("numeric(8,4)")
+                        .HasColumnName("default_investment_growth_rate");
+
+                    b.Property<string>("HomeCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("home_currency");
+
+                    b.Property<string>("StreakPenaltySensitivity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("streak_penalty_sensitivity");
+
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("timezone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_settings", (string)null);
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.UserXP", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2150,6 +2865,46 @@ namespace LifeOS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("user_xps", (string)null);
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.WealthHealthSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Components")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("components");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("score");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.ToTable("wealth_health_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.WebAuthnCredential", b =>
@@ -2235,6 +2990,17 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("Scenario");
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.AdherenceSnapshot", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("AdherenceSnapshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.ApiEventLog", b =>
                 {
                     b.HasOne("LifeOS.Domain.Entities.User", "User")
@@ -2255,6 +3021,26 @@ namespace LifeOS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.DimensionPrimaryStatWeight", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.Dimension", "Dimension")
+                        .WithMany("PrimaryStatWeights")
+                        .HasForeignKey("DimensionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LifeOS.Domain.Entities.PrimaryStat", "PrimaryStat")
+                        .WithMany("DimensionWeights")
+                        .HasForeignKey("PrimaryStatCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Dimension");
+
+                    b.Navigation("PrimaryStat");
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.ExpenseDefinition", b =>
@@ -2287,6 +3073,28 @@ namespace LifeOS.Infrastructure.Migrations
                     b.HasOne("LifeOS.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.HealthIndexSnapshot", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("HealthIndexSnapshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.IdentityProfile", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithOne("IdentityProfile")
+                        .HasForeignKey("LifeOS.Domain.Entities.IdentityProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2346,6 +3154,17 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("SourceAccount");
 
                     b.Navigation("TargetAccount");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.LifeOsScoreSnapshot", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("LifeOsScoreSnapshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -2457,6 +3276,39 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.OnboardingResponse", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("OnboardingResponses")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.PrimaryStatRecord", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("PrimaryStatRecords")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.ReviewSnapshot", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("ReviewSnapshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.ScoreDefinition", b =>
                 {
                     b.HasOne("LifeOS.Domain.Entities.Dimension", "Dimension")
@@ -2500,9 +3352,42 @@ namespace LifeOS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("LifeOS.Domain.Entities.Account", "SourceAccount")
+                        .WithMany()
+                        .HasForeignKey("SourceAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LifeOS.Domain.Entities.Account", "TargetAccount")
+                        .WithMany()
+                        .HasForeignKey("TargetAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AffectedAccount");
 
                     b.Navigation("Scenario");
+
+                    b.Navigation("SourceAccount");
+
+                    b.Navigation("TargetAccount");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.SimulationRun", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.SimulationScenario", "Scenario")
+                        .WithMany("SimulationRuns")
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("SimulationRuns")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scenario");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.SimulationScenario", b =>
@@ -2536,6 +3421,25 @@ namespace LifeOS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("MetricDefinition");
+
+                    b.Navigation("Task");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.TaskCompletion", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.LifeTask", "Task")
+                        .WithMany("TaskCompletions")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("TaskCompletions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Task");
 
@@ -2597,10 +3501,32 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.UserSettings", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithOne("UserSettings")
+                        .HasForeignKey("LifeOS.Domain.Entities.UserSettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.UserXP", b =>
                 {
                     b.HasOne("LifeOS.Domain.Entities.User", "User")
                         .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LifeOS.Domain.Entities.WealthHealthSnapshot", b =>
+                {
+                    b.HasOne("LifeOS.Domain.Entities.User", "User")
+                        .WithMany("WealthHealthSnapshots")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2643,6 +3569,8 @@ namespace LifeOS.Infrastructure.Migrations
 
                     b.Navigation("Milestones");
 
+                    b.Navigation("PrimaryStatWeights");
+
                     b.Navigation("ScoreDefinitions");
 
                     b.Navigation("Tasks");
@@ -2651,6 +3579,8 @@ namespace LifeOS.Infrastructure.Migrations
             modelBuilder.Entity("LifeOS.Domain.Entities.LifeTask", b =>
                 {
                     b.Navigation("Streaks");
+
+                    b.Navigation("TaskCompletions");
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.MetricDefinition", b =>
@@ -2665,6 +3595,11 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("Tasks");
                 });
 
+            modelBuilder.Entity("LifeOS.Domain.Entities.PrimaryStat", b =>
+                {
+                    b.Navigation("DimensionWeights");
+                });
+
             modelBuilder.Entity("LifeOS.Domain.Entities.ScoreDefinition", b =>
                 {
                     b.Navigation("Records");
@@ -2677,6 +3612,8 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("NetWorthProjections");
+
+                    b.Navigation("SimulationRuns");
                 });
 
             modelBuilder.Entity("LifeOS.Domain.Entities.TaxProfile", b =>
@@ -2688,11 +3625,19 @@ namespace LifeOS.Infrastructure.Migrations
                 {
                     b.Navigation("Accounts");
 
+                    b.Navigation("AdherenceSnapshots");
+
                     b.Navigation("ApiKeys");
 
                     b.Navigation("ExpenseDefinitions");
 
+                    b.Navigation("HealthIndexSnapshots");
+
+                    b.Navigation("IdentityProfile");
+
                     b.Navigation("IncomeSources");
+
+                    b.Navigation("LifeOsScoreSnapshots");
 
                     b.Navigation("LongevitySnapshots");
 
@@ -2700,17 +3645,31 @@ namespace LifeOS.Infrastructure.Migrations
 
                     b.Navigation("Milestones");
 
+                    b.Navigation("OnboardingResponses");
+
+                    b.Navigation("PrimaryStatRecords");
+
+                    b.Navigation("ReviewSnapshots");
+
                     b.Navigation("ScoreRecords");
+
+                    b.Navigation("SimulationRuns");
 
                     b.Navigation("SimulationScenarios");
 
                     b.Navigation("Streaks");
+
+                    b.Navigation("TaskCompletions");
 
                     b.Navigation("Tasks");
 
                     b.Navigation("TaxProfiles");
 
                     b.Navigation("Transactions");
+
+                    b.Navigation("UserSettings");
+
+                    b.Navigation("WealthHealthSnapshots");
 
                     b.Navigation("WebAuthnCredentials");
                 });

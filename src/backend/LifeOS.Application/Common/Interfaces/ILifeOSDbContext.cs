@@ -53,6 +53,23 @@ public interface ILifeOSDbContext
     // API Event Logging
     DbSet<ApiEventLog> ApiEventLogs { get; }
     
+    // v1.1 Identity & Reviews
+    DbSet<IdentityProfile> IdentityProfiles { get; }
+    DbSet<PrimaryStatRecord> PrimaryStatRecords { get; }
+    DbSet<ReviewSnapshot> ReviewSnapshots { get; }
+    DbSet<OnboardingResponse> OnboardingResponses { get; }
+    
+    // v1.2 Enhancements
+    DbSet<UserSettings> UserSettings { get; }
+    DbSet<PrimaryStat> PrimaryStats { get; }
+    DbSet<DimensionPrimaryStatWeight> DimensionPrimaryStatWeights { get; }
+    DbSet<TaskCompletion> TaskCompletions { get; }
+    DbSet<HealthIndexSnapshot> HealthIndexSnapshots { get; }
+    DbSet<AdherenceSnapshot> AdherenceSnapshots { get; }
+    DbSet<WealthHealthSnapshot> WealthHealthSnapshots { get; }
+    DbSet<LifeOsScoreSnapshot> LifeOsScoreSnapshots { get; }
+    DbSet<SimulationRun> SimulationRuns { get; }
+    
     // Change tracker for concurrency handling
     ChangeTracker ChangeTracker { get; }
     

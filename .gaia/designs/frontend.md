@@ -99,13 +99,20 @@ interface GlassCardProps {
 
 ## Page Structure
 
-### Dashboard (`/`)
-- Life Score card with progress ring
-- Net Worth card with trend
-- Dimensions grid (8 life areas)
-- Net Worth projection chart
-- Active streaks widget
-- Today's tasks widget
+### Dashboard (`/`) - v1.1 Enhanced
+- **LifeOS Score** with composite breakdown
+- **Identity Radar** - Primary stats visualization (v1.1)
+- Net Worth card with trend + projection preview
+- Dimensions grid (8 life areas with new codes)
+- **Today's Actions** with priority focus
+- Active streaks widget with penalties (v1.1)
+
+### Onboarding (`/onboarding`) - v1.1 New
+- Goal-first onboarding wizard
+- Step 1: Key health baselines (weight, target weight, body fat)
+- Step 2: Major goals (financial targets, milestones)
+- Step 3: Identity traits (archetype selection, values)
+- Auto-generation of dimensions, milestones, base scenario
 
 ### Finances (`/finances`)
 - Tab navigation: Overview | Tax Profiles | Income/Expenses | Investments | Goals
@@ -113,27 +120,39 @@ interface GlassCardProps {
 - Accounts list with CRUD
 - Projection chart
 - Financial goals widget
+- **"What if I buy this?" wizard** (v1.1)
+
+### Finance Simulator (`/simulation`) - v1.1 Enhanced
+- Scenarios list with baseline indicator
+- Scenario builder
+- Event modeling with source/target accounts
+- Projection visualization
+- **Baseline vs scenario comparison charts** (v1.1)
+- **Scenario comparison table** (v1.1)
 
 ### Health (`/health`)
-- Longevity estimate card
-- Contributing factors breakdown
+- **Longevity Years Added** card (v1.1)
+- Contributing factors breakdown with risk models
 - Recommendations list
 - Health metrics grid with sparklines
 - Longevity rules editor
 
-### Simulation (`/simulation`)
-- Scenarios list
-- Scenario builder
-- Event modeling
-- Projection visualization
+### Reviews (`/reviews`) - v1.1 New
+- Weekly review dashboard
+- Monthly review dashboard
+- Historical reviews list
+- Delta visualizations for all scores
+- Recommended focus actions
 
 ### Metrics (`/metrics`)
 - Metric definitions table
 - API playground with Monaco editor
+- **Nested ingestion tester** (v1.1)
 - Event log
 
 ### Settings (`/settings`)
 - Profile settings
+- **Identity Profile editor** (v1.1)
 - API keys management
 - Dimension configuration
 - Data portability (export/import)
@@ -757,3 +776,153 @@ export interface LinkedMetricDisplay {
 - Screen reader announcements for task completion
 - Focus management when modals open/close
 - Color contrast meets WCAG 2.1 AA
+
+## v1.1 New Components
+
+### Identity Radar Component
+```tsx
+interface IdentityRadarProps {
+  currentStats: Record<string, number>;  // strength: 62, wisdom: 78, ...
+  targetStats: Record<string, number>;   // strength: 75, wisdom: 95, ...
+  size?: 'sm' | 'md' | 'lg';
+}
+
+// Renders a radar/spider chart with 7 axes for primary stats
+// Current values in solid fill, targets as dashed outline
+<IdentityRadar currentStats={stats} targetStats={targets} size="md" />
+```
+
+### What-If Wizard Component
+```tsx
+interface WhatIfWizardProps {
+  baselineScenarioId: string;
+  onComplete: (result: WhatIfResult) => void;
+}
+
+// Step 1: Enter purchase details (amount, date, category)
+// Step 2: Select comparison scenario (or use baseline)
+// Step 3: View impact analysis (net worth delta, milestone delays)
+```
+
+### Weekly Review Dashboard
+```tsx
+interface WeeklyReviewProps {
+  review: WeeklyReviewData;
+}
+
+// Layout:
+// ┌─────────────────────────────────────────────────┐
+// │ Week of Dec 2-8, 2024                           │
+// ├─────────────────────────────────────────────────┤
+// │ Health Index: 78 (+2.5 ▲)  Adherence: 85 (-1.2 ▼)
+// │ Wealth Health: 72 (+0.8 ▲) Longevity: +0.1 yrs  │
+// ├─────────────────────────────────────────────────┤
+// │ 🔥 Top Streaks                                  │
+// │   Morning run: 28 days                          │
+// │   Meditation: 14 days                           │
+// ├─────────────────────────────────────────────────┤
+// │ 📋 Recommended Actions                          │
+// │   ⚡ [HIGH] Increase sleep to 8 hours           │
+// │   📊 [MED] Review investment allocations        │
+// └─────────────────────────────────────────────────┘
+```
+
+### Scenario Comparison Chart
+```tsx
+interface ScenarioComparisonChartProps {
+  baseline: ProjectionData;
+  scenarios: ProjectionData[];
+  horizonYears: number;
+}
+
+// Multi-line chart showing net worth projections
+// Baseline as solid line, scenarios as dashed lines
+// Milestone markers at target amounts
+```
+
+### Onboarding Wizard Steps
+```tsx
+// Step 1: Health Baselines
+interface HealthBaselinesStep {
+  currentWeight: number;
+  targetWeight: number;
+  currentBodyFat?: number;
+  targetBodyFat?: number;
+  height: number;
+  birthDate: string;
+}
+
+// Step 2: Major Goals
+interface MajorGoalsStep {
+  financialGoals: Array<{
+    description: string;    // "1M by 40"
+    targetAmount: number;
+    targetAge: number;
+  }>;
+  lifeMilestones: Array<{
+    description: string;
+    targetDate?: string;
+    dimension: string;
+  }>;
+}
+
+// Step 3: Identity Profile
+interface IdentityStep {
+  archetype: string;         // Selected or custom
+  values: string[];          // Top 4-5 values
+  primaryStatFocus: string[]; // Which stats to prioritize
+}
+```
+
+### Enhanced Streak Card (v1.1)
+```tsx
+interface StreakCardProps {
+  task: LifeTask;
+  streak: StreakData;
+  showPenalty?: boolean;
+}
+
+// Displays:
+// - Current streak length with fire emoji
+// - Longest streak record
+// - Consecutive misses warning (if > 0)
+// - Risk penalty score (if showPenalty)
+// - Visual indicator: green (healthy), yellow (at risk), red (broken)
+```
+
+## v1.1 New Routes
+
+```typescript
+// router.tsx additions
+{ path: 'onboarding', element: <Onboarding /> },
+{ path: 'onboarding/:step', element: <OnboardingStep /> },
+{ path: 'reviews', element: <Reviews /> },
+{ path: 'reviews/weekly', element: <WeeklyReview /> },
+{ path: 'reviews/monthly', element: <MonthlyReview /> },
+{ path: 'settings/identity', element: <IdentityProfileSettings /> },
+```
+
+## v1.1 New RTK Query Endpoints
+
+```typescript
+// Identity Profile endpoints
+getIdentityProfile: builder.query<IdentityProfileResponse, void>({...}),
+updateIdentityProfile: builder.mutation<void, IdentityProfileRequest>({...}),
+
+// Primary Stats endpoints  
+getPrimaryStats: builder.query<PrimaryStatsResponse, void>({...}),
+getPrimaryStatsHistory: builder.query<StatsHistoryResponse, { days: number }>({...}),
+
+// Reviews endpoints
+getWeeklyReview: builder.query<WeeklyReviewResponse, void>({...}),
+getMonthlyReview: builder.query<MonthlyReviewResponse, void>({...}),
+getReviewHistory: builder.query<ReviewHistoryResponse, { type: string }>({...}),
+
+// Onboarding endpoints
+getOnboardingStatus: builder.query<OnboardingStatusResponse, void>({...}),
+submitOnboardingStep: builder.mutation<void, { step: string; data: unknown }>({...}),
+
+// Scenario Comparison endpoints
+compareScenarios: builder.mutation<ComparisonResponse, ComparisonRequest>({...}),
+getWhatIfAnalysis: builder.query<WhatIfResponse, WhatIfParams>({...}),
+```

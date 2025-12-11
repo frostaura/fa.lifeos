@@ -6,10 +6,12 @@ import {
   StreaksWidget,
   TodaysTasksList,
   NetWorthChart,
+  IdentityRadar,
 } from '@components/organisms';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Spinner } from '@components/atoms/Spinner';
 import { cn } from '@utils/cn';
+import { useGetPrimaryStatsQuery } from '@/services/endpoints';
 import type { Streak, TaskItem, NetWorthDataPoint, DimensionId } from '@/types';
 
 // API response types
@@ -60,6 +62,9 @@ export function Dashboard() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [netWorthHistory, setNetWorthHistory] = useState<NetWorthDataPoint[]>([]);
   const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '5Y' | '10Y' | 'ALL'>('5Y');
+
+  // Fetch primary stats for Identity Radar
+  const { data: primaryStats } = useGetPrimaryStatsQuery();
 
   // Fetch projections from baseline scenario
   const fetchProjections = async (period: string) => {
@@ -291,6 +296,18 @@ export function Dashboard() {
           changePercent={dashboardData.netWorth.changePercent} 
         />
       </div>
+
+      {/* Identity Radar - v1.1 */}
+      {primaryStats && (
+        <GlassCard variant="default" className="p-4 md:p-6">
+          <h2 className="text-base md:text-lg font-semibold text-text-primary mb-4">Identity Stats</h2>
+          <IdentityRadar
+            currentStats={primaryStats.currentStats}
+            targetStats={primaryStats.targets}
+            size="md"
+          />
+        </GlassCard>
+      )}
 
       {/* Dimension Cards */}
       <div>

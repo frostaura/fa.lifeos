@@ -9,6 +9,7 @@ import {
     Calculator,
     ChevronLeft,
     ChevronRight,
+    ClipboardList,
     Grid3X3,
     Heart,
     LayoutDashboard,
@@ -27,6 +28,7 @@ const navItems = [
     { icon: Calculator, label: 'Simulation', path: '/simulation' },
     { icon: Heart, label: 'Health', path: '/health' },
     { icon: Activity, label: 'Metrics', path: '/metrics' },
+    { icon: ClipboardList, label: 'Reviews', path: '/reviews' },
     { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

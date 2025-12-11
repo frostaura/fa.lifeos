@@ -1,5 +1,11 @@
 # Security Design
 
+## v1.1 Security Considerations
+- Identity Profile data is sensitive (user persona, values) - ensure user-only access
+- Onboarding data should not be exposed after completion
+- Review snapshots contain aggregated sensitive data - user-only access
+- Nested metrics ingestion must validate all metric codes before recording
+
 ## Authentication
 
 ### Methods

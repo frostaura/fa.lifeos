@@ -30,6 +30,16 @@ public class StreakConfiguration : IEntityTypeConfiguration<Streak>
         builder.Property(e => e.MaxAllowedMisses)
             .HasDefaultValue(0);
 
+        // v1.1 penalty fields
+        builder.Property(e => e.ConsecutiveMisses)
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.RiskPenaltyScore)
+            .HasPrecision(8, 4)
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.LastPenaltyCalculatedAt);
+
         builder.Property(e => e.IsActive)
             .HasDefaultValue(true);
 

@@ -139,3 +139,36 @@ export type {
   CompleteTaskResponse,
   GetTasksParams,
 } from './tasks';
+// v1.1 Identity, Primary Stats, Reviews, Onboarding
+export {
+  identityApi,
+  useGetIdentityProfileQuery,
+  useUpdateIdentityProfileMutation,
+  useGetPrimaryStatsQuery,
+  useGetPrimaryStatsHistoryQuery,
+  useRecalculatePrimaryStatsMutation,
+  useGetWeeklyReviewQuery,
+  useGetMonthlyReviewQuery,
+  useGetReviewHistoryQuery,
+  useGenerateReviewMutation,
+  useGetDimensionReviewQuery,
+  useGetFinancialReviewQuery,
+  useGetOnboardingStatusQuery,
+  useSubmitHealthBaselinesMutation,
+  useSubmitMajorGoalsMutation,
+  useSubmitIdentityMutation,
+  useCompleteOnboardingMutation,
+} from './identity';
+export type {
+  IdentityProfile,
+  IdentityProfileRequest,
+  PrimaryStats,
+  PrimaryStatHistoryPoint,
+  ReviewSnapshot,
+  DimensionReview,
+  FinancialReview,
+  OnboardingStatus,
+  HealthBaselinesRequest,
+  MajorGoalsRequest,
+  IdentityStepRequest,
+} from './identity';

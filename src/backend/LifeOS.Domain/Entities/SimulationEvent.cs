@@ -21,7 +21,14 @@ public class SimulationEvent : BaseEntity
     public decimal? AmountValue { get; set; }
     public string? AmountFormula { get; set; }
     
+    /// <summary>Legacy: Single affected account (deprecated in v1.1)</summary>
     public Guid? AffectedAccountId { get; set; }
+    
+    /// <summary>v1.1: Source account for transfers/debits</summary>
+    public Guid? SourceAccountId { get; set; }
+    
+    /// <summary>v1.1: Target account for transfers/credits</summary>
+    public Guid? TargetAccountId { get; set; }
     
     public bool AppliesOnce { get; set; } = true;
     public PaymentFrequency? RecurrenceFrequency { get; set; }
@@ -33,4 +40,6 @@ public class SimulationEvent : BaseEntity
     // Navigation properties
     public virtual SimulationScenario Scenario { get; set; } = null!;
     public virtual Account? AffectedAccount { get; set; }
+    public virtual Account? SourceAccount { get; set; }
+    public virtual Account? TargetAccount { get; set; }
 }

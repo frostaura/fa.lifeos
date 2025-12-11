@@ -6,6 +6,14 @@
 - **Provider**: Npgsql
 - **Justification**: ACID compliance, JSONB support for flexible data, proven scalability
 
+## v1.1 New Tables Summary
+- **identity_profiles** - User target persona and primary stat targets
+- **primary_stat_records** - Historical primary stat values
+- **fx_rates** - Multi-currency exchange rates
+- **longevity_models** - Risk-based longevity calculation models
+- **review_snapshots** - Weekly/monthly review data
+- **onboarding_responses** - Goal-first onboarding data
+
 ## Entity Relationship Diagram
 
 ```
@@ -214,6 +222,124 @@ CREATE TABLE achievements (
 );
 ```
 
+## v1.1 New Tables
+
+### Identity Profiles (v1.1)
+```sql
+CREATE TABLE identity_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    archetype VARCHAR(100) NOT NULL,         -- "God of Mind-Power"
+    archetype_description TEXT,
+    values JSONB NOT NULL,                   -- ["discipline", "growth", "impact"]
+    primary_stat_targets JSONB NOT NULL,     -- {"strength": 80, "wisdom": 95, ...}
+    linked_milestone_ids JSONB,              -- [uuid, uuid, ...]
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Primary Stat Records (v1.1)
+```sql
+CREATE TABLE primary_stat_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    strength INT NOT NULL CHECK (strength BETWEEN 0 AND 100),
+    wisdom INT NOT NULL CHECK (wisdom BETWEEN 0 AND 100),
+    charisma INT NOT NULL CHECK (charisma BETWEEN 0 AND 100),
+    composure INT NOT NULL CHECK (composure BETWEEN 0 AND 100),
+    energy INT NOT NULL CHECK (energy BETWEEN 0 AND 100),
+    influence INT NOT NULL CHECK (influence BETWEEN 0 AND 100),
+    vitality INT NOT NULL CHECK (vitality BETWEEN 0 AND 100),
+    calculation_details JSONB                -- breakdown by dimension
+);
+
+CREATE INDEX idx_primary_stat_records_user_date ON primary_stat_records(user_id, recorded_at DESC);
+```
+
+### FX Rates (v1.1 Enhancement)
+```sql
+CREATE TABLE fx_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_currency VARCHAR(3) NOT NULL,
+    target_currency VARCHAR(3) NOT NULL,
+    rate DECIMAL(19,8) NOT NULL,
+    rate_date DATE NOT NULL,
+    source VARCHAR(50) DEFAULT 'manual',     -- manual | coingecko | openexchange
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(base_currency, target_currency, rate_date)
+);
+
+CREATE INDEX idx_fx_rates_currencies ON fx_rates(base_currency, target_currency, rate_date DESC);
+```
+
+### Longevity Models (v1.1)
+```sql
+CREATE TABLE longevity_models (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    factor_type VARCHAR(30) NOT NULL,        -- smoking | exercise | bmi | sleep | etc.
+    baseline_risk DECIMAL(8,4) DEFAULT 1.0,
+    risk_reduction_formula TEXT,             -- Expression like "1 - (value * 0.02)"
+    input_metric_code VARCHAR(50),           -- Linked metric
+    evidence_source TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Review Snapshots (v1.1)
+```sql
+CREATE TABLE review_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    review_type VARCHAR(20) NOT NULL,        -- weekly | monthly
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    health_index_delta DECIMAL(8,4),
+    adherence_index_delta DECIMAL(8,4),
+    wealth_health_delta DECIMAL(8,4),
+    longevity_delta DECIMAL(8,4),
+    top_streaks JSONB,                       -- [{taskId, streakDays, name}]
+    recommended_actions JSONB,               -- [{action, priority, dimension}]
+    primary_stats_delta JSONB,               -- {strength: +2, wisdom: -1, ...}
+    scenario_comparison JSONB,               -- baseline vs scenarios summary
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_review_snapshots_user_type ON review_snapshots(user_id, review_type, period_end DESC);
+```
+
+### Onboarding Responses (v1.1)
+```sql
+CREATE TABLE onboarding_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    step_code VARCHAR(50) NOT NULL,          -- health_baselines | major_goals | identity
+    response_data JSONB NOT NULL,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Enhanced Streaks (v1.1 Enhancement)
+```sql
+-- Existing streaks table enhanced with penalty fields
+ALTER TABLE streaks ADD COLUMN IF NOT EXISTS consecutive_misses INT DEFAULT 0;
+ALTER TABLE streaks ADD COLUMN IF NOT EXISTS risk_penalty_score DECIMAL(8,4) DEFAULT 0;
+ALTER TABLE streaks ADD COLUMN IF NOT EXISTS last_penalty_calculated_at TIMESTAMP;
+```
+
+### Enhanced Simulation Events (v1.1)
+```sql
+-- Existing simulation_events table enhanced
+ALTER TABLE simulation_events ADD COLUMN IF NOT EXISTS source_account_id UUID REFERENCES accounts(id);
+ALTER TABLE simulation_events ADD COLUMN IF NOT EXISTS target_account_id UUID REFERENCES accounts(id);
+```
+
 ## Relationships Summary
 
 | Parent | Child | Relationship | FK Column |
@@ -227,6 +353,10 @@ CREATE TABLE achievements (
 | User | MetricRecord | 1:N | user_id |
 | User | Streak | 1:N | user_id |
 | User | FinancialGoal | 1:N | user_id |
+| User | IdentityProfile | 1:1 | user_id (v1.1) |
+| User | PrimaryStatRecord | 1:N | user_id (v1.1) |
+| User | ReviewSnapshot | 1:N | user_id (v1.1) |
+| User | OnboardingResponse | 1:N | user_id (v1.1) |
 | Dimension | MetricDefinition | 1:N | dimension_id |
 | Dimension | Milestone | 1:N | dimension_id |
 | Dimension | LifeTask | 1:N | dimension_id |
@@ -235,6 +365,7 @@ CREATE TABLE achievements (
 | SimulationScenario | NetWorthProjection | 1:N | scenario_id |
 | IncomeSource | TaxProfile | N:1 | tax_profile_id |
 | Account | Transaction | 1:N | source_account_id / target_account_id |
+| Account | SimulationEvent | 1:N | source_account_id, target_account_id (v1.1) |
 
 ## Data Types & Constraints
 

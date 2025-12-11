@@ -1,5 +1,6 @@
 using LifeOS.Application.Common.Interfaces;
 using LifeOS.Application.Interfaces;
+using LifeOS.Application.Services;
 using LifeOS.Infrastructure.BackgroundJobs;
 using LifeOS.Infrastructure.Persistence;
 using LifeOS.Infrastructure.Services.Authentication;
@@ -56,6 +57,12 @@ public static class DependencyInjection
         // FX Rate Provider
         services.AddHttpClient<IFxRateProvider, CoinGeckoFxRateProvider>();
         services.AddMemoryCache();
+
+        // v1.2 Scoring Services
+        services.AddScoped<IHealthIndexService, HealthIndexService>();
+        services.AddScoped<IAdherenceService, AdherenceService>();
+        services.AddScoped<IWealthHealthService, WealthHealthService>();
+        services.AddScoped<ILifeOsScoreService, LifeOsScoreService>();
 
         // Background Jobs
         services.AddScoped<FxRateRefreshJob>();
