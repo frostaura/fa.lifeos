@@ -224,22 +224,24 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
     private async Task<List<LongevityModelExportDto>> ExportLongevityModelsAsync(Guid userId, CancellationToken ct)
     {
         // LongevityModel is global (no UserId), export all active
-        return await _context.LongevityModels
+        var models = await _context.LongevityModels
             .AsNoTracking()
             .Where(l => l.IsActive)
-            .Select(l => new LongevityModelExportDto
-            {
-                Id = l.Id,
-                Code = l.Code,
-                Name = l.Name,
-                Description = l.Description,
-                InputMetrics = l.InputMetrics,
-                ModelType = l.ModelType,
-                Parameters = l.Parameters,
-                OutputUnit = l.OutputUnit,
-                IsActive = l.IsActive
-            })
             .ToListAsync(ct);
+            
+        return models.Select(l => new LongevityModelExportDto
+        {
+            Id = l.Id,
+            UserId = l.UserId,
+            Code = l.Code,
+            Name = l.Name,
+            Description = l.Description,
+            InputMetrics = System.Text.Json.JsonSerializer.Deserialize<string[]>(l.InputMetrics),
+            ModelType = l.ModelType.ToString(),
+            Parameters = l.Parameters,
+            MaxRiskReduction = l.MaxRiskReduction,
+            IsActive = l.IsActive
+        }).ToList();
     }
 
     private async Task<List<AccountExportDto>> ExportAccountsAsync(Guid userId, CancellationToken ct)
@@ -632,13 +634,13 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, LifeO
             .Select(l => new LongevitySnapshotExportDto
             {
                 Id = l.Id,
-                CalculatedAt = l.CalculatedAt,
-                BaselineLifeExpectancy = l.BaselineLifeExpectancy,
-                EstimatedYearsAdded = l.EstimatedYearsAdded,
-                AdjustedLifeExpectancy = l.AdjustedLifeExpectancy,
+                CalculatedAt = l.Timestamp,
+                BaselineLifeExpectancy = l.BaselineLifeExpectancyYears,
+                EstimatedYearsAdded = l.TotalYearsAdded,
+                AdjustedLifeExpectancy = l.AdjustedLifeExpectancyYears,
                 Breakdown = l.Breakdown,
-                InputMetricsSnapshot = l.InputMetricsSnapshot,
-                ConfidenceLevel = l.ConfidenceLevel
+                InputMetricsSnapshot = "{}",  // Legacy field, no longer used
+                ConfidenceLevel = l.Confidence
             })
             .ToListAsync(ct);
     }

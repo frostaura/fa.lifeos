@@ -22,6 +22,11 @@ public class LifeTask : BaseEntity
     
     public string? LinkedMetricCode { get; set; }
     
+    // v3.0 Task Auto-Evaluation Properties
+    public string? MetricCode { get; set; }
+    public decimal? TargetValue { get; set; }
+    public TaskTargetComparison? TargetComparison { get; set; }
+    
     public bool IsCompleted { get; set; } = false;
     public DateTime? CompletedAt { get; set; }
     public bool IsActive { get; set; } = true;

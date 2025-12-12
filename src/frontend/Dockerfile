@@ -11,21 +11,28 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Build argument for environment (compile-time)
+ARG VITE_ENV=production
+ENV VITE_ENV=$VITE_ENV
+
 # Build the app
 RUN npm run build
 
-# Runtime stage - use node for development server
-FROM node:20-alpine AS runtime
-WORKDIR /app
+# Production stage - serve static files with nginx
+FROM nginx:alpine AS production
+WORKDIR /usr/share/nginx/html
 
-# Copy package files and install only production deps for serve
-COPY package*.json ./
-RUN npm install
+# Remove default nginx static files
+RUN rm -rf ./*
 
-# Copy all source for vite dev server
-COPY . .
+# Copy built assets from build stage
+COPY --from=build /app/dist .
 
-EXPOSE 5173
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Run vite dev server with host flag
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

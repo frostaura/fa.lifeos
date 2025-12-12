@@ -17,6 +17,9 @@ public class PrimaryStat : BaseEntity
     /// <summary>Description of what this stat represents</summary>
     public string? Description { get; set; }
     
+    /// <summary>Icon or emoji for display</summary>
+    public string Icon { get; set; } = string.Empty;
+    
     /// <summary>Sort order for display</summary>
     public short SortOrder { get; set; } = 0;
     

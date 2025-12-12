@@ -25,7 +25,8 @@ public class ApiKeyAuthenticationMiddleware
         "/api/simulations",
         "/api/fx-rates",
         "/api/transactions",
-        "/api/settings"
+        "/api/settings",
+        "/api/mcp"
     };
 
     public ApiKeyAuthenticationMiddleware(RequestDelegate next, ILogger<ApiKeyAuthenticationMiddleware> logger)
@@ -37,7 +38,7 @@ public class ApiKeyAuthenticationMiddleware
     public async Task InvokeAsync(HttpContext context, IApiKeyService apiKeyService, ILifeOSDbContext dbContext)
     {
         var path = context.Request.Path.Value ?? "";
-        
+
         // Only check API key for specific paths
         if (!IsApiKeyPath(path))
         {

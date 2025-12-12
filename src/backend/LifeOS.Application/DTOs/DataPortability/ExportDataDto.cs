@@ -109,13 +109,14 @@ public record TaxProfileExportDto
 public record LongevityModelExportDto
 {
     public Guid Id { get; init; }
+    public Guid? UserId { get; init; }
     public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string[]? InputMetrics { get; init; }
-    public string ModelType { get; init; } = "linear";
+    public string ModelType { get; init; } = "Threshold";
     public string? Parameters { get; init; }
-    public string OutputUnit { get; init; } = "years_added";
+    public decimal MaxRiskReduction { get; init; }
     public bool IsActive { get; init; }
 }
 

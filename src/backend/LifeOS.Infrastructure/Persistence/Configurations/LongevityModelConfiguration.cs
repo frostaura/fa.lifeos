@@ -1,4 +1,5 @@
 using LifeOS.Domain.Entities;
+using LifeOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,6 +16,8 @@ public class LongevityModelConfiguration : IEntityTypeConfiguration<LongevityMod
         builder.Property(e => e.Id)
             .HasDefaultValueSql("gen_random_uuid()");
 
+        builder.Property(e => e.UserId);
+
         builder.Property(e => e.Code)
             .HasMaxLength(50)
             .IsRequired();
@@ -26,20 +29,20 @@ public class LongevityModelConfiguration : IEntityTypeConfiguration<LongevityMod
         builder.Property(e => e.Description);
 
         builder.Property(e => e.InputMetrics)
+            .HasColumnType("jsonb")
             .IsRequired();
 
         builder.Property(e => e.ModelType)
-            .HasMaxLength(50)
-            .HasDefaultValue("linear")
+            .HasConversion<string>()
+            .HasMaxLength(20)
             .IsRequired();
 
         builder.Property(e => e.Parameters)
             .HasColumnType("jsonb")
             .IsRequired();
 
-        builder.Property(e => e.OutputUnit)
-            .HasMaxLength(50)
-            .HasDefaultValue("years_added")
+        builder.Property(e => e.MaxRiskReduction)
+            .HasPrecision(5, 4)
             .IsRequired();
 
         builder.Property(e => e.SourceCitation);
@@ -49,9 +52,6 @@ public class LongevityModelConfiguration : IEntityTypeConfiguration<LongevityMod
         builder.Property(e => e.IsActive)
             .HasDefaultValue(true);
 
-        builder.Property(e => e.Version)
-            .HasDefaultValue(1);
-
         builder.Property(e => e.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -60,7 +60,6 @@ public class LongevityModelConfiguration : IEntityTypeConfiguration<LongevityMod
         builder.HasIndex(e => e.Code)
             .IsUnique();
 
-        builder.HasIndex(e => e.InputMetrics)
-            .HasMethod("gin");
+        builder.HasIndex(e => e.UserId);
     }
 }

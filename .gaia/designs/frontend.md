@@ -16,6 +16,8 @@
 ### UI & Styling
 - **CSS Framework**: Tailwind CSS 4.1
 - **Design System**: Custom glassmorphic dark theme
+- **Responsive Grid**: 12-column (desktop), 6-column (tablet), 12-column stacked (mobile) (v3.0)
+- **Breakpoints**: <768px (mobile), 768-1199px (tablet), ≥1200px (desktop) (v3.0)
 - **Charts**: Recharts 3.5
 - **Icons**: Lucide React
 
@@ -99,20 +101,22 @@ interface GlassCardProps {
 
 ## Page Structure
 
-### Dashboard (`/`) - v1.1 Enhanced
-- **LifeOS Score** with composite breakdown
-- **Identity Radar** - Primary stats visualization (v1.1)
+### Dashboard (`/`) - v3.0 Enhanced
+- **LifeOS Score Rings** (v3.0) - Overlapping rings: Health Index (outer), Adherence (middle), Wealth Health (inner) with composite score in center
+- **Today's Priority Actions** (v3.0) - Tasks sorted by dimension score deficits × task impact
+- **Identity Radar** - Primary stats visualization with current vs targets (v1.1)
 - Net Worth card with trend + projection preview
-- Dimensions grid (8 life areas with new codes)
-- **Today's Actions** with priority focus
-- Active streaks widget with penalties (v1.1)
+- Dimensions grid (8 life areas) with score, top metric, active streak
+- **Quick Metric Recording** (v3.0) - Floating action button for common metrics
 
-### Onboarding (`/onboarding`) - v1.1 New
-- Goal-first onboarding wizard
-- Step 1: Key health baselines (weight, target weight, body fat)
-- Step 2: Major goals (financial targets, milestones)
-- Step 3: Identity traits (archetype selection, values)
-- Auto-generation of dimensions, milestones, base scenario
+### Onboarding (`/onboarding`) - v3.0 Enhanced 7-Step Wizard
+- **Step 1**: Welcome & account creation
+- **Step 2**: Profile details (DOB, home currency, timezone)
+- **Step 3**: Health baselines (weight, target weight, body fat %, height)
+- **Step 4**: Financial baselines (accounts, monthly income, major expenses)
+- **Step 5**: Major goals (financial targets with dates, life milestones)
+- **Step 6**: Identity traits (archetype selection or custom, core values, primary stat priorities)
+- **Step 7**: Seed structure (auto-generate dimensions, baseline scenario, initial habit suggestions)
 
 ### Finances (`/finances`)
 - Tab navigation: Overview | Tax Profiles | Income/Expenses | Investments | Goals
@@ -120,7 +124,7 @@ interface GlassCardProps {
 - Accounts list with CRUD
 - Projection chart
 - Financial goals widget
-- **"What if I buy this?" wizard** (v1.1)
+- **"What if I buy this?" wizard** (v3.0) - Modal-based scenario creation with immediate impact preview
 
 ### Finance Simulator (`/simulation`) - v1.1 Enhanced
 - Scenarios list with baseline indicator
@@ -131,18 +135,24 @@ interface GlassCardProps {
 - **Scenario comparison table** (v1.1)
 
 ### Health (`/health`)
-- **Longevity Years Added** card (v1.1)
-- Contributing factors breakdown with risk models
-- Recommendations list
+- **Longevity Years Added** card with v3.0 calculation (risk reduction factors → years added, capped at 20)
+- Contributing factors breakdown with risk models and evidence sources
+- Recommendations list (prioritized by impact)
 - Health metrics grid with sparklines
 - Longevity rules editor
 
-### Reviews (`/reviews`) - v1.1 New
-- Weekly review dashboard
-- Monthly review dashboard
+### Reviews (`/reviews`) - v3.0 Enhanced
+- **Weekly Review Dashboard**:
+  - Score deltas (Health Index, Adherence, Wealth Health) with v3.0 formulas
+  - Top streaks with forgiving first miss visualization
+  - Recommended focus actions (top 3, prioritized by impact)
+  - Primary stats delta (7 stats: beginning vs end of week)
+- **Monthly Review Dashboard**:
+  - Net worth trajectory (12-month history + 12-month projection)
+  - Scenario comparison summary (baseline vs active scenarios)
+  - Identity radar evolution (beginning vs end of month)
+  - Milestone progress grid (all active milestones with % completion)
 - Historical reviews list
-- Delta visualizations for all scores
-- Recommended focus actions
 
 ### Metrics (`/metrics`)
 - Metric definitions table
@@ -256,6 +266,153 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 ```
 
+## Responsive Breakpoints (v3.0 Specification)
+
+```css
+/* Mobile first with explicit breakpoints */
+/* Mobile: < 768px */
+/* Tablet: 768px - 1199px */
+/* Desktop: >= 1200px */
+
+/* Tailwind equivalents */
+sm: 640px   /* Mobile landscape (not primary breakpoint) */
+md: 768px   /* Tablet portrait (PRIMARY: mobile → tablet) */
+lg: 1024px  /* Tablet landscape */
+xl: 1280px  /* Desktop (PRIMARY: tablet → desktop at 1200px) */
+2xl: 1536px /* Large desktop */
+```
+
+### Layout Guidelines (v3.0)
+- **Mobile (< 768px)**: 
+  - Single column, stacked cards
+  - Compact typography (14px base)
+  - Hamburger menu
+  - Full-width modals
+  - Touch-optimized buttons (min 44px tap target)
+  - Simplified charts (fewer data points)
+  
+- **Tablet (768-1199px)**: 
+  - 6-column grid (2-card layouts)
+  - Collapsible sidebar
+  - Medium typography (16px base)
+  - Centered modals (10 columns)
+  - Enhanced charts
+  
+- **Desktop (≥1200px)**: 
+  - 12-column grid (3-4 card layouts)
+  - Fixed sidebar
+  - Full typography (16px base)
+  - Multi-panel layouts
+  - Full-featured charts
+
+### v3.0 Grid System Specification
+
+```css
+.grid-container {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Mobile: 12 columns stacked */
+@media (max-width: 767px) {
+  .grid-container {
+    grid-template-columns: repeat(12, 1fr);
+  }
+  .card { grid-column: span 12; }
+  .sidebar { display: none; } /* Hidden, accessible via drawer */
+}
+
+/* Tablet: 6 columns */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .grid-container {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .card-small { grid-column: span 3; }   /* 2-col */
+  .card-medium { grid-column: span 6; }  /* 1-col full width */
+  .sidebar { 
+    grid-column: span 2; 
+    position: sticky;
+  }
+  .main-content { grid-column: span 4; }
+}
+
+/* Desktop: 12 columns */
+@media (min-width: 1200px) {
+  .grid-container {
+    grid-template-columns: repeat(12, 1fr);
+  }
+  .card-small { grid-column: span 3; }    /* 4-col */
+  .card-medium { grid-column: span 4; }   /* 3-col */
+  .card-large { grid-column: span 6; }    /* 2-col */
+  .card-full { grid-column: span 12; }    /* 1-col */
+  .sidebar { 
+    grid-column: span 2; 
+    position: fixed;
+    height: 100vh;
+  }
+  .main-content { grid-column: span 10; }
+}
+```
+
+### Component Sizing Rules (v3.0)
+| Component | Mobile (<768px) | Tablet (768-1199px) | Desktop (≥1200px) |
+|-----------|----------------|---------------------|-------------------|
+| Dashboard Cards | 12 cols (full) | 3 cols (2-card) | 3-4 cols (3-4 card) |
+| LifeOS Score Rings | 12 cols, compact | 6 cols, full size | 4 cols, full size |
+| Charts | 12 cols, simplified | 6 cols, enhanced | 8-12 cols, full |
+| Forms | 12 cols | 6 cols (centered) | 6-8 cols (centered) |
+| Sidebar | Hidden (drawer) | 2 cols (collapsible) | 2 cols (fixed) |
+| Modals | Full screen | 5 cols (centered) | 6-8 cols (centered) |
+| Metric Cards | 12 cols | 3 cols | 3 cols |
+| Task Lists | 12 cols | 6 cols | 8 cols |
+| What-If Modal | Full screen | 5 cols | 8 cols |
+
+### Typography Scaling (v3.0)
+```css
+:root {
+  /* Desktop & Tablet base */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+}
+
+/* Mobile scale down */
+@media (max-width: 767px) {
+  :root {
+    --text-base: 0.875rem;  /* 14px */
+    --text-lg: 1rem;        /* 16px */
+    --text-xl: 1.125rem;    /* 18px */
+    --text-2xl: 1.25rem;    /* 20px */
+    --text-3xl: 1.5rem;     /* 24px */
+    --text-4xl: 1.875rem;   /* 30px */
+  }
+}
+```
+
+### Card Padding (v3.0)
+```css
+.card {
+  padding: 1rem;  /* Mobile */
+}
+
+@media (min-width: 768px) {
+  .card {
+    padding: 1.5rem;  /* Tablet */
+  }
+}
+
+@media (min-width: 1200px) {
+  .card {
+    padding: 2rem;  /* Desktop */
+  }
+}
+```
+
 ## Responsive Breakpoints
 
 ```css
@@ -271,6 +428,155 @@ xl: 1280px  /* Desktop */
 - **Mobile (< 768px)**: Single column, stacked cards, compact typography
 - **Tablet (768-1023px)**: Two-column grids, collapsible sidebar
 - **Desktop (1024px+)**: Fixed sidebar, three-column grids, full charts
+
+## v3.0 New Components
+
+### LifeOS Score Rings (v3.0 - Overlapping Circles)
+```tsx
+interface LifeOSScoreRingsProps {
+  healthIndex: number;       // 0-100
+  adherenceIndex: number;    // 0-100
+  wealthHealthScore: number; // 0-100
+  lifeosScore: number;       // Composite
+  size?: 'sm' | 'md' | 'lg';
+}
+
+// Renders 3 overlapping rings (Health outer, Adherence middle, Wealth inner)
+// Composite score displayed in center
+// On hover: Show component breakdown
+<LifeOSScoreRings 
+  healthIndex={82.3}
+  adherenceIndex={75.2}
+  wealthHealthScore={78.1}
+  lifeosScore={78.5}
+  size="lg"
+/>
+```
+
+### Health Index Breakdown Modal (v3.0)
+```tsx
+interface HealthIndexBreakdownProps {
+  dimensionScores: Array<{
+    dimension: string;
+    score: number;
+    metricContributions: Array<{
+      metricCode: string;
+      metricName: string;
+      score: number;
+      currentValue: number;
+      targetValue: number;
+      weight: number;
+    }>;
+  }>;
+}
+
+// Shows per-dimension scores with drilldown to per-metric scores
+// Visualizes normalization formula (at_or_above/at_or_below/range)
+```
+
+### Task Auto-Evaluation Indicator (v3.0)
+```tsx
+interface TaskAutoEvalProps {
+  task: {
+    metricCode?: string;
+    targetValue?: number;
+    targetComparison?: string;
+  };
+  currentMetricValue?: number;
+}
+
+// Visual indicator showing:
+// - Metric being tracked
+// - Current value vs target
+// - Progress bar
+// - "Auto-completes when..." tooltip
+<TaskAutoEvalIndicator task={task} currentMetricValue={74.5} />
+```
+
+### Streak Penalty Visualization (v3.0 - Forgiving First Miss)
+```tsx
+interface StreakPenaltyVisualizationProps {
+  consecutiveMisses: number;
+  riskPenaltyScore: number;
+  streakDays: number;
+}
+
+// Color-coded visualization:
+// - Green: 0 misses, healthy streak
+// - Yellow: 1 miss (forgiving, 0 penalty)
+// - Orange: 2 misses (penalty = 5)
+// - Red: 3+ misses (penalty = 10 × (misses - 1))
+// Shows decay on success (-2 per day)
+```
+
+### Quick Metric Recording FAB (v3.0)
+```tsx
+interface QuickMetricRecordingProps {
+  commonMetrics: string[];  // User's most-used metrics
+  onRecord: (metricCode: string, value: number) => void;
+}
+
+// Floating Action Button in bottom-right
+// Opens quick-record modal with:
+// - Dropdown of common metrics (last 5 used + dimension defaults)
+// - Value input
+// - Timestamp (defaults to now, editable)
+// - Submit button
+// Closes automatically after recording
+```
+
+### Onboarding Step Indicator (v3.0)
+```tsx
+interface OnboardingStepIndicatorProps {
+  currentStep: number;  // 1-7
+  totalSteps: number;   // 7
+  stepLabels: string[];
+}
+
+// Progress bar with step dots
+// Shows: Step X of 7: [Label]
+// Visual progress: filled dots for completed, hollow for pending
+```
+
+### What-If Impact Diff View (v3.0)
+```tsx
+interface WhatIfImpactDiffProps {
+  withoutPurchase: {
+    netWorthAt5Years: number;
+    netWorthAt10Years: number;
+    firstMillionDate?: string;
+  };
+  withPurchase: {
+    netWorthAt5Years: number;
+    netWorthAt10Years: number;
+    firstMillionDate?: string;
+    netWorthReduction: number;
+    milestoneDelays: Record<string, string>;
+  };
+}
+
+// Side-by-side or stacked comparison
+// Highlights:
+// - Net worth deltas (with percentages)
+// - Milestone delays (in months/years)
+// - Cashflow impact chart
+// Color-coded: Green (positive), Red (negative), Gray (neutral)
+```
+
+### Monthly Review Net Worth Trajectory (v3.0)
+```tsx
+interface NetWorthTrajectoryProps {
+  historicalData: Array<{ date: string; netWorth: number }>;  // 12 months
+  projectionData: Array<{ date: string; netWorth: number }>;  // 12 months
+  milestoneMarkers: Array<{ amount: number; label: string }>;
+}
+
+// Line chart with:
+// - Solid line: Historical (past 12 months)
+// - Dashed line: Projection (next 12 months)
+// - Milestone markers (horizontal lines with labels)
+// - Tooltip: Date, amount, trend
+```
 
 ## Charts
 
@@ -900,6 +1206,28 @@ interface StreakCardProps {
 { path: 'reviews/weekly', element: <WeeklyReview /> },
 { path: 'reviews/monthly', element: <MonthlyReview /> },
 { path: 'settings/identity', element: <IdentityProfileSettings /> },
+```
+
+## v3.0 New RTK Query Endpoints
+
+```typescript
+// MCP Tools endpoints
+getMCPTools: builder.query<MCPToolsListResponse, void>({...}),
+executeMCPTool: builder.mutation<MCPToolResponse, { toolName: string; params: unknown }>({...}),
+
+// Score History endpoints
+getCurrentScores: builder.query<CurrentScoresResponse, void>({...}),
+getScoreHistory: builder.query<ScoreHistoryResponse, { dateFrom?: string; dateTo?: string; interval?: string }>({...}),
+getDimensionScores: builder.query<DimensionScoresResponse, { dimensionId: string; dateFrom?: string; dateTo?: string }>({...}),
+
+// Task Completions endpoints
+getTaskCompletions: builder.query<TaskCompletionsResponse, { taskId: string; dateFrom?: string; dateTo?: string }>({...}),
+getAutoEvaluatedTasks: builder.query<AutoEvaluatedTasksResponse, void>({...}),
+
+// Enhanced Metrics endpoints
+recordMetrics: builder.mutation<RecordMetricsResponse, RecordMetricsRequest>({...}),  // v3.0 enhanced
+getMetricHistory: builder.query<MetricHistoryResponse, { metricCode: string; dateFrom?: string; dateTo?: string; aggregation?: string }>({...}),
+listMetricDefinitions: builder.query<MetricDefinitionsResponse, { dimensionCode?: string }>({...}),
 ```
 
 ## v1.1 New RTK Query Endpoints

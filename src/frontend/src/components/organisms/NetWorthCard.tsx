@@ -14,7 +14,8 @@ interface NetWorthCardProps {
 
 export function NetWorthCard({ value, change = 0, changePercent = 0, className }: NetWorthCardProps) {
   const currency = useSelector((state: RootState) => state.ui.currency);
-  const isPositive = changePercent >= 0;
+  const safeChangePercent = changePercent ?? 0;
+  const isPositive = safeChangePercent >= 0;
   const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
   const trendColor = isPositive ? 'text-semantic-success' : 'text-semantic-error';
 
@@ -31,7 +32,7 @@ export function NetWorthCard({ value, change = 0, changePercent = 0, className }
         <div className={cn('flex items-center gap-1 mt-2', trendColor)}>
           <TrendIcon className="w-3 h-3 md:w-4 md:h-4" />
           <span className="font-medium text-xs md:text-sm whitespace-nowrap">
-            {isPositive ? '+' : ''}{changePercent.toFixed(1)}% YTD
+            {isPositive ? '+' : ''}{safeChangePercent.toFixed(1)}% YTD
           </span>
         </div>
         {change !== 0 && (

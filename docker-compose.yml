@@ -48,9 +48,11 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      args:
+        VITE_ENV: development
     container_name: lifeos-frontend
     ports:
-      - "5173:5173"
+      - "5173:80"
     volumes:
       - ./src/frontend/src:/app/src
     depends_on:

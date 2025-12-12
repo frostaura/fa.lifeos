@@ -32,6 +32,9 @@ const baseQueryWithAutoLogout: BaseQueryFn<string | FetchArgs, unknown, FetchBas
     // Dispatch logout action to clear Redux state
     api.dispatch(logout());
     
+    // Store current location before redirecting
+    sessionStorage.setItem('redirectAfterLogin', JSON.stringify({ pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }));
+    
     // Redirect to login page
     window.location.href = '/#/login';
   }

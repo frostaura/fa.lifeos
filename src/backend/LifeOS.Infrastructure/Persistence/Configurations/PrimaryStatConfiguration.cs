@@ -28,6 +28,11 @@ public class PrimaryStatConfiguration : IEntityTypeConfiguration<PrimaryStat>
         builder.Property(e => e.Description)
             .HasColumnName("description");
 
+        builder.Property(e => e.Icon)
+            .HasColumnName("icon")
+            .HasMaxLength(50)
+            .IsRequired();
+
         builder.Property(e => e.SortOrder)
             .HasColumnName("sort_order");
 

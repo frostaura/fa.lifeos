@@ -4810,6 +4810,7 @@ export function DataPortabilitySettings() {
   const [exportSuccess, setExportSuccess] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleExport = async () => {
     try {
@@ -4877,6 +4878,15 @@ export function DataPortabilitySettings() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    await processFile(file);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const processFile = async (file: File) => {
     try {
       const result = await importDataFile({
         file,
@@ -4898,10 +4908,36 @@ export function DataPortabilitySettings() {
         message: error?.data?.error?.message || "Import failed",
       });
     }
+  };
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/json' || file.name.endsWith('.json')) {
+        await processFile(file);
+      } else {
+        setImportResult({
+          success: false,
+          message: "Please upload a JSON file",
+        });
+      }
     }
   };
 
@@ -4968,7 +5004,7 @@ export function DataPortabilitySettings() {
           Import Data
         </h3>
         <p className="text-text-secondary text-sm mb-4">
-          Restore data from a previously exported JSON file.
+          Restore data from a previously exported JSON file. Click or drag & drop to upload.
         </p>
 
         <div className="space-y-4 mb-4">
@@ -5017,25 +5053,46 @@ export function DataPortabilitySettings() {
           accept=".json,application/json"
           onChange={handleFileSelect}
           className="hidden"
+          id="file-upload-input"
         />
 
-        <button
+        {/* Drag & Drop Zone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          disabled={isImporting}
-          className="px-4 py-2 bg-accent-cyan rounded-lg text-white font-medium hover:bg-accent-cyan/80 transition-colors flex items-center gap-2 disabled:opacity-50"
-        >
-          {isImporting ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Importing...
-            </>
-          ) : (
-            <>
-              <Upload className="w-4 h-4" />
-              Select File to Import
-            </>
+          className={cn(
+            "relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all",
+            isDragging
+              ? "border-accent-cyan bg-accent-cyan/10 scale-[1.02]"
+              : "border-glass-border hover:border-accent-cyan/50 hover:bg-bg-tertiary/50",
+            isImporting && "pointer-events-none opacity-50"
           )}
-        </button>
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className={cn(
+              "p-4 rounded-full transition-colors",
+              isDragging ? "bg-accent-cyan/20" : "bg-bg-tertiary"
+            )}>
+              <Upload className={cn(
+                "w-8 h-8 transition-colors",
+                isDragging ? "text-accent-cyan" : "text-text-secondary"
+              )} />
+            </div>
+            <div>
+              <p className="text-text-primary font-medium mb-1">
+                {isImporting ? "Importing..." : isDragging ? "Drop file here" : "Click to select or drag & drop"}
+              </p>
+              <p className="text-text-secondary text-sm">
+                JSON files only
+              </p>
+            </div>
+            {isImporting && (
+              <Loader2 className="w-6 h-6 animate-spin text-accent-cyan" />
+            )}
+          </div>
+        </div>
 
         {importResult && (
           <div

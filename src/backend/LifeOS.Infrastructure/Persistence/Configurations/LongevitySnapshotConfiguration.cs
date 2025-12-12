@@ -15,32 +15,32 @@ public class LongevitySnapshotConfiguration : IEntityTypeConfiguration<Longevity
         builder.Property(e => e.Id)
             .HasDefaultValueSql("gen_random_uuid()");
 
-        builder.Property(e => e.CalculatedAt)
+        builder.Property(e => e.Timestamp)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        builder.Property(e => e.BaselineLifeExpectancy)
+        builder.Property(e => e.BaselineLifeExpectancyYears)
             .HasPrecision(4, 1)
             .IsRequired();
 
-        builder.Property(e => e.EstimatedYearsAdded)
+        builder.Property(e => e.AdjustedLifeExpectancyYears)
             .HasPrecision(4, 1)
             .IsRequired();
 
-        builder.Property(e => e.AdjustedLifeExpectancy)
-            .HasPrecision(4, 1)
+        builder.Property(e => e.TotalYearsAdded)
+            .HasPrecision(4, 2)
+            .IsRequired();
+
+        builder.Property(e => e.RiskFactorCombined)
+            .HasPrecision(5, 4)
             .IsRequired();
 
         builder.Property(e => e.Breakdown)
             .HasColumnType("jsonb")
             .IsRequired();
 
-        builder.Property(e => e.InputMetricsSnapshot)
-            .HasColumnType("jsonb")
-            .IsRequired();
-
-        builder.Property(e => e.ConfidenceLevel)
+        builder.Property(e => e.Confidence)
             .HasMaxLength(20)
-            .HasDefaultValue("moderate");
+            .HasDefaultValue("medium");
 
         builder.Property(e => e.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -50,6 +50,6 @@ public class LongevitySnapshotConfiguration : IEntityTypeConfiguration<Longevity
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(e => new { e.UserId, e.CalculatedAt });
+        builder.HasIndex(e => new { e.UserId, e.Timestamp });
     }
 }

@@ -1,7 +1,8 @@
 import { apiSlice } from '@store/api/apiSlice';
 import type { 
   DashboardData, 
-  NetWorthData, 
+  NetWorthData,
+  NetWorthDataPoint,
   Projection,
   DimensionScore,
   Streak,
@@ -40,6 +41,15 @@ export const dashboardApi = apiSlice.injectEndpoints({
       providesTags: ['Projections'],
     }),
     
+    getNetWorthHistory: builder.query<{ data: NetWorthDataPoint[] }, { months?: number; currency?: string }>({
+      query: ({ months = 12, currency = 'ZAR' }) => 
+        `/api/dashboard/net-worth/history?months=${months}&currency=${currency}`,
+      transformResponse: (response: { data: { history: NetWorthDataPoint[]; summary: any }; meta: any }) => ({
+        data: response.data.history
+      }),
+      providesTags: ['Dashboard'],
+    }),
+    
     completeTask: builder.mutation<void, { taskId: string; completed: boolean }>({
       query: ({ taskId, completed }) => ({
         url: `/api/tasks/${taskId}/complete`,
@@ -58,5 +68,6 @@ export const {
   useGetStreaksQuery,
   useGetTodaysTasksQuery,
   useGetProjectionsQuery,
+  useGetNetWorthHistoryQuery,
   useCompleteTaskMutation,
 } = dashboardApi;

@@ -1,5 +1,13 @@
 # Security Design
 
+## v3.0 Security Considerations
+- **MCP Tools**: All tools require JWT authentication, same rate limits as standard API
+- **Task Auto-Evaluation**: Background job respects user data isolation, no cross-user data access
+- **Score Snapshots**: Historical scoring data is user-scoped, immutable after creation
+- **Metric Recording**: Nested ingestion validates all metric codes before recording, rejects unknown metrics unless `allowDynamicCreation=true`
+- **Identity Profile**: User persona and values data is sensitive - ensure user-only access (unchanged from v1.1)
+- **Onboarding Data**: Should not be exposed after completion (unchanged from v1.1)
+
 ## v1.1 Security Considerations
 - Identity Profile data is sensitive (user persona, values) - ensure user-only access
 - Onboarding data should not be exposed after completion
@@ -48,8 +56,8 @@
 ### Roles
 | Role | Permissions |
 |------|-------------|
-| User | Full CRUD on own data, read system dimensions/achievements |
-| Admin | All User permissions + system configuration |
+| User | Full CRUD on own data, read system dimensions/achievements, access MCP tools (v3.0) |
+| Admin | All User permissions + system configuration + view background job logs (v3.0) |
 
 ### Middleware Authorization
 ```csharp
@@ -139,7 +147,7 @@ public class CreateAccountValidator : AbstractValidator<CreateAccountRequest>
 ```javascript
 {
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // requests per window
+  max: 1000, // requests per window (increased for MCP tools - v3.0)
   message: 'Too many requests',
   standardHeaders: true,
   legacyHeaders: false,
@@ -148,7 +156,8 @@ public class CreateAccountValidator : AbstractValidator<CreateAccountRequest>
 
 ### Endpoints
 - Login: 5 attempts per 15 minutes
-- API: 100 requests per 15 minutes
+- API (standard): 1000 requests per 15 minutes (v3.0 - increased for AI integration)
+- MCP Tools: 1000 requests per 15 minutes (v3.0 - shared with standard API limit)
 - Password reset: 3 per hour
 - Registration: 10 per hour per IP
 

@@ -129,7 +129,7 @@ public class LongevityEstimator : ILongevityEstimator
                 return null;
 
             // Check if we have the required metrics
-            var inputMetrics = model.InputMetrics ?? Array.Empty<string>();
+            var inputMetrics = JsonSerializer.Deserialize<string[]>(model.InputMetrics) ?? Array.Empty<string>();
             var inputValues = new Dictionary<string, object?>();
             
             foreach (var metric in inputMetrics)
@@ -145,18 +145,18 @@ public class LongevityEstimator : ILongevityEstimator
             decimal yearsAdded = 0;
             string? notes = null;
 
-            switch (model.ModelType.ToLowerInvariant())
+            switch (model.ModelType)
             {
-                case "threshold":
+                case Domain.Enums.LongevityModelType.Threshold:
                     (yearsAdded, notes) = EvaluateThresholdModel(parameters, metricValues);
                     break;
-                case "range":
+                case Domain.Enums.LongevityModelType.Range:
                     (yearsAdded, notes) = EvaluateRangeModel(parameters, metricValues);
                     break;
-                case "linear":
+                case Domain.Enums.LongevityModelType.Linear:
                     (yearsAdded, notes) = EvaluateLinearModel(parameters, metricValues);
                     break;
-                case "boolean":
+                case Domain.Enums.LongevityModelType.Boolean:
                     (yearsAdded, notes) = EvaluateBooleanModel(parameters, metricValues);
                     break;
                 default:
@@ -291,7 +291,7 @@ public class LongevityEstimator : ILongevityEstimator
                         PotentialGain: parameters.MaxYearsAdded
                     ));
                 }
-                else if (model.ModelType == "threshold" && parameters.Direction == "above")
+                else if (model.ModelType == Domain.Enums.LongevityModelType.Threshold && parameters.Direction == "above")
                 {
                     if (currentValue < parameters.Threshold)
                     {

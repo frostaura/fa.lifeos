@@ -6,13 +6,19 @@
 - **Provider**: Npgsql
 - **Justification**: ACID compliance, JSONB support for flexible data, proven scalability
 
-## v1.1 New Tables Summary
-- **identity_profiles** - User target persona and primary stat targets
-- **primary_stat_records** - Historical primary stat values
-- **fx_rates** - Multi-currency exchange rates
-- **longevity_models** - Risk-based longevity calculation models
-- **review_snapshots** - Weekly/monthly review data
-- **onboarding_responses** - Goal-first onboarding data
+## v3.0 Schema Changes Summary
+- **metric_definitions** - Enhanced with `isDerived`, `aggregationType`, `targetValue`, `targetDirection` (v3.0)
+- **life_tasks** - Added `metricCode`, `targetValue`, `targetComparison` for auto-evaluation (v3.0)
+- **task_completions** - New table for tracking completion history (v3.0)
+- **streaks** - Enhanced penalty calculation fields: `consecutiveMisses`, `riskPenaltyScore` (v3.0)
+- **score_snapshots** - New table for historical LifeOS Score components (v3.0)
+- **dimension_score_records** - New table for per-dimension score history (v3.0)
+- **identity_profiles** - User target persona and primary stat targets (v1.1)
+- **primary_stat_records** - Historical primary stat values (v1.1)
+- **fx_rates** - Multi-currency exchange rates (v1.1)
+- **longevity_models** - Risk-based longevity calculation models (v1.1)
+- **review_snapshots** - Weekly/monthly review data (v1.1)
+- **onboarding_responses** - Goal-first onboarding data (v1.1)
 
 ## Entity Relationship Diagram
 
@@ -183,7 +189,7 @@ CREATE TABLE tax_profiles (
 );
 ```
 
-### Metric Definitions
+### Metric Definitions (v3.0 Enhanced)
 ```sql
 CREATE TABLE metric_definitions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -193,15 +199,19 @@ CREATE TABLE metric_definitions (
     dimension_id UUID REFERENCES dimensions(id),
     unit VARCHAR(20),
     value_type VARCHAR(20) DEFAULT 'Number', -- Number | Integer | Decimal | Boolean | Percentage
-    aggregation_type VARCHAR(20) DEFAULT 'Last', -- Last | Sum | Average | Max | Min
+    aggregation_type VARCHAR(20) DEFAULT 'Last', -- Last | Sum | Average | Max | Min (v3.0)
     enum_values TEXT[],
     min_value DECIMAL(19,4),
     max_value DECIMAL(19,4),
-    target_value DECIMAL(19,4),
-    target_direction VARCHAR(20) DEFAULT 'AtOrAbove', -- AtOrAbove | AtOrBelow
+    target_value DECIMAL(19,4),                -- Target for scoring (v3.0)
+    target_direction VARCHAR(20) DEFAULT 'AtOrAbove', -- AtOrAbove | AtOrBelow | Range (v3.0)
+    is_derived BOOLEAN DEFAULT FALSE,          -- Computed vs directly recorded (v3.0)
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_metric_definitions_dimension ON metric_definitions(dimension_id);
+CREATE INDEX idx_metric_definitions_code ON metric_definitions(code);
 ```
 
 ### Achievements
@@ -220,6 +230,68 @@ CREATE TABLE achievements (
     sort_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+```
+
+## v3.0 New Tables
+
+### Task Completions (v3.0 - Auto-Evaluation Support)
+```sql
+CREATE TABLE task_completions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID REFERENCES life_tasks(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completion_type VARCHAR(20) DEFAULT 'Manual', -- Manual | AutoMetric
+    metric_value DECIMAL(19,4),                   -- Value recorded if metric-linked
+    metric_code VARCHAR(50),                      -- Metric that triggered (if auto)
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_task_completions_task ON task_completions(task_id, completed_at DESC);
+CREATE INDEX idx_task_completions_user ON task_completions(user_id, completed_at DESC);
+```
+
+### Score Snapshots (v3.0 - Historical LifeOS Score Tracking)
+```sql
+CREATE TABLE score_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    health_index DECIMAL(8,4) NOT NULL,
+    adherence_index DECIMAL(8,4) NOT NULL,
+    wealth_health_score DECIMAL(8,4) NOT NULL,
+    longevity_years_added DECIMAL(8,4),
+    lifeos_score DECIMAL(8,4) NOT NULL,        -- Weighted composite
+    calculation_details JSONB                   -- Breakdown of components
+);
+
+CREATE INDEX idx_score_snapshots_user_date ON score_snapshots(user_id, recorded_at DESC);
+```
+
+### Dimension Score Records (v3.0 - Per-Dimension Scoring History)
+```sql
+CREATE TABLE dimension_score_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    dimension_id UUID REFERENCES dimensions(id) ON DELETE CASCADE,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dimension_score DECIMAL(8,4) NOT NULL,     -- Computed from metrics
+    metric_contributions JSONB,                 -- Per-metric breakdown
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_dimension_score_records_user_dim ON dimension_score_records(user_id, dimension_id, recorded_at DESC);
+```
+
+### Life Tasks (v3.0 Enhanced - Auto-Evaluation Support)
+```sql
+-- Existing life_tasks table enhanced with auto-evaluation fields
+ALTER TABLE life_tasks ADD COLUMN IF NOT EXISTS metric_code VARCHAR(50);
+ALTER TABLE life_tasks ADD COLUMN IF NOT EXISTS target_value DECIMAL(19,4);
+ALTER TABLE life_tasks ADD COLUMN IF NOT EXISTS target_comparison VARCHAR(30) DEFAULT 'GreaterThanOrEqual'; -- GreaterThanOrEqual | LessThanOrEqual | EqualTo
+
+CREATE INDEX idx_life_tasks_metric_code ON life_tasks(metric_code) WHERE metric_code IS NOT NULL;
 ```
 
 ## v1.1 New Tables
@@ -325,12 +397,19 @@ CREATE TABLE onboarding_responses (
 );
 ```
 
-### Enhanced Streaks (v1.1 Enhancement)
+### Enhanced Streaks (v3.0 - Forgiving First Miss Logic)
 ```sql
--- Existing streaks table enhanced with penalty fields
+-- Existing streaks table enhanced with v3.0 penalty fields
 ALTER TABLE streaks ADD COLUMN IF NOT EXISTS consecutive_misses INT DEFAULT 0;
 ALTER TABLE streaks ADD COLUMN IF NOT EXISTS risk_penalty_score DECIMAL(8,4) DEFAULT 0;
 ALTER TABLE streaks ADD COLUMN IF NOT EXISTS last_penalty_calculated_at TIMESTAMP;
+ALTER TABLE streaks ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMP;
+
+-- Penalty logic:
+-- consecutiveMisses = 1: riskPenaltyScore = 0 (forgiving)
+-- consecutiveMisses = 2: riskPenaltyScore = 5
+-- consecutiveMisses > 2: riskPenaltyScore = 10 * (consecutiveMisses - 1)
+-- On success: riskPenaltyScore = max(0, riskPenaltyScore - 2)
 ```
 
 ### Enhanced Simulation Events (v1.1)
@@ -353,6 +432,11 @@ ALTER TABLE simulation_events ADD COLUMN IF NOT EXISTS target_account_id UUID RE
 | User | MetricRecord | 1:N | user_id |
 | User | Streak | 1:N | user_id |
 | User | FinancialGoal | 1:N | user_id |
+| User | TaskCompletion | 1:N | user_id (v3.0) |
+| User | ScoreSnapshot | 1:N | user_id (v3.0) |
+| User | DimensionScoreRecord | 1:N | user_id (v3.0) |
+| LifeTask | TaskCompletion | 1:N | task_id (v3.0) |
+| Dimension | DimensionScoreRecord | 1:N | dimension_id (v3.0) |
 | User | IdentityProfile | 1:1 | user_id (v1.1) |
 | User | PrimaryStatRecord | 1:N | user_id (v1.1) |
 | User | ReviewSnapshot | 1:N | user_id (v1.1) |

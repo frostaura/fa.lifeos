@@ -32,6 +32,8 @@ public class DataSeeder : IDataSeeder
         await SeedMetricDefinitionsAsync(context);
         await SeedLongevityModelsAsync(context);
         await SeedDefaultTaxProfileAsync(context);
+        await SeedPrimaryStatsAsync(context);
+        await SeedDimensionPrimaryStatWeightsAsync(context);
     }
 
     private async Task SeedDimensionsAsync(LifeOSDbContext context)
@@ -169,6 +171,8 @@ public class DataSeeder : IDataSeeder
                 MinValue = 20,
                 MaxValue = 300,
                 TargetValue = 76.0m,
+                TargetDirection = TargetDirection.AtOrBelow,  // Lower weight is often the goal
+                Weight = 0.15m,  // 15% of Health Index
                 Icon = "scale",
                 Tags = new[] { "body", "health" },
                 IsActive = true
@@ -184,7 +188,9 @@ public class DataSeeder : IDataSeeder
                 AggregationType = AggregationType.Last,
                 MinValue = 3,
                 MaxValue = 50,
-                TargetValue = 15.0m,
+                TargetValue = 14.0m,  // Mid-point of optimal range
+                TargetDirection = TargetDirection.Range,  // v3.0: 13-15% range is optimal
+                Weight = 0.15m,  // 15% of Health Index
                 Icon = "percent",
                 Tags = new[] { "body", "health" },
                 IsActive = true
@@ -201,6 +207,8 @@ public class DataSeeder : IDataSeeder
                 MinValue = 0,
                 MaxValue = 100000,
                 TargetValue = 10000m,
+                TargetDirection = TargetDirection.AtOrAbove,  // Higher steps is better
+                Weight = 0.10m,  // 10% of Health Index
                 Icon = "footprints",
                 Tags = new[] { "activity", "health" },
                 IsActive = true
@@ -213,10 +221,12 @@ public class DataSeeder : IDataSeeder
                 DimensionId = healthDimensionId,
                 Unit = "bpm",
                 ValueType = MetricValueType.Number,
-                AggregationType = AggregationType.Average,
+                AggregationType = AggregationType.Last,
                 MinValue = 30,
                 MaxValue = 200,
                 TargetValue = 60.0m,
+                TargetDirection = TargetDirection.AtOrBelow,  // Lower HR is better for fitness
+                Weight = 0.15m,  // 15% of Health Index
                 Icon = "heart-pulse",
                 Tags = new[] { "heart", "health" },
                 IsActive = true
@@ -229,9 +239,12 @@ public class DataSeeder : IDataSeeder
                 DimensionId = healthDimensionId,
                 Unit = "ms",
                 ValueType = MetricValueType.Number,
-                AggregationType = AggregationType.Average,
+                AggregationType = AggregationType.Last,
                 MinValue = 0,
                 MaxValue = 300,
+                TargetValue = 50.0m,  // Typical good HRV
+                TargetDirection = TargetDirection.AtOrAbove,  // Higher HRV is better
+                Weight = 0.15m,  // 15% of Health Index
                 Icon = "activity",
                 Tags = new[] { "heart", "health", "recovery" },
                 IsActive = true
@@ -248,6 +261,8 @@ public class DataSeeder : IDataSeeder
                 MinValue = 0,
                 MaxValue = 24,
                 TargetValue = 8.0m,
+                TargetDirection = TargetDirection.Range,  // v3.0: 7-9 hours is optimal
+                Weight = 0.10m,  // 10% of Health Index
                 Icon = "moon",
                 Tags = new[] { "sleep", "health", "recovery" },
                 IsActive = true
@@ -263,6 +278,9 @@ public class DataSeeder : IDataSeeder
                 AggregationType = AggregationType.Last,
                 MinValue = 70,
                 MaxValue = 250,
+                TargetValue = 120.0m,
+                TargetDirection = TargetDirection.AtOrBelow,  // Lower BP is healthier
+                Weight = 0.10m,  // 10% of Health Index
                 Icon = "stethoscope",
                 Tags = new[] { "blood-pressure", "health" },
                 IsActive = true
@@ -278,6 +296,9 @@ public class DataSeeder : IDataSeeder
                 AggregationType = AggregationType.Last,
                 MinValue = 40,
                 MaxValue = 150,
+                TargetValue = 80.0m,
+                TargetDirection = TargetDirection.AtOrBelow,  // Lower BP is healthier
+                Weight = 0.10m,  // 10% of Health Index
                 Icon = "stethoscope",
                 Tags = new[] { "blood-pressure", "health" },
                 IsActive = true
@@ -291,8 +312,9 @@ public class DataSeeder : IDataSeeder
                 DimensionId = assetsDimensionId,
                 Unit = "currency",
                 ValueType = MetricValueType.Number,
-                AggregationType = AggregationType.Sum,
+                AggregationType = AggregationType.Last,
                 MinValue = 0,
+                TargetDirection = TargetDirection.AtOrAbove,  // More investment is better
                 Icon = "trending-up",
                 Tags = new[] { "finance", "investment" },
                 IsActive = true
@@ -307,6 +329,7 @@ public class DataSeeder : IDataSeeder
                 ValueType = MetricValueType.Number,
                 AggregationType = AggregationType.Sum,
                 MinValue = 0,
+                TargetDirection = TargetDirection.AtOrBelow,  // Lower spending can be goal
                 Icon = "credit-card",
                 Tags = new[] { "finance", "expense" },
                 IsActive = true
@@ -320,6 +343,7 @@ public class DataSeeder : IDataSeeder
                 Unit = "currency",
                 ValueType = MetricValueType.Number,
                 AggregationType = AggregationType.Last,
+                TargetDirection = TargetDirection.AtOrAbove,  // Higher net worth is better
                 Icon = "wallet",
                 Tags = new[] { "finance", "wealth" },
                 IsActive = true
@@ -333,9 +357,11 @@ public class DataSeeder : IDataSeeder
                 DimensionId = healthDimensionId,
                 Unit = "months",
                 ValueType = MetricValueType.Number,
-                AggregationType = AggregationType.Last,
+                AggregationType = AggregationType.Average,
                 MinValue = 0,
                 MaxValue = 1200,
+                TargetValue = 12.0m,
+                TargetDirection = TargetDirection.AtOrAbove,  // More smoke-free time is better
                 Icon = "cigarette-off",
                 Tags = new[] { "health", "longevity", "lifestyle" },
                 IsActive = true
@@ -356,116 +382,100 @@ public class DataSeeder : IDataSeeder
             return;
         }
 
-        _logger.LogInformation("Seeding longevity models...");
+        _logger.LogInformation("Seeding longevity models (v3.0)...");
 
         var models = new List<LongevityModel>
         {
-            // Steps >= 10000 → +2.5 years (all-cause mortality reduction)
+            // Steps >= 10000 → 15% risk reduction
             new LongevityModel
             {
-                Code = "exercise_steps",
-                Name = "Daily Steps",
-                Description = "High daily step count reduces all-cause mortality",
-                InputMetrics = new[] { "steps" },
-                ModelType = "threshold",
-                Parameters = @"{
-                    ""metricCode"": ""steps"",
-                    ""threshold"": 10000,
-                    ""direction"": ""above"",
-                    ""maxYearsAdded"": 2.5
-                }",
-                OutputUnit = "years_added",
-                SourceCitation = "Saint-Maurice PF, et al. JAMA. 2020",
+                Code = "steps_10k",
+                Name = "Daily Steps (10k+ threshold)",
+                Description = "High daily step count (>=10,000 steps) reduces all-cause mortality by approximately 15%",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "steps" }),
+                ModelType = LongevityModelType.Threshold,
+                Parameters = @"{""threshold"": 10000, ""belowValue"": 0, ""aboveValue"": 0.15}",
+                MaxRiskReduction = 0.15m,
+                SourceCitation = "Saint-Maurice PF, et al. Association of Daily Step Count and Step Intensity With Mortality Among US Adults. JAMA. 2020;323(12):1151-1160.",
                 SourceUrl = "https://jamanetwork.com/journals/jama/fullarticle/2763292",
-                IsActive = true,
-                Version = 1
+                IsActive = true
             },
-            // Body fat 13-15% → +2.0 years (optimal body composition)
+            // Body fat 13-15% → 20% risk reduction (optimal range)
             new LongevityModel
             {
-                Code = "body_composition",
-                Name = "Optimal Body Fat",
-                Description = "Optimal body fat percentage for longevity (13-15% for men)",
-                InputMetrics = new[] { "body_fat_pct" },
-                ModelType = "range",
-                Parameters = @"{
-                    ""metricCode"": ""body_fat_pct"",
-                    ""optimalMin"": 13,
-                    ""optimalMax"": 15,
-                    ""maxYearsAdded"": 2.0
-                }",
-                OutputUnit = "years_added",
-                SourceCitation = "Pischon T, et al. N Engl J Med. 2008",
+                Code = "bf_optimal",
+                Name = "Optimal Body Fat Percentage",
+                Description = "Optimal body fat percentage (13-15% for men) associated with ~20% mortality risk reduction",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "body_fat_pct" }),
+                ModelType = LongevityModelType.Range,
+                Parameters = @"{""minOptimal"": 13, ""maxOptimal"": 15, ""minValue"": 5, ""maxValue"": 40}",
+                MaxRiskReduction = 0.20m,
+                SourceCitation = "Pischon T, et al. General and Abdominal Adiposity and Risk of Death in Europe. N Engl J Med. 2008;359:2105-2120.",
                 SourceUrl = "https://www.nejm.org/doi/full/10.1056/NEJMoa0801891",
-                IsActive = true,
-                Version = 1
+                IsActive = true
             },
-            // Sleep hours 7-9 → +1.5 years (optimal sleep duration)
+            // Sleep 7-9 hours → 10% risk reduction
             new LongevityModel
             {
-                Code = "sleep_quality",
+                Code = "sleep_optimal",
                 Name = "Optimal Sleep Duration",
-                Description = "Sleeping 7-9 hours per night is associated with lower mortality",
-                InputMetrics = new[] { "sleep_hours" },
-                ModelType = "range",
-                Parameters = @"{
-                    ""metricCode"": ""sleep_hours"",
-                    ""optimalMin"": 7,
-                    ""optimalMax"": 9,
-                    ""maxYearsAdded"": 1.5
-                }",
-                OutputUnit = "years_added",
-                SourceCitation = "Cappuccio FP, et al. Sleep. 2010",
+                Description = "Sleeping 7-9 hours per night is associated with ~10% lower mortality risk",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "sleep_hours" }),
+                ModelType = LongevityModelType.Range,
+                Parameters = @"{""minOptimal"": 7, ""maxOptimal"": 9, ""minValue"": 4, ""maxValue"": 12}",
+                MaxRiskReduction = 0.10m,
+                SourceCitation = "Cappuccio FP, et al. Sleep Duration and All-Cause Mortality: A Systematic Review and Meta-Analysis of Prospective Studies. Sleep. 2010;33(5):585-592.",
                 SourceUrl = "https://pubmed.ncbi.nlm.nih.gov/20469800/",
-                IsActive = true,
-                Version = 1
+                IsActive = true
             },
-            // Resting HR < 60 → +1.0 years (cardiovascular fitness)
+            // Resting HR < 60 → 12% risk reduction (cardiovascular fitness)
             new LongevityModel
             {
-                Code = "cardio_fitness",
-                Name = "Cardiovascular Fitness",
-                Description = "Low resting heart rate indicates cardiovascular fitness",
-                InputMetrics = new[] { "resting_hr" },
-                ModelType = "threshold",
-                Parameters = @"{
-                    ""metricCode"": ""resting_hr"",
-                    ""threshold"": 60,
-                    ""direction"": ""below"",
-                    ""maxYearsAdded"": 1.0
-                }",
-                OutputUnit = "years_added",
-                SourceCitation = "Zhang D, et al. CMAJ. 2016",
+                Code = "rhr_low",
+                Name = "Low Resting Heart Rate",
+                Description = "Resting heart rate below 60 bpm indicates cardiovascular fitness, ~12% mortality reduction",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "resting_hr" }),
+                ModelType = LongevityModelType.Threshold,
+                Parameters = @"{""threshold"": 60, ""belowValue"": 0.12, ""aboveValue"": 0}",
+                MaxRiskReduction = 0.12m,
+                SourceCitation = "Zhang D, et al. Resting Heart Rate and All-Cause and Cardiovascular Mortality in the General Population: A Meta-analysis. CMAJ. 2016;188(3):E53-E63.",
                 SourceUrl = "https://pubmed.ncbi.nlm.nih.gov/27068421/",
-                IsActive = true,
-                Version = 1
+                IsActive = true
             },
-            // Smoke-free (12+ months) → +3.0 years
+            // Smoke-free (12+ months) → 25% risk reduction
             new LongevityModel
             {
-                Code = "smoke_free",
+                Code = "smoke_free_12m",
                 Name = "Smoke-Free Lifestyle",
-                Description = "Not smoking or quitting for 12+ months significantly increases lifespan",
-                InputMetrics = new[] { "smoke_free_months" },
-                ModelType = "threshold",
-                Parameters = @"{
-                    ""metricCode"": ""smoke_free_months"",
-                    ""threshold"": 12,
-                    ""direction"": ""above"",
-                    ""maxYearsAdded"": 3.0
-                }",
-                OutputUnit = "years_added",
-                SourceCitation = "Jha P, et al. N Engl J Med. 2013",
+                Description = "Non-smoking or quitting for 12+ months significantly reduces mortality risk by ~25%",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "smoke_free_months" }),
+                ModelType = LongevityModelType.Threshold,
+                Parameters = @"{""threshold"": 12, ""belowValue"": 0, ""aboveValue"": 0.25}",
+                MaxRiskReduction = 0.25m,
+                SourceCitation = "Jha P, et al. 21st-Century Hazards of Smoking and Benefits of Cessation in the United States. N Engl J Med. 2013;368:341-350.",
                 SourceUrl = "https://www.nejm.org/doi/full/10.1056/NEJMsa1211128",
-                IsActive = true,
-                Version = 1
+                IsActive = true
+            },
+            // Exercise 150+ minutes/week → 18% risk reduction
+            new LongevityModel
+            {
+                Code = "exercise_150min",
+                Name = "Recommended Weekly Exercise",
+                Description = "Meeting WHO guidelines of 150+ minutes moderate-intensity exercise per week reduces mortality by ~18%",
+                InputMetrics = System.Text.Json.JsonSerializer.Serialize(new[] { "weekly_exercise_min" }),
+                ModelType = LongevityModelType.Threshold,
+                Parameters = @"{""threshold"": 150, ""belowValue"": 0, ""aboveValue"": 0.18}",
+                MaxRiskReduction = 0.18m,
+                SourceCitation = "Arem H, et al. Leisure Time Physical Activity and Mortality: A Detailed Pooled Analysis of the Dose-Response Relationship. JAMA Intern Med. 2015;175(6):959-967.",
+                SourceUrl = "https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2212268",
+                IsActive = true
             }
         };
 
         context.LongevityModels.AddRange(models);
         await context.SaveChangesAsync();
 
-        _logger.LogInformation("Successfully seeded {Count} longevity models", models.Count);
+        _logger.LogInformation("Successfully seeded {Count} longevity models (v3.0)", models.Count);
     }
 
     private async Task SeedDefaultTaxProfileAsync(LifeOSDbContext context)
@@ -543,5 +553,197 @@ public class DataSeeder : IDataSeeder
 
         await context.SaveChangesAsync();
         _logger.LogInformation("Successfully seeded/updated South African tax profiles");
+    }
+
+    private async Task SeedPrimaryStatsAsync(LifeOSDbContext context)
+    {
+        if (await context.PrimaryStats.AnyAsync())
+        {
+            _logger.LogInformation("Primary stats already seeded, skipping");
+            return;
+        }
+
+        _logger.LogInformation("Seeding 7 primary stats (v4.0)...");
+
+        var primaryStats = new List<PrimaryStat>
+        {
+            new PrimaryStat
+            {
+                Code = "strength",
+                Name = "Strength",
+                Description = "Physical power, resilience, and health. Represents your body's capacity to endure and perform.",
+                Icon = "💪",
+                SortOrder = 1,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "wisdom",
+                Name = "Wisdom",
+                Description = "Knowledge, learning, and mental clarity. Represents your intellectual capacity and decision-making ability.",
+                Icon = "🧠",
+                SortOrder = 2,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "charisma",
+                Name = "Charisma",
+                Description = "Social influence and relationships. Represents your ability to connect with and inspire others.",
+                Icon = "🗣️",
+                SortOrder = 3,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "composure",
+                Name = "Composure",
+                Description = "Emotional control and stress management. Represents your ability to remain calm and focused under pressure.",
+                Icon = "🧘",
+                SortOrder = 4,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "energy",
+                Name = "Energy",
+                Description = "Vitality, stamina, and drive. Represents your capacity to take action and maintain momentum.",
+                Icon = "⚡",
+                SortOrder = 5,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "influence",
+                Name = "Influence",
+                Description = "Impact on others and leadership. Represents your ability to effect change and guide others.",
+                Icon = "👑",
+                SortOrder = 6,
+                IsActive = true
+            },
+            new PrimaryStat
+            {
+                Code = "vitality",
+                Name = "Vitality",
+                Description = "Overall life force and longevity. Represents your fundamental health and life expectancy.",
+                Icon = "❤️",
+                SortOrder = 7,
+                IsActive = true
+            }
+        };
+
+        context.PrimaryStats.AddRange(primaryStats);
+        await context.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully seeded {Count} primary stats (v4.0)", primaryStats.Count);
+    }
+
+    private async Task SeedDimensionPrimaryStatWeightsAsync(LifeOSDbContext context)
+    {
+        if (await context.DimensionPrimaryStatWeights.AnyAsync())
+        {
+            _logger.LogInformation("Dimension primary stat weights already seeded, skipping");
+            return;
+        }
+
+        _logger.LogInformation("Seeding dimension → primary stat weights (v4.0)...");
+
+        // Get dimension IDs by code
+        var dimensions = await context.Dimensions.ToDictionaryAsync(d => d.Code, d => d.Id);
+
+        var weights = new List<DimensionPrimaryStatWeight>();
+
+        // Health & Recovery → Vitality (40%), Strength (30%), Energy (30%)
+        if (dimensions.TryGetValue("health_recovery", out var healthId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = healthId, PrimaryStatCode = "vitality", Weight = 0.40m },
+                new DimensionPrimaryStatWeight { DimensionId = healthId, PrimaryStatCode = "strength", Weight = 0.30m },
+                new DimensionPrimaryStatWeight { DimensionId = healthId, PrimaryStatCode = "energy", Weight = 0.30m }
+            });
+        }
+
+        // Relationships → Charisma (50%), Influence (30%), Composure (20%)
+        if (dimensions.TryGetValue("relationships", out var relationshipsId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = relationshipsId, PrimaryStatCode = "charisma", Weight = 0.50m },
+                new DimensionPrimaryStatWeight { DimensionId = relationshipsId, PrimaryStatCode = "influence", Weight = 0.30m },
+                new DimensionPrimaryStatWeight { DimensionId = relationshipsId, PrimaryStatCode = "composure", Weight = 0.20m }
+            });
+        }
+
+        // Work & Contribution → Energy (35%), Influence (35%), Wisdom (30%)
+        if (dimensions.TryGetValue("work_contribution", out var workId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = workId, PrimaryStatCode = "energy", Weight = 0.35m },
+                new DimensionPrimaryStatWeight { DimensionId = workId, PrimaryStatCode = "influence", Weight = 0.35m },
+                new DimensionPrimaryStatWeight { DimensionId = workId, PrimaryStatCode = "wisdom", Weight = 0.30m }
+            });
+        }
+
+        // Play & Adventure → Energy (50%), Vitality (30%), Charisma (20%)
+        if (dimensions.TryGetValue("play_adventure", out var playId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = playId, PrimaryStatCode = "energy", Weight = 0.50m },
+                new DimensionPrimaryStatWeight { DimensionId = playId, PrimaryStatCode = "vitality", Weight = 0.30m },
+                new DimensionPrimaryStatWeight { DimensionId = playId, PrimaryStatCode = "charisma", Weight = 0.20m }
+            });
+        }
+
+        // Asset Care → Wisdom (40%), Composure (35%), Influence (25%)
+        if (dimensions.TryGetValue("asset_care", out var assetId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = assetId, PrimaryStatCode = "wisdom", Weight = 0.40m },
+                new DimensionPrimaryStatWeight { DimensionId = assetId, PrimaryStatCode = "composure", Weight = 0.35m },
+                new DimensionPrimaryStatWeight { DimensionId = assetId, PrimaryStatCode = "influence", Weight = 0.25m }
+            });
+        }
+
+        // Create & Craft → Energy (40%), Wisdom (35%), Charisma (25%)
+        if (dimensions.TryGetValue("create_craft", out var createId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = createId, PrimaryStatCode = "energy", Weight = 0.40m },
+                new DimensionPrimaryStatWeight { DimensionId = createId, PrimaryStatCode = "wisdom", Weight = 0.35m },
+                new DimensionPrimaryStatWeight { DimensionId = createId, PrimaryStatCode = "charisma", Weight = 0.25m }
+            });
+        }
+
+        // Growth & Mind → Wisdom (50%), Composure (30%), Energy (20%)
+        if (dimensions.TryGetValue("growth_mind", out var growthId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = growthId, PrimaryStatCode = "wisdom", Weight = 0.50m },
+                new DimensionPrimaryStatWeight { DimensionId = growthId, PrimaryStatCode = "composure", Weight = 0.30m },
+                new DimensionPrimaryStatWeight { DimensionId = growthId, PrimaryStatCode = "energy", Weight = 0.20m }
+            });
+        }
+
+        // Community & Meaning → Influence (40%), Charisma (35%), Composure (25%)
+        if (dimensions.TryGetValue("community_meaning", out var communityId))
+        {
+            weights.AddRange(new[]
+            {
+                new DimensionPrimaryStatWeight { DimensionId = communityId, PrimaryStatCode = "influence", Weight = 0.40m },
+                new DimensionPrimaryStatWeight { DimensionId = communityId, PrimaryStatCode = "charisma", Weight = 0.35m },
+                new DimensionPrimaryStatWeight { DimensionId = communityId, PrimaryStatCode = "composure", Weight = 0.25m }
+            });
+        }
+
+        context.DimensionPrimaryStatWeights.AddRange(weights);
+        await context.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully seeded {Count} dimension → primary stat weight mappings (v4.0)", weights.Count);
     }
 }

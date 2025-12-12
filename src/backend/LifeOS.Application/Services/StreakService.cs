@@ -4,123 +4,90 @@ namespace LifeOS.Application.Services;
 
 public interface IStreakService
 {
-    void UpdateStreak(Streak streak, DateOnly completionDate);
-    void ApplyMissPenalty(Streak streak, DateOnly currentDate);
-    (bool shouldReset, int penaltyDays) CalculateMissPenalty(Streak streak, DateOnly currentDate);
+    void UpdateStreakOnSuccess(Streak streak, DateOnly completionDate);
+    void UpdateStreakOnMiss(Streak streak, DateOnly missDate);
+    void EvaluateStreakStatus(Streak streak, bool success);
 }
 
 public class StreakService : IStreakService
 {
     /// <summary>
-    /// Update streak when a task/metric is completed
+    /// v3.0: Update streak when a success occurs
+    /// Implements success decay: riskPenaltyScore = max(0, riskPenaltyScore - 2)
     /// </summary>
-    public void UpdateStreak(Streak streak, DateOnly completionDate)
+    public void UpdateStreakOnSuccess(Streak streak, DateOnly completionDate)
     {
-        if (streak.LastSuccessDate == null)
+        // Increment streak
+        streak.CurrentStreakLength++;
+        streak.LastSuccessDate = completionDate;
+        
+        // Reset consecutive misses
+        streak.ConsecutiveMisses = 0;
+        
+        // Apply success decay to penalty score
+        streak.RiskPenaltyScore = Math.Max(0, streak.RiskPenaltyScore - 2);
+        
+        // Update longest streak if needed
+        if (streak.CurrentStreakLength > streak.LongestStreakLength)
         {
-            // First completion
-            streak.CurrentStreakLength = 1;
-            streak.LongestStreakLength = 1;
-            streak.LastSuccessDate = completionDate;
-            streak.StreakStartDate = completionDate;
-            streak.MissCount = 0;
+            streak.LongestStreakLength = streak.CurrentStreakLength;
+        }
+        
+        // Track penalty calculation time
+        streak.LastPenaltyCalculatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// v3.0: Update streak when a miss occurs
+    /// Implements forgiving first miss logic with escalating penalties
+    /// </summary>
+    public void UpdateStreakOnMiss(Streak streak, DateOnly missDate)
+    {
+        if (streak.ConsecutiveMisses == 0)
+        {
+            // First consecutive miss - forgiving (no penalty)
+            streak.ConsecutiveMisses = 1;
+            // riskPenaltyScore unchanged
+        }
+        else if (streak.ConsecutiveMisses == 1)
+        {
+            // Second consecutive miss - apply initial penalty
+            streak.ConsecutiveMisses = 2;
+            streak.RiskPenaltyScore = 5;
         }
         else
         {
-            var lastSuccess = streak.LastSuccessDate.Value;
-            var daysSinceLastSuccess = completionDate.DayNumber - lastSuccess.DayNumber;
-
-            if (daysSinceLastSuccess == 0)
-            {
-                // Already completed today - no change to streak
-                return;
-            }
-            else if (daysSinceLastSuccess == 1)
-            {
-                // Consecutive day - increment streak
-                streak.CurrentStreakLength++;
-                streak.LastSuccessDate = completionDate;
-                streak.MissCount = 0;
-
-                if (streak.CurrentStreakLength > streak.LongestStreakLength)
-                {
-                    streak.LongestStreakLength = streak.CurrentStreakLength;
-                }
-            }
-            else if (daysSinceLastSuccess <= streak.MaxAllowedMisses + 1)
-            {
-                // Within single miss grace period
-                // Count the missed days
-                var missedDays = daysSinceLastSuccess - 1;
-                streak.MissCount += missedDays;
-                streak.CurrentStreakLength++;
-                streak.LastSuccessDate = completionDate;
-
-                if (streak.CurrentStreakLength > streak.LongestStreakLength)
-                {
-                    streak.LongestStreakLength = streak.CurrentStreakLength;
-                }
-            }
-            else
-            {
-                // Streak broken - reset
-                streak.CurrentStreakLength = 1;
-                streak.LastSuccessDate = completionDate;
-                streak.StreakStartDate = completionDate;
-                streak.MissCount = 0;
-            }
+            // Third+ consecutive miss - escalating penalty
+            streak.ConsecutiveMisses++;
+            streak.RiskPenaltyScore = 10 * (streak.ConsecutiveMisses - 1);
         }
-    }
-
-    /// <summary>
-    /// Calculate if a penalty should be applied for consecutive misses
-    /// </summary>
-    public (bool shouldReset, int penaltyDays) CalculateMissPenalty(Streak streak, DateOnly currentDate)
-    {
-        if (streak.LastSuccessDate == null)
-        {
-            return (false, 0);
-        }
-
-        var daysSinceLastSuccess = currentDate.DayNumber - streak.LastSuccessDate.Value.DayNumber;
-
-        // Single miss grace period
-        if (daysSinceLastSuccess <= streak.MaxAllowedMisses + 1)
-        {
-            return (false, 0);
-        }
-
-        // Consecutive misses - apply penalty
-        var consecutiveMisses = daysSinceLastSuccess - 1;
         
-        // Penalty: -2 days per consecutive miss beyond the grace period
-        var penaltyDays = Math.Max(0, consecutiveMisses - streak.MaxAllowedMisses) * 2;
-
-        // If penalty exceeds current streak, it should reset
-        var shouldReset = penaltyDays >= streak.CurrentStreakLength;
-
-        return (shouldReset, penaltyDays);
+        // Update longest streak if current was better
+        if (streak.CurrentStreakLength > streak.LongestStreakLength)
+        {
+            streak.LongestStreakLength = streak.CurrentStreakLength;
+        }
+        
+        // Reset current streak
+        streak.CurrentStreakLength = 0;
+        
+        // Track penalty calculation time
+        streak.LastPenaltyCalculatedAt = DateTime.UtcNow;
     }
 
     /// <summary>
-    /// Apply miss penalty to streak (called by daily background job)
+    /// v3.0: Main entry point for streak evaluation (called by daily job or on-demand)
+    /// Determines success/failure and applies appropriate logic
     /// </summary>
-    public void ApplyMissPenalty(Streak streak, DateOnly currentDate)
+    public void EvaluateStreakStatus(Streak streak, bool success)
     {
-        var (shouldReset, penaltyDays) = CalculateMissPenalty(streak, currentDate);
-
-        if (shouldReset)
+        if (success)
         {
-            // Reset streak entirely
-            streak.CurrentStreakLength = 0;
-            streak.StreakStartDate = null;
-            streak.MissCount = 0;
+            UpdateStreakOnSuccess(streak, DateOnly.FromDateTime(DateTime.UtcNow));
         }
-        else if (penaltyDays > 0)
+        else
         {
-            // Apply penalty but don't reset
-            streak.CurrentStreakLength = Math.Max(0, streak.CurrentStreakLength - penaltyDays);
-            streak.MissCount++;
+            UpdateStreakOnMiss(streak, DateOnly.FromDateTime(DateTime.UtcNow));
         }
     }
 }

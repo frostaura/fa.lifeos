@@ -4,20 +4,21 @@
   "private": true,
   "description": "E2E tests for LifeOS application",
   "scripts": {
-    "test": "playwright test",
-    "test:headed": "playwright test --headed",
-    "test:ui": "playwright test --ui",
-    "test:debug": "playwright test --debug",
-    "test:login": "playwright test e2e/login.spec.ts",
-    "test:dashboard": "playwright test e2e/dashboard.spec.ts",
-    "test:finances": "playwright test e2e/finances.spec.ts",
-    "test:achievements": "playwright test e2e/achievements.spec.ts",
-    "test:visual": "playwright test e2e/visual-regression.spec.ts",
-    "report": "playwright show-report"
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:visual": "playwright test e2e/visual-regression/",
+    "test:e2e:update-snapshots": "playwright test --update-snapshots",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install --with-deps"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0",
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.57.0",
     "@types/node": "^20.10.0",
+    "axe-core": "^4.11.0",
+    "axe-playwright": "^2.2.2",
     "typescript": "^5.3.0"
   },
   "dependencies": {

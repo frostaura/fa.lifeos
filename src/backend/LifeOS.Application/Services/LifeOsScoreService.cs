@@ -42,10 +42,10 @@ public class LifeOsScoreService : ILifeOsScoreService
         // Get latest longevity snapshot
         var longevitySnapshot = await _context.LongevitySnapshots
             .Where(l => l.UserId == userId)
-            .OrderByDescending(l => l.CalculatedAt)
+            .OrderByDescending(l => l.Timestamp)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var longevityYearsAdded = longevitySnapshot?.EstimatedYearsAdded ?? 0;
+        var longevityYearsAdded = longevitySnapshot?.TotalYearsAdded ?? 0;
 
         // Calculate per-dimension scores
         var dimensions = await _context.Dimensions

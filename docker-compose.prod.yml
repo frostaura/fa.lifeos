@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: lifeos_general_password
       POSTGRES_DB: fa_lifeos
     volumes:
-      - falifeosdata:/var/lib/postgresql/data
+      - fa_lifeos_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "PGPASSWORD=lifeos_general_password psql -U lifeos -d fa_lifeos -c 'SELECT 1' || exit 1" ]
       interval: 5s
@@ -46,14 +46,27 @@ services:
   frontend:
     image: frostaura/lifeos-frontend:latest
     container_name: lifeos-frontend
+    ports:
+      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: always
-    command: tunnel run --token eyJhIjoiNzE2NjBmZWQ5MmY3NWMzNDhkOGNhY2JkMTBlNTViMmMiLCJ0IjoiMzdmY2U4MWEtZWEzMy00NTU3LTg2YzYtYTAyNGE0MmNjM2VhIiwicyI6Ik1XSTJZbUpoTTJNdE1HUmlNQzAwTmpBMExXSXdNR1V0WlRObFltSmxZbVJqTlRNeiJ9
+    # Set CLOUDFLARED_TOKEN environment variable before running:
+    # export CLOUDFLARED_TOKEN=your_token_here
+    # or create a .env file with: CLOUDFLARED_TOKEN=your_token_here
+    command: tunnel run --token ${CLOUDFLARED_TOKEN}
+    environment:
+      - CLOUDFLARED_TOKEN=${CLOUDFLARED_TOKEN}
 
 volumes:
-  falifeosdata:
+  fa_lifeos_data:

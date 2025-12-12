@@ -291,6 +291,12 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<decimal>("PenaltyFactor")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("RawAdherence")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("Score")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
@@ -1152,6 +1158,10 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Property<string>("Metadata")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("MetricCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid?>("MilestoneId")
                         .HasColumnType("uuid");
 
@@ -1166,6 +1176,14 @@ namespace LifeOS.Infrastructure.Migrations
 
                     b.Property<string[]>("Tags")
                         .HasColumnType("text[]");
+
+                    b.Property<string>("TargetComparison")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal?>("TargetValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<string>("TaskType")
                         .IsRequired()
@@ -1223,33 +1241,28 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<string[]>("InputMetrics")
+                    b.Property<string>("InputMetrics")
                         .IsRequired()
-                        .HasColumnType("text[]");
+                        .HasColumnType("jsonb");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<decimal>("MaxRiskReduction")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
                     b.Property<string>("ModelType")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("linear");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("OutputUnit")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("years_added");
 
                     b.Property<string>("Parameters")
                         .IsRequired()
@@ -1264,19 +1277,15 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Version")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("InputMetrics");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("InputMetrics"), "gin");
+                    b.HasIndex("UserId");
 
                     b.ToTable("longevity_models", (string)null);
                 });
@@ -1288,11 +1297,11 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<decimal>("AdjustedLifeExpectancy")
+                    b.Property<decimal>("AdjustedLifeExpectancyYears")
                         .HasPrecision(4, 1)
                         .HasColumnType("numeric(4,1)");
 
-                    b.Property<decimal>("BaselineLifeExpectancy")
+                    b.Property<decimal>("BaselineLifeExpectancyYears")
                         .HasPrecision(4, 1)
                         .HasColumnType("numeric(4,1)");
 
@@ -1300,30 +1309,30 @@ namespace LifeOS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<DateTime>("CalculatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("ConfidenceLevel")
+                    b.Property<string>("Confidence")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("moderate");
+                        .HasDefaultValue("medium");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<decimal>("EstimatedYearsAdded")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("numeric(4,1)");
+                    b.Property<decimal>("RiskFactorCombined")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
 
-                    b.Property<string>("InputMetricsSnapshot")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal>("TotalYearsAdded")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1333,7 +1342,7 @@ namespace LifeOS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "CalculatedAt");
+                    b.HasIndex("UserId", "Timestamp");
 
                     b.ToTable("longevity_snapshots", (string)null);
                 });
@@ -1402,8 +1411,10 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Property<string[]>("Tags")
                         .HasColumnType("text[]");
 
-                    b.Property<int>("TargetDirection")
-                        .HasColumnType("integer");
+                    b.Property<string>("TargetDirection")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<decimal?>("TargetValue")
                         .HasPrecision(18, 4)
@@ -1420,6 +1431,12 @@ namespace LifeOS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("Weight")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)")
+                        .HasDefaultValue(0.15m);
 
                     b.HasKey("Id");
 
@@ -1740,6 +1757,12 @@ namespace LifeOS.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("icon");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -2415,6 +2438,14 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<string>("CompletionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Manual")
+                        .HasColumnName("completion_type");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -2436,15 +2467,17 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnName("user_id");
 
                     b.Property<decimal?>("ValueNumber")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("value_number");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("idx_task_completions_task_id");
 
-                    b.HasIndex("TaskId", "CompletedAt");
+                    b.HasIndex("UserId", "CompletedAt")
+                        .HasDatabaseName("idx_task_completions_user_id_completed_at");
 
                     b.ToTable("task_completions", (string)null);
                 });

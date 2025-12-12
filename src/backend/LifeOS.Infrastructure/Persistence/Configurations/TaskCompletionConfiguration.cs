@@ -26,9 +26,16 @@ public class TaskCompletionConfiguration : IEntityTypeConfiguration<TaskCompleti
         builder.Property(e => e.CompletedAt)
             .HasColumnName("completed_at");
 
+        builder.Property(e => e.CompletionType)
+            .HasColumnName("completion_type")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(Domain.Enums.CompletionType.Manual)
+            .IsRequired();
+
         builder.Property(e => e.ValueNumber)
             .HasColumnName("value_number")
-            .HasPrecision(19, 4);
+            .HasPrecision(18, 4);
 
         builder.Property(e => e.Notes)
             .HasColumnName("notes");
@@ -49,7 +56,11 @@ public class TaskCompletionConfiguration : IEntityTypeConfiguration<TaskCompleti
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(e => new { e.TaskId, e.CompletedAt });
-        builder.HasIndex(e => e.UserId);
+        // Indexes per database.md specification
+        builder.HasIndex(e => e.TaskId)
+            .HasDatabaseName("idx_task_completions_task_id");
+            
+        builder.HasIndex(e => new { e.UserId, e.CompletedAt })
+            .HasDatabaseName("idx_task_completions_user_id_completed_at");
     }
 }

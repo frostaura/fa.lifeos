@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<ScheduledSimulationJob>();
         services.AddScoped<NetWorthSnapshotJob>();
         services.AddScoped<RegenerateSimulationJob>();
+        services.AddScoped<TaskEvaluationBackgroundJob>();
 
         // Hangfire Configuration
         if (!string.IsNullOrEmpty(connectionString))

@@ -33,6 +33,17 @@ public class LifeTaskConfiguration : IEntityTypeConfiguration<LifeTask>
         builder.Property(e => e.LinkedMetricCode)
             .HasMaxLength(50);
 
+        // v3.0 Task Auto-Evaluation Properties
+        builder.Property(e => e.MetricCode)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.TargetValue)
+            .HasPrecision(18, 4);
+
+        builder.Property(e => e.TargetComparison)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
         builder.Property(e => e.IsCompleted)
             .HasDefaultValue(false);
 

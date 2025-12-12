@@ -52,6 +52,10 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
             if (isReplaceMode && !request.DryRun)
             {
                 await DeleteAllUserDataAsync(request.UserId, cancellationToken);
+                // Clear change tracker to ensure deleted entities are fully detached
+                // This prevents PK constraint violations when adding entities with same IDs
+                _context.ChangeTracker.Clear();
+                _logger.LogInformation("Change tracker cleared after deletion");
             }
 
             // Import in FK-safe order
@@ -579,13 +583,14 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new LongevityModel
                     {
                         Id = item.Id,
+                        UserId = item.UserId,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
-                        InputMetrics = item.InputMetrics ?? Array.Empty<string>(),
-                        ModelType = item.ModelType,
+                        InputMetrics = System.Text.Json.JsonSerializer.Serialize(item.InputMetrics ?? Array.Empty<string>()),
+                        ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType),
                         Parameters = item.Parameters ?? "{}",
-                        OutputUnit = item.OutputUnit,
+                        MaxRiskReduction = item.MaxRiskReduction,
                         IsActive = item.IsActive
                     };
                     _context.LongevityModels.Add(entity);
@@ -598,13 +603,14 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     var entity = new LongevityModel
                     {
                         Id = item.Id,
+                        UserId = item.UserId,
                         Code = item.Code,
                         Name = item.Name,
                         Description = item.Description,
-                        InputMetrics = item.InputMetrics ?? Array.Empty<string>(),
-                        ModelType = item.ModelType,
+                        InputMetrics = System.Text.Json.JsonSerializer.Serialize(item.InputMetrics ?? Array.Empty<string>()),
+                        ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType),
                         Parameters = item.Parameters ?? "{}",
-                        OutputUnit = item.OutputUnit,
+                        MaxRiskReduction = item.MaxRiskReduction,
                         IsActive = item.IsActive
                     };
                     _context.LongevityModels.Add(entity);
@@ -1447,13 +1453,13 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                 {
                     Id = item.Id,
                     UserId = userId,
-                    CalculatedAt = item.CalculatedAt,
-                    BaselineLifeExpectancy = item.BaselineLifeExpectancy,
-                    EstimatedYearsAdded = item.EstimatedYearsAdded,
-                    AdjustedLifeExpectancy = item.AdjustedLifeExpectancy,
-                    Breakdown = item.Breakdown ?? "{}",
-                    InputMetricsSnapshot = item.InputMetricsSnapshot ?? "{}",
-                    ConfidenceLevel = item.ConfidenceLevel ?? "moderate"
+                    Timestamp = item.CalculatedAt,
+                    BaselineLifeExpectancyYears = item.BaselineLifeExpectancy,
+                    TotalYearsAdded = item.EstimatedYearsAdded,
+                    AdjustedLifeExpectancyYears = item.AdjustedLifeExpectancy,
+                    RiskFactorCombined = 0m,  // Legacy imports don't have this
+                    Breakdown = item.Breakdown ?? "[]",
+                    Confidence = item.ConfidenceLevel ?? "medium"
                 };
                 _context.LongevitySnapshots.Add(entity);
             }

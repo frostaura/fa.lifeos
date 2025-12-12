@@ -6,7 +6,7 @@ using System.Security.Claims;
 namespace LifeOS.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/longevity")]
 [Authorize]
 public class LongevityController : ControllerBase
 {

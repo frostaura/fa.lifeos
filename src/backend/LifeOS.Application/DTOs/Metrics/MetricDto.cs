@@ -200,3 +200,20 @@ public record UpdateMetricRecordRequest
     public string? Notes { get; init; }
     public string? Metadata { get; init; }
 }
+
+// v3.0: Nested Metrics Ingestion Request
+public record MetricRecordRequest
+{
+    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+    public string Source { get; init; } = "api";
+    public Dictionary<string, object> Metrics { get; init; } = new();
+}
+
+// v3.0: Nested Metrics Ingestion Response
+public record MetricRecordResponse
+{
+    public bool Success { get; init; }
+    public int CreatedRecords { get; init; }
+    public List<string> IgnoredMetrics { get; init; } = new();
+    public List<string> Errors { get; init; } = new();
+}

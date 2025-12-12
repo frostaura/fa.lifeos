@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace LifeOS.Infrastructure.BackgroundJobs;
 
 /// <summary>
-/// Daily job (midnight) to evaluate streak continuity and mark broken streaks
+/// v3.0: Daily job (midnight) to evaluate streak continuity and apply miss penalties
 /// </summary>
 public class StreakEvaluationJob
 {
@@ -26,7 +26,7 @@ public class StreakEvaluationJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting streak evaluation job");
+        _logger.LogInformation("Starting v3.0 streak evaluation job");
 
         try
         {
@@ -34,49 +34,82 @@ public class StreakEvaluationJob
             
             // Get all active streaks
             var activeStreaks = await _context.Streaks
-                .Where(s => s.IsActive && s.CurrentStreakLength > 0)
+                .Where(s => s.IsActive)
+                .Include(s => s.Task)
+                .Include(s => s.MetricDefinition)
                 .ToListAsync(cancellationToken);
 
-            var brokenCount = 0;
-            var penalizedCount = 0;
+            var missCount = 0;
+            var successCount = 0;
 
             foreach (var streak in activeStreaks)
             {
-                var (shouldReset, penaltyDays) = _streakService.CalculateMissPenalty(streak, today);
+                // Determine if success occurred today
+                // For task-based streaks, check TaskCompletion records
+                // For metric-based streaks, check MetricRecord entries
+                bool successToday = await HasSuccessToday(streak, today, cancellationToken);
 
-                if (shouldReset)
+                if (successToday)
                 {
-                    // Reset streak entirely
-                    streak.CurrentStreakLength = 0;
-                    streak.StreakStartDate = null;
-                    streak.MissCount = 0;
-                    streak.UpdatedAt = DateTime.UtcNow;
-                    brokenCount++;
-                    
-                    _logger.LogDebug("Streak {StreakId} broken for task {TaskId}", streak.Id, streak.TaskId);
+                    _streakService.UpdateStreakOnSuccess(streak, today);
+                    successCount++;
+                    _logger.LogDebug("Streak {StreakId} marked success: ConsecutiveMisses={Misses}, RiskPenalty={Penalty}",
+                        streak.Id, streak.ConsecutiveMisses, streak.RiskPenaltyScore);
                 }
-                else if (penaltyDays > 0)
+                else
                 {
-                    // Apply penalty but don't reset
-                    streak.CurrentStreakLength = Math.Max(0, streak.CurrentStreakLength - penaltyDays);
-                    streak.MissCount++;
-                    streak.UpdatedAt = DateTime.UtcNow;
-                    penalizedCount++;
-                    
-                    _logger.LogDebug("Streak {StreakId} penalized by {Days} days", streak.Id, penaltyDays);
+                    _streakService.UpdateStreakOnMiss(streak, today);
+                    missCount++;
+                    _logger.LogDebug("Streak {StreakId} marked miss: ConsecutiveMisses={Misses}, RiskPenalty={Penalty}",
+                        streak.Id, streak.ConsecutiveMisses, streak.RiskPenaltyScore);
                 }
+
+                streak.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync(cancellationToken);
             
             _logger.LogInformation(
-                "Streak evaluation completed. Evaluated {Total} streaks. Broken: {Broken}, Penalized: {Penalized}",
-                activeStreaks.Count, brokenCount, penalizedCount);
+                "v3.0 Streak evaluation completed. Evaluated {Total} streaks. Successes: {Success}, Misses: {Miss}",
+                activeStreaks.Count, successCount, missCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Streak evaluation job failed");
             throw;
         }
+    }
+
+    private async Task<bool> HasSuccessToday(Domain.Entities.Streak streak, DateOnly today, CancellationToken ct)
+    {
+        // For task-based streaks
+        if (streak.TaskId.HasValue)
+        {
+            var hasCompletion = await _context.TaskCompletions
+                .AnyAsync(tc => tc.TaskId == streak.TaskId.Value 
+                    && DateOnly.FromDateTime(tc.CompletedAt) == today, ct);
+            
+            if (hasCompletion) return true;
+
+            // Also check if the task itself is completed today
+            var taskCompletedToday = await _context.Tasks
+                .AnyAsync(t => t.Id == streak.TaskId.Value 
+                    && t.IsCompleted 
+                    && t.CompletedAt.HasValue
+                    && DateOnly.FromDateTime(t.CompletedAt.Value) == today, ct);
+
+            return taskCompletedToday;
+        }
+
+        // For metric-based streaks
+        if (!string.IsNullOrEmpty(streak.MetricCode))
+        {
+            return await _context.MetricRecords
+                .AnyAsync(mr => mr.MetricCode == streak.MetricCode
+                    && mr.UserId == streak.UserId
+                    && DateOnly.FromDateTime(mr.RecordedAt) == today, ct);
+        }
+
+        return false;
     }
 }

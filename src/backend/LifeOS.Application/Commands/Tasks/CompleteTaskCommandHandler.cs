@@ -31,14 +31,14 @@ public class CompleteTaskCommandHandler : IRequestHandler<CompleteTaskCommand, T
         task.IsCompleted = true;
         task.CompletedAt = completedAt;
 
-        // Update streak
+        // Update streak (v3.0 API)
         var streak = task.Streaks.FirstOrDefault(s => s.IsActive);
         int currentStreak = 0;
         int longestStreak = 0;
 
         if (streak != null)
         {
-            _streakService.UpdateStreak(streak, DateOnly.FromDateTime(completedAt));
+            _streakService.UpdateStreakOnSuccess(streak, DateOnly.FromDateTime(completedAt));
             currentStreak = streak.CurrentStreakLength;
             longestStreak = streak.LongestStreakLength;
         }
@@ -53,6 +53,8 @@ public class CompleteTaskCommandHandler : IRequestHandler<CompleteTaskCommand, T
                 LongestStreakLength = 1,
                 LastSuccessDate = DateOnly.FromDateTime(completedAt),
                 StreakStartDate = DateOnly.FromDateTime(completedAt),
+                ConsecutiveMisses = 0,
+                RiskPenaltyScore = 0,
                 IsActive = true
             };
             _context.Streaks.Add(streak);

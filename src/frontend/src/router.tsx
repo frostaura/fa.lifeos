@@ -1,7 +1,8 @@
-import { createHashRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '@components/templates/AppLayout';
 import { Login } from '@pages/Login';
 import { Dashboard } from '@pages/Dashboard';
+import { DashboardV3 } from '@pages/DashboardV3';
 import { Dimensions } from '@pages/Dimensions';
 import { DimensionDetail } from '@pages/DimensionDetail';
 import { FinancesLayout, FinancesOverview } from '@pages/Finances';
@@ -28,8 +29,10 @@ import { AuthGuard } from '@components/AuthGuard';
 // v1.1 pages
 import { Onboarding } from '@pages/Onboarding';
 import { Reviews } from '@pages/Reviews';
+import { WeeklyReviewPage } from '@pages/WeeklyReviewPage';
+import { MonthlyReviewPage } from '@pages/MonthlyReviewPage';
 
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
@@ -42,7 +45,8 @@ export const router = createHashRouter([
     path: '/',
     element: <AuthGuard><AppLayout /></AuthGuard>,
     children: [
-      { index: true, element: <Dashboard /> },
+      { index: true, element: <DashboardV3 /> },
+      { path: 'dashboard-v1', element: <Dashboard /> },
       { path: 'dimensions', element: <Dimensions /> },
       { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
       {
@@ -65,6 +69,8 @@ export const router = createHashRouter([
       { path: 'metrics', element: <Metrics /> },
       // v1.1 routes
       { path: 'reviews', element: <Reviews /> },
+      { path: 'reviews/weekly', element: <WeeklyReviewPage /> },
+      { path: 'reviews/monthly', element: <MonthlyReviewPage /> },
       {
         path: 'settings',
         element: <Settings />,

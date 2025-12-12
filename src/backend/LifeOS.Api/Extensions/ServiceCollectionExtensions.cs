@@ -1,9 +1,9 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using LifeOS.Api.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Threading.RateLimiting;
 
 namespace LifeOS.Api.Extensions;
 
@@ -38,7 +38,7 @@ public static class ServiceCollectionExtensions
                 ClockSkew = TimeSpan.Zero,
                 NameClaimType = "sub" // Use 'sub' claim for user identifier
             };
-            
+
             // Configure events for SignalR
             options.Events = new JwtBearerEvents
             {
@@ -68,9 +68,9 @@ public static class ServiceCollectionExtensions
         {
             options.AddPolicy("LifeOSPolicy", policy =>
             {
-                var origins = new[] 
-                { 
-                    "http://localhost:5173", 
+                var origins = new[]
+                {
+                    "http://localhost:5173",
                     "http://localhost:3000",
                     "https://lifeos.frostaura.net",
                     "http://lifeos.frostaura.net"

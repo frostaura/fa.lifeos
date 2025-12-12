@@ -2,6 +2,7 @@ using Fido2NetLib;
 using Hangfire;
 using Hangfire.Dashboard;
 using LifeOS.Api.Extensions;
+using LifeOS.Api.Mcp;
 using LifeOS.Api.Middleware;
 using LifeOS.Application;
 using LifeOS.Infrastructure;
@@ -10,6 +11,7 @@ using LifeOS.Infrastructure.Configuration;
 using LifeOS.Infrastructure.Hubs;
 using LifeOS.Infrastructure.Services.Seeding;
 using Microsoft.EntityFrameworkCore;
+using ModelContextProtocol.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +80,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 });
 
+// Add MCP Server with HTTP transport and tools from this assembly
+builder.Services.AddScoped<IMcpApiKeyValidator, McpApiKeyValidator>();
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -127,6 +136,10 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
 }
 
 app.MapControllers();
+
+// Map MCP endpoint (anonymous access - authentication via apiKey parameter)
+// Accessible at /mcp for MCP protocol clients
+app.MapMcp("/mcp").AllowAnonymous();
 
 // Map SignalR Hub
 app.MapHub<NotificationHub>("/notifications");
@@ -202,6 +215,12 @@ void ConfigureRecurringJobs()
         "streak-evaluation",
         job => job.ExecuteAsync(CancellationToken.None),
         Cron.Daily(0));
+
+    // Task Auto-Evaluation - Every hour
+    RecurringJob.AddOrUpdate<TaskEvaluationBackgroundJob>(
+        "task-evaluation",
+        job => job.ExecuteAsync(CancellationToken.None),
+        Cron.Hourly);
 
     // Scheduled Simulations - Daily at 4 AM
     RecurringJob.AddOrUpdate<ScheduledSimulationJob>(

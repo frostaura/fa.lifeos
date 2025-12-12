@@ -42,16 +42,17 @@ public class LongevityModelsController : ControllerBase
                 Type = "longevity-model",
                 Attributes = new LongevityModelAttributes
                 {
+                    UserId = m.UserId,
                     Code = m.Code,
                     Name = m.Name,
                     Description = m.Description,
-                    InputMetrics = m.InputMetrics,
-                    ModelType = m.ModelType,
+                    InputMetrics = System.Text.Json.JsonSerializer.Deserialize<string[]>(m.InputMetrics) ?? Array.Empty<string>(),
+                    ModelType = m.ModelType.ToString(),
                     Parameters = m.Parameters,
+                    MaxRiskReduction = m.MaxRiskReduction,
                     SourceCitation = m.SourceCitation,
                     SourceUrl = m.SourceUrl,
-                    IsActive = m.IsActive,
-                    Version = m.Version
+                    IsActive = m.IsActive
                 }
             }).ToList()
         };
@@ -107,16 +108,17 @@ public class LongevityModelItem
 
 public class LongevityModelAttributes
 {
+    public Guid? UserId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string[] InputMetrics { get; set; } = Array.Empty<string>();
     public string ModelType { get; set; } = string.Empty;
     public string Parameters { get; set; } = "{}";
+    public decimal MaxRiskReduction { get; set; }
     public string? SourceCitation { get; set; }
     public string? SourceUrl { get; set; }
     public bool IsActive { get; set; }
-    public int Version { get; set; }
 }
 
 public class UpdateLongevityModelRequest

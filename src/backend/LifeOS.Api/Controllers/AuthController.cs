@@ -168,13 +168,14 @@ public partial class AuthController : ControllerBase
 
         _logger.LogInformation("Dev login successful for: {Email}", request.Email);
 
-        return Ok(new RefreshResponse
+        return Ok(new
         {
-            Data = new LoginData
+            data = new
             {
-                AccessToken = accessToken,
-                ExpiresIn = _jwtSettings.AccessTokenMinutes * 60,
-                TokenType = "Bearer"
+                accessToken,
+                expiresIn = _jwtSettings.AccessTokenMinutes * 60,
+                tokenType = "Bearer",
+                user = new { id = user.Id, email = user.Email }
             }
         });
     }

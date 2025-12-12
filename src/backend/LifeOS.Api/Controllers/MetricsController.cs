@@ -1,5 +1,6 @@
 using LifeOS.Application.Commands.Metrics;
 using LifeOS.Application.DTOs.Metrics;
+using LifeOS.Application.Interfaces;
 using LifeOS.Application.Queries.Metrics;
 using LifeOS.Domain.Enums;
 using MediatR;
@@ -16,11 +17,16 @@ namespace LifeOS.Api.Controllers;
 public class MetricsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IMetricIngestionService _metricIngestionService;
     private readonly ILogger<MetricsController> _logger;
 
-    public MetricsController(IMediator mediator, ILogger<MetricsController> logger)
+    public MetricsController(
+        IMediator mediator, 
+        IMetricIngestionService metricIngestionService,
+        ILogger<MetricsController> logger)
     {
         _mediator = mediator;
+        _metricIngestionService = metricIngestionService;
         _logger = logger;
     }
 
@@ -280,13 +286,15 @@ public class MetricsController : ControllerBase
     #region Existing Endpoints
 
     /// <summary>
-    /// Record one or more metric values (CRITICAL: Single ingestion endpoint for n8n/automations)
+    /// Record one or more metric values (v3.0: Supports both flat and nested structures)
+    /// Flat: { "metrics": { "weight_kg": 74.5, "steps_count": 10000 } }
+    /// Nested: { "metrics": { "health_recovery": { "weight_kg": 74.5 }, "asset_care": { "finance": { "net_worth_homeccy": 1250000 } } } }
     /// </summary>
     [HttpPost("record")]
     [EnableRateLimiting("metrics")]
-    [ProducesResponseType(typeof(RecordMetricsResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(MetricRecordResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> RecordMetrics([FromBody] RecordMetricsRequest request)
+    public async Task<IActionResult> RecordMetrics([FromBody] MetricRecordRequest request)
     {
         if (request.Metrics == null || !request.Metrics.Any())
         {
@@ -300,17 +308,50 @@ public class MetricsController : ControllerBase
             });
         }
 
-        var result = await _mediator.Send(new RecordMetricsCommand(
-            GetUserId(),
-            request.Timestamp,
-            request.Source,
-            request.Metrics));
+        try
+        {
+            var result = await _metricIngestionService.ProcessNestedMetrics(
+                request,
+                GetUserId(),
+                HttpContext.RequestAborted);
 
-        _logger.LogInformation("Recorded {Recorded} metrics from source {Source}", 
-            result.Data.Attributes.Recorded, 
-            request.Source);
+            _logger.LogInformation("Recorded {Created} metrics from source {Source} (ignored: {Ignored}, errors: {Errors})", 
+                result.CreatedRecords, 
+                request.Source,
+                result.IgnoredMetrics.Count,
+                result.Errors.Count);
 
-        return StatusCode(201, result);
+            if (!result.Success && result.CreatedRecords == 0)
+            {
+                return UnprocessableEntity(new
+                {
+                    success = result.Success,
+                    createdRecords = result.CreatedRecords,
+                    ignoredMetrics = result.IgnoredMetrics,
+                    errors = result.Errors
+                });
+            }
+
+            return StatusCode(201, new
+            {
+                success = result.Success,
+                createdRecords = result.CreatedRecords,
+                ignoredMetrics = result.IgnoredMetrics,
+                errors = result.Errors
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording metrics for user {UserId}", GetUserId());
+            return StatusCode(500, new
+            {
+                error = new
+                {
+                    code = "INTERNAL_ERROR",
+                    message = "An error occurred while recording metrics"
+                }
+            });
+        }
     }
 
     /// <summary>

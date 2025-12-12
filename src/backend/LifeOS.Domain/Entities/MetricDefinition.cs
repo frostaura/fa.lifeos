@@ -20,6 +20,12 @@ public class MetricDefinition : BaseEntity
     public decimal? TargetValue { get; set; }
     public TargetDirection TargetDirection { get; set; } = TargetDirection.AtOrAbove;
     
+    /// <summary>
+    /// Weight for Health Index calculation (default 0.15 = 15%)
+    /// Weights typically sum to 1.0 across all health metrics
+    /// </summary>
+    public decimal Weight { get; set; } = 0.15m;
+    
     public string? Icon { get; set; }
     public string[]? Tags { get; set; }
     public bool IsDerived { get; set; } = false;

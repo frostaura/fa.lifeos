@@ -22,10 +22,22 @@ export function Login() {
     const [webAuthnSupported, setWebAuthnSupported] = useState(false);
 
     // Get the original path the user was trying to access (preserving query string and hash)
-    const fromLocation = (location.state as { from?: { pathname: string; search?: string; hash?: string } })?.from;
-    const from = fromLocation 
-        ? `${fromLocation.pathname}${fromLocation.search || ''}${fromLocation.hash || ''}`
-        : '/';
+    // Priority: sessionStorage → location.state → default '/'
+    const storedRedirect = sessionStorage.getItem('redirectAfterLogin');
+    let from = '/';
+    
+    if (storedRedirect) {
+        // Use sessionStorage and clear it
+        const parsed = JSON.parse(storedRedirect);
+        from = `${parsed.pathname || ''}${parsed.search || ''}${parsed.hash || ''}`;
+        sessionStorage.removeItem('redirectAfterLogin');
+    } else {
+        // Fall back to location.state
+        const fromLocation = (location.state as { from?: { pathname: string; search?: string; hash?: string } })?.from;
+        from = fromLocation 
+            ? `${fromLocation.pathname}${fromLocation.search || ''}${fromLocation.hash || ''}`
+            : '/';
+    }
 
     useEffect(() => {
         setWebAuthnSupported(browserSupportsWebAuthn());
@@ -185,7 +197,7 @@ export function Login() {
                     <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center">
                         <Key className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold text-text-primary" style={{ "width": "100%" }}>LifeOS</h1>
+                    <h1 className="text-3xl font-bold text-text-primary">LifeOS</h1>
                     <p className="text-text-secondary mt-1">Your personal life operating system</p>
                 </div>
 
@@ -218,6 +230,7 @@ export function Login() {
                                 disabled={loading}
                                 className="w-full py-4 text-lg"
                                 icon={loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Fingerprint className="w-6 h-6" />}
+                                data-testid="biometric-login-button"
                             >
                                 {loading ? 'Authenticating...' : 'Sign in with Biometrics'}
                             </Button>
@@ -227,9 +240,10 @@ export function Login() {
                             </p>
 
                             {/* Dev Login - Only in development */}
-                            {import.meta.env.DEV && (
+                            {(import.meta.env.DEV || import.meta.env.VITE_ENV === 'development') && (
                                 <div className="mt-4 pt-4 border-t border-background-hover">
                                     <Button
+                                        data-testid="dev-login-button"
                                         onClick={async () => {
                                             setLoading(true);
                                             setError(null);
@@ -238,8 +252,7 @@ export function Login() {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({
-                                                        email: 'dean@fynbos.dev',
-                                                        displayName: 'Dean Martin'
+                                                        email: 'admin@system.local'
                                                     })
                                                 });
                                                 const data = await res.json();
