@@ -13,6 +13,11 @@ using LifeOS.Infrastructure.Services.Seeding;
 using Microsoft.EntityFrameworkCore;
 using ModelContextProtocol.AspNetCore;
 
+// Application metadata constants
+const string AppName = "LifeOS";
+const string AppVersion = "1.0.0";
+const string AppDescription = "Personal Life Operating System API - Track dimensions, metrics, finances, and simulations";
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
@@ -63,7 +68,7 @@ builder.Services.AddLifeOSCors(builder.Configuration);
 builder.Services.AddLifeOSRateLimiting(builder.Configuration);
 
 // Add Swagger with JWT support
-builder.Services.AddLifeOSSwagger();
+builder.Services.AddLifeOSSwagger(AppName, AppVersion, AppDescription);
 
 // Add Application layer services (MediatR, AutoMapper, FluentValidation)
 builder.Services.AddApplicationServices();
@@ -83,7 +88,41 @@ builder.Services.AddMediatR(cfg =>
 // Add MCP Server with HTTP transport and tools from this assembly
 builder.Services.AddScoped<IMcpApiKeyValidator, McpApiKeyValidator>();
 builder.Services
-    .AddMcpServer()
+    .AddMcpServer(options =>
+    {
+        options.ServerInfo = new()
+        {
+            Name = $"{AppName} MCP",
+            Version = AppVersion,
+            Description = @"
+            LifeOS MCP Server - A comprehensive personal life management system accessible via Model Context Protocol.
+
+            CORE CONCEPTS:
+            • Dimensions: Life areas (Health, Career, Finance, Mind, Relationships, etc.) with weighted scores contributing to overall LifeOS score
+            • Metrics: Quantifiable data points (sleep_hours, weight, mood) linked to dimensions, supporting number/boolean/enum value types with targets and aggregation
+            • Tasks: Habits, todos, and recurring tasks with frequency tracking (daily/weekly/monthly), streak management, and dimension linking
+            • Milestones: Long-term goals with progress tracking, target dates, and sub-task decomposition
+            • Primary Stats: RPG-style attributes (Strength, Wisdom, Charisma, Composure, Energy, Influence, Vitality) with current levels and targets (0-100 scale)
+            • Identity Profile: User archetype, core values, and stat targets defining personal development direction
+            • Accounts: Financial accounts (Bank, Investment, Loan, Credit, Crypto, Property) with multi-currency support
+            • Transactions: Income/expense tracking with categories, automatic balance updates, and spending analysis
+
+            MCP TOOLS AVAILABLE:
+            Dashboard: getDashboardSnapshot - Unified view of LifeOS score, primary stats, today's tasks, net worth, upcoming events
+            Dimensions: listDimensions, getDimension, createDimension, updateDimensionWeight, deleteDimension
+            Metrics: listMetrics, recordMetrics (batch recording), getMetricHistory (with aggregation: raw/daily/weekly/monthly)
+            Tasks: listTasks, getTask, createTask, updateTask, deleteTask, completeTask (updates streaks)
+            Milestones: listMilestones, getMilestone, createMilestone, updateMilestone, deleteMilestone, completeMilestone
+            Identity: getIdentityProfile, updateIdentityTargets
+            Accounts: listAccounts, getAccount, createAccount, updateAccount, deleteAccount, updateAccountBalance
+            Transactions: listTransactions, getTransaction, createTransaction, updateTransaction, deleteTransaction, getTransactionCategories
+            Reviews: getWeeklyReview (streaks, health index changes), getMonthlyReview (score trends, net worth, milestone progress)
+
+            AUTHENTICATION: All tools require an API key parameter for user authentication.
+
+            USE CASES: AI assistants can help users track habits, log health metrics, manage finances, set and monitor goals, conduct life reviews, and optimize personal development through data-driven insights."
+        };
+    })
     .WithHttpTransport()
     .WithToolsFromAssembly();
 
@@ -101,8 +140,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "LifeOS API v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", $"{AppName} API {AppVersion}");
         c.RoutePrefix = "swagger";
+        c.DocumentTitle = $"{AppName} API";
+        c.Version = AppVersion;
     });
 }
 

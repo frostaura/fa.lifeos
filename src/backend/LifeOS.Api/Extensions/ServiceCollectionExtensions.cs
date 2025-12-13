@@ -173,18 +173,22 @@ public static class ServiceCollectionExtensions
         return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 
-    public static IServiceCollection AddLifeOSSwagger(this IServiceCollection services)
+    public static IServiceCollection AddLifeOSSwagger(
+        this IServiceCollection services,
+        string appName,
+        string appVersion,
+        string appDescription)
     {
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "LifeOS API",
-                Version = "v1",
-                Description = "Personal Life Operating System API - Track dimensions, metrics, finances, and simulations",
+                Title = $"{appName} API",
+                Version = appVersion,
+                Description = appDescription,
                 Contact = new OpenApiContact
                 {
-                    Name = "LifeOS Team"
+                    Name = $"{appName} Team"
                 }
             });
 
