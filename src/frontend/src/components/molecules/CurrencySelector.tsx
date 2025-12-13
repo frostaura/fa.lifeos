@@ -51,8 +51,11 @@ export function formatCurrency(value: number, currency: string = 'ZAR'): string 
     return `${symbol}${value.toFixed(8)}`;
   }
 
-  return `${symbol} ${value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })}`;
+  // Format with space-separated thousands and 2 decimal places
+  // Split into integer and decimal parts
+  const parts = value.toFixed(2).split('.');
+  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const decimalPart = parts[1];
+
+  return `${symbol} ${integerPart}.${decimalPart}`;
 }
