@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LifeOSScoreRings } from '@components/organisms/LifeOSScoreRings';
 import { IdentityRadar } from '@components/organisms/IdentityRadar';
 import { NetWorthChart } from '@components/organisms/NetWorthChart';
@@ -10,17 +10,31 @@ import { PeriodSelector } from '@components/molecules/PeriodSelector';
 import { cn } from '@utils/cn';
 import { formatCurrencyWhole } from '@utils/numberFormatter';
 import { useGetDashboardSnapshotQuery, useCompleteTaskMutation } from '@/services/endpoints/dashboard';
+import { useGetProfileQuery } from '@/services/endpoints/settings';
 import { useChartPeriod, getMonthsForPeriod } from '@/hooks/useChartPeriod';
 import { Activity, TrendingUp, Target, Calendar } from 'lucide-react';
 import type { NetWorthDataPoint } from '@/types';
 
 export function Dashboard() {
   const { data: snapshot, isLoading, error, refetch } = useGetDashboardSnapshotQuery();
+  const { data: profile } = useGetProfileQuery();
   const [completeTask] = useCompleteTaskMutation();
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [chartPeriod, setChartPeriod] = useChartPeriod();
   const [projections, setProjections] = useState<NetWorthDataPoint[]>([]);
   const [isLoadingProjections, setIsLoadingProjections] = useState(false);
+
+  // Get first name from username or email - memoized to update when profile changes
+  const firstName = React.useMemo(() => {
+    if (profile?.username) {
+      const name = profile.username.split(' ')[0];
+      return name;
+    }
+    if (profile?.email) {
+      return profile.email.split('@')[0];
+    }
+    return 'User';
+  }, [profile]);
 
   // Fetch projections when period changes
   useEffect(() => {
@@ -139,19 +153,17 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-text-primary">
-            Dashboard
-          </h1>
-          <p className="text-text-secondary mt-1">
-            Welcome to LifeOS v3.0
-          </p>
+    <>
+      {/* Welcome Message - Sticky */}
+      <div className="sticky top-[72px] z-10 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-6">
+        <div className="py-3">
+          <h2 className="text-lg md:text-xl font-bold text-text-primary">
+            Welcome, {firstName}
+          </h2>
         </div>
       </div>
 
+      <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-6">
       {/* Hero Row - LifeOS Score Rings + Identity Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LifeOS Score Rings - Takes 2 columns on desktop */}
@@ -293,7 +305,7 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-amber-400" />
-              Wealth Health
+              Wealth Snapshot
             </h3>
           </div>
           
@@ -381,14 +393,15 @@ export function Dashboard() {
           </h3>
           <div className="space-y-2">
             {(snapshot.nextKeyEvents || []).map((event, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
-                <span className="text-text-secondary capitalize">{event.type.replace('_', ' ')}</span>
+              <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary border border-glass-border">
+                <span className="text-text-primary capitalize">{event.type.replace('_', ' ')}</span>
                 <Badge variant="info">{new Date(event.date).toLocaleDateString()}</Badge>
               </div>
             ))}
           </div>
         </GlassCard>
       )}
-    </div>
+      </div>
+    </>
   );
 }

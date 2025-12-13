@@ -222,22 +222,27 @@ export function Health() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Health & Longevity</h1>
-          <p className="text-text-secondary mt-1 text-sm md:text-base">Track your health metrics and life expectancy</p>
+    <>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-6">
+        <div className="py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Health & Longevity</h1>
+            <p className="text-text-secondary mt-1 text-sm md:text-base">Track your health metrics and life expectancy</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRulesPanel(!showRulesPanel)}
+            className="flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Longevity Rules</span>
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowRulesPanel(!showRulesPanel)}
-          className="flex items-center gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          <span className="hidden sm:inline">Longevity Rules</span>
-        </Button>
       </div>
+
+      <div className="space-y-6">
 
       {/* Longevity Rules Panel */}
       {showRulesPanel && longevityModels && (
@@ -295,7 +300,7 @@ export function Health() {
               <p className="text-text-secondary text-xs md:text-sm">Estimated Life Expectancy</p>
               <div className="group relative">
                 <Info className="w-3.5 h-3.5 text-text-tertiary cursor-help" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-bg-primary border border-border-primary rounded-lg text-xs text-text-secondary w-80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-bg-primary border border-glass-border rounded-lg text-xs text-text-secondary w-80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
                   <p className="font-semibold text-text-primary mb-2">How Life Expectancy is Calculated</p>
                   <ul className="space-y-1.5">
                     <li><span className="text-accent-purple">Baseline:</span> {baseYears} years (based on your country, age, and demographic data)</li>
@@ -491,7 +496,7 @@ export function Health() {
                   type="number"
                   value={editTargetValue}
                   onChange={(e) => setEditTargetValue(e.target.value)}
-                  className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                   placeholder="Enter target value"
                 />
               </div>
@@ -500,7 +505,7 @@ export function Health() {
                 <select
                   value={editTargetDirection}
                   onChange={(e) => setEditTargetDirection(e.target.value as 'AtOrAbove' | 'AtOrBelow')}
-                  className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                 >
                   <option value="AtOrAbove">≥ At or Above (higher is better)</option>
                   <option value="AtOrBelow">≤ At or Below (lower is better)</option>
@@ -538,7 +543,7 @@ export function Health() {
                       type="number"
                       value={editModelParams.threshold || ''}
                       onChange={(e) => setEditModelParams({...editModelParams, threshold: parseFloat(e.target.value) || 0})}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                     />
                   </div>
                   <div>
@@ -546,7 +551,7 @@ export function Health() {
                     <select
                       value={editModelParams.direction || 'above'}
                       onChange={(e) => setEditModelParams({...editModelParams, direction: e.target.value})}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                     >
                       <option value="above">Above threshold</option>
                       <option value="below">Below threshold</option>
@@ -563,7 +568,7 @@ export function Health() {
                         type="number"
                         value={editModelParams.optimalMin || ''}
                         onChange={(e) => setEditModelParams({...editModelParams, optimalMin: parseFloat(e.target.value) || 0})}
-                        className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                        className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                       />
                     </div>
                     <div>
@@ -572,7 +577,7 @@ export function Health() {
                         type="number"
                         value={editModelParams.optimalMax || ''}
                         onChange={(e) => setEditModelParams({...editModelParams, optimalMax: parseFloat(e.target.value) || 0})}
-                        className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                        className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                       />
                     </div>
                   </div>
@@ -585,7 +590,7 @@ export function Health() {
                   step="0.1"
                   value={editModelParams.maxYearsAdded || ''}
                   onChange={(e) => setEditModelParams({...editModelParams, maxYearsAdded: parseFloat(e.target.value) || 0})}
-                  className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-text-primary"
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-glass-border rounded-lg text-text-primary"
                 />
               </div>
               <div className="flex gap-3">
@@ -600,6 +605,7 @@ export function Health() {
           </GlassCard>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

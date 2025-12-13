@@ -65,7 +65,7 @@ export function AccountDetail() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/finances')}
+            onClick={() => navigate('/wealth')}
             className="p-2 rounded-lg hover:bg-background-hover transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-text-secondary" />

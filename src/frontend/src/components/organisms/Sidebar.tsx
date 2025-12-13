@@ -21,9 +21,9 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: Grid3X3, label: 'Dimensions', path: '/dimensions' },
-    { icon: Wallet, label: 'Finances', path: '/finances' },
     { icon: Heart, label: 'Health', path: '/health' },
+    { icon: Wallet, label: 'Wealth', path: '/wealth' },
+    { icon: Grid3X3, label: 'Dimensions', path: '/dimensions' },
     { icon: Activity, label: 'Metrics', path: '/metrics' },
     { icon: Settings, label: 'Settings', path: '/settings' },
 ];

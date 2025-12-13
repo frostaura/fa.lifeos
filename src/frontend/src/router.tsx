@@ -15,6 +15,7 @@ import { SimulationDetail } from '@pages/SimulationDetail';
 import { SimulationBuilder } from '@pages/SimulationBuilder';
 import { CustomScenarioBuilder } from '@pages/CustomScenarioBuilder';
 import { Metrics } from '@pages/Metrics';
+import { MetricRecords } from '@pages/MetricRecords';
 import {
   Settings,
   ProfileSettings,
@@ -59,7 +60,7 @@ export const router = createBrowserRouter([
       { path: 'dimensions', element: <Dimensions /> },
       { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
       {
-        path: 'finances',
+        path: 'wealth',
         element: <FinancesLayout />,
         children: [
           { index: true, element: <FinancesOverview /> },
@@ -73,13 +74,14 @@ export const router = createBrowserRouter([
           { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
         ],
       },
-      { path: 'finances/accounts/:accountId', element: <AccountDetail /> },
+      { path: 'wealth/accounts/:accountId', element: <AccountDetail /> },
       { path: 'simulation', element: <Simulation /> },
       { path: 'simulation/new', element: <SimulationBuilder /> },
       { path: 'simulation/builder', element: <CustomScenarioBuilder /> },
       { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
       { path: 'health', element: <Health /> },
       { path: 'metrics', element: <Metrics /> },
+      { path: 'metrics/:code/records', element: <MetricRecords /> },
       // v1.1 routes - keeping old routes for backwards compatibility
       { path: 'reviews-old', element: <Reviews /> },
       { path: 'reviews-old/weekly', element: <WeeklyReviewPage /> },

@@ -12,13 +12,16 @@ const dashboardNav = [
 // Layout wrapper for Dashboard with tab navigation
 export function DashboardLayoutWrapper() {
   return (
-    <div className="space-y-4 overflow-x-hidden">
-      {/* Header with Title */}
-      <div>
-        <h1 className="text-base md:text-lg font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary mt-0.5 text-xs">Your LifeOS command center</p>
+    <>
+      {/* Sticky Header with Title - positioned at the very top */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-4">
+        <div className="py-4">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Dashboard</h1>
+          <p className="text-text-secondary mt-0.5 text-xs md:text-sm">Your LifeOS command center</p>
+        </div>
       </div>
 
+      <div className="space-y-4">
       {/* Tab Navigation */}
       <GlassCard variant="default" className="p-2">
         <nav className="flex flex-wrap gap-1">
@@ -44,9 +47,8 @@ export function DashboardLayoutWrapper() {
       </GlassCard>
 
       {/* Content Area */}
-      <div>
-        <Outlet />
+      <Outlet />
       </div>
-    </div>
+    </>
   );
 }

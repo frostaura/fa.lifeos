@@ -325,19 +325,30 @@ public class MetricsController : ControllerBase
             {
                 return UnprocessableEntity(new
                 {
-                    success = result.Success,
-                    createdRecords = result.CreatedRecords,
-                    ignoredMetrics = result.IgnoredMetrics,
-                    errors = result.Errors
+                    error = new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "Failed to record metrics",
+                        details = result.Errors
+                    }
                 });
             }
 
+            // Return response in format expected by frontend
             return StatusCode(201, new
             {
-                success = result.Success,
-                createdRecords = result.CreatedRecords,
-                ignoredMetrics = result.IgnoredMetrics,
-                errors = result.Errors
+                data = new
+                {
+                    type = "metricRecordBatch",
+                    attributes = new
+                    {
+                        recorded = result.CreatedRecords,
+                        failed = result.Errors.Count,
+                        timestamp = request.Timestamp,
+                        source = request.Source
+                    },
+                    records = new List<object>() // Empty for now, can be populated if needed
+                }
             });
         }
         catch (Exception ex)

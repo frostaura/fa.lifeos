@@ -22,7 +22,7 @@ export function AppLayout() {
 
       <main
         className={cn(
-          'min-h-screen transition-all duration-300',
+          'h-screen transition-all duration-300 flex flex-col',
           isMobile
             ? 'pt-14 px-2 sm:px-4'
             : sidebarCollapsed
@@ -30,7 +30,7 @@ export function AppLayout() {
             : 'lg:pl-64'
         )}
       >
-        <div className="max-w-7xl mx-auto py-4 md:py-6 px-2 sm:px-4 lg:px-8">
+        <div className="max-w-7xl mx-auto py-4 md:py-6 px-2 sm:px-4 lg:px-8 flex-1 flex flex-col min-h-0">
           <Outlet />
         </div>
       </main>

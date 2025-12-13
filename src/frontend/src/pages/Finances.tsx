@@ -20,29 +20,32 @@ import { useCreateAccountMutation, useUpdateAccountMutation, useDeleteAccountMut
 import { useChartPeriod, getMonthsForPeriod, type ChartPeriod } from '@/hooks/useChartPeriod';
 import toast from 'react-hot-toast';
 
-// Tab navigation items for Finances page
+// Tab navigation items for Wealth page
 const financesNav = [
-  { icon: Wallet, label: 'Overview', path: '/finances' },
-  { icon: Calculator, label: 'Tax Profiles', path: '/finances/tax-profiles' },
-  { icon: DollarSign, label: 'Income/Expenses', path: '/finances/income-expenses' },
-  { icon: TrendingUp, label: 'Investments', path: '/finances/investments' },
-  { icon: Target, label: 'Goals', path: '/finances/goals' },
-  { icon: Zap, label: 'Simulation', path: '/finances/simulation' },
+  { icon: Wallet, label: 'Overview', path: '/wealth' },
+  { icon: Calculator, label: 'Tax Profiles', path: '/wealth/tax-profiles' },
+  { icon: DollarSign, label: 'Income/Expenses', path: '/wealth/income-expenses' },
+  { icon: TrendingUp, label: 'Investments', path: '/wealth/investments' },
+  { icon: Target, label: 'Goals', path: '/wealth/goals' },
+  { icon: Zap, label: 'Simulation', path: '/wealth/simulation' },
 ];
 
-// Layout wrapper for Finances with tab navigation
+// Layout wrapper for Wealth with tab navigation
 export function FinancesLayout() {
   const location = useLocation();
-  const isOverview = location.pathname === '/finances' || location.pathname === '/finances/';
+  const isOverview = location.pathname === '/wealth' || location.pathname === '/wealth/';
 
   return (
-    <div className="space-y-4 overflow-x-hidden">
-      {/* Header with Title */}
-      <div>
-        <h1 className="text-base md:text-lg font-bold text-text-primary">Finances</h1>
-        <p className="text-text-secondary mt-0.5 text-xs">Manage your financial life</p>
+    <>
+      {/* Sticky Header with Title */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-4">
+        <div className="py-4">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Wealth</h1>
+          <p className="text-text-secondary mt-0.5 text-xs md:text-sm">Manage your financial life</p>
+        </div>
       </div>
 
+      <div className="space-y-4">
       {/* Tab Navigation */}
       <GlassCard variant="default" className="p-2">
         <nav className="flex flex-wrap gap-1">
@@ -50,7 +53,7 @@ export function FinancesLayout() {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/finances'}
+              end={item.path === '/wealth'}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs md:text-sm',
@@ -71,7 +74,8 @@ export function FinancesLayout() {
       <div>
         {isOverview ? <FinancesOverview /> : <Outlet />}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -541,7 +545,7 @@ export function FinancesOverview() {
                 <h2 className="text-sm md:text-base font-semibold text-text-primary">Simulations</h2>
               </div>
               <button 
-                onClick={() => navigate('/finances/simulation/new')}
+                onClick={() => navigate('/wealth/simulation/new')}
                 className="text-accent-purple hover:text-accent-purple/80 transition-colors"
               >
                 <Plus className="w-4 h-4" />

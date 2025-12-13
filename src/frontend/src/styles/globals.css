@@ -12,7 +12,7 @@
   --text-secondary: #a0a0b0;
   --text-tertiary: #6b6b7a;
 
-  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-glass: rgba(139, 92, 246, 0.15);
   --glass-bg: rgba(255, 255, 255, 0.05);
 
   --accent-purple: #8b5cf6;
@@ -202,5 +202,10 @@ body {
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-purple via-accent-cyan to-accent-pink;
+  }
+
+  /* Fix divide-y to use glass border color for table rows */
+  tbody.divide-glass-border > tr:not(:first-child) {
+    border-top: 1px solid var(--border-glass);
   }
 }

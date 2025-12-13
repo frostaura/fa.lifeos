@@ -41,14 +41,18 @@ export function Dimensions() {
   };
 
   return (
-    <div className="space-y-4 overflow-x-hidden">
-      <div>
-        <h1 className="text-base md:text-lg font-bold text-text-primary">Dimensions</h1>
-        <p className="text-text-secondary mt-0.5 text-xs">
-          Track and optimize all areas of your life
-        </p>
+    <>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-4">
+        <div className="py-4">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Dimensions</h1>
+          <p className="text-text-secondary mt-0.5 text-xs md:text-sm">
+            Track and optimize all areas of your life
+          </p>
+        </div>
       </div>
 
+      <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {dimensions.map((dim) => {
           const Icon = getDimensionIcon(dim.attributes.code);
@@ -122,6 +126,7 @@ export function Dimensions() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

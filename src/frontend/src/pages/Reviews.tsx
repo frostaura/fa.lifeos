@@ -573,12 +573,14 @@ export function Reviews() {
   const dimensionCode = isDimensionView ? activeTab.replace('dim_', '') : null;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-text-primary">Reviews</h1>
+    <>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-6">
+        <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary">Reviews</h1>
         
-        {/* Tab Switcher */}
-        <div className="flex flex-wrap bg-background-card rounded-lg p-1 border border-background-hover">
+          {/* Tab Switcher */}
+          <div className="flex flex-wrap bg-background-card rounded-lg p-1 border border-background-hover">
           <button
             onClick={() => setActiveTab('weekly')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -673,7 +675,8 @@ export function Reviews() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

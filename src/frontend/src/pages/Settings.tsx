@@ -68,11 +68,16 @@ export function Settings() {
   const isRootSettings = location.pathname === '/settings' || location.pathname === '/settings/';
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary whitespace-nowrap">Settings</h1>
-        <p className="text-text-secondary mt-1 text-sm md:text-base whitespace-nowrap">Manage your preferences</p>
+    <>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md border-b border-glass-border rounded-b-xl mb-6">
+        <div className="py-4">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary whitespace-nowrap">Settings</h1>
+          <p className="text-text-secondary mt-1 text-sm md:text-base whitespace-nowrap">Manage your preferences</p>
+        </div>
       </div>
+
+      <div className="space-y-6">
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Settings Navigation */}
@@ -111,7 +116,8 @@ export function Settings() {
           {isRootSettings ? <ProfileSettings /> : <Outlet />}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

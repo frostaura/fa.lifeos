@@ -28,9 +28,9 @@ export function SimulationDetail() {
   const [showEventEditor, setShowEventEditor] = useState(false);
   const [showProjectionInfo, setShowProjectionInfo] = useState(false);
 
-  // Determine if we're in the finances context
-  const isFinancesContext = location.pathname.startsWith('/finances/');
-  const backPath = isFinancesContext ? '/finances/simulation' : '/simulation';
+  // Determine if we're in the wealth context
+  const isWealthContext = location.pathname.startsWith('/wealth/');
+  const backPath = isWealthContext ? '/wealth/simulation' : '/simulation';
 
   // API queries
   const { 
