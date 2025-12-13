@@ -78,23 +78,31 @@ export function Settings() {
         {/* Settings Navigation */}
         <GlassCard variant="default" className="p-3 md:p-4 h-fit">
           <nav className="space-y-1">
-            {settingsNav.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-accent-purple/20 text-accent-purple'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-background-hover'
-                  )
-                }
-              >
-                <item.icon className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="font-medium text-xs md:text-sm whitespace-nowrap">{item.label}</span>
-              </NavLink>
-            ))}
+            {settingsNav.map((item) => {
+              // Check if this tab should be shown as active
+              // For Profile tab: show as active when on /settings, /settings/, or /settings/profile
+              const isThisTabActive = item.path === '/settings/profile' 
+                ? (location.pathname === '/settings' || location.pathname === '/settings/' || location.pathname === '/settings/profile')
+                : location.pathname === item.path;
+              
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={
+                    cn(
+                      'flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg transition-colors',
+                      isThisTabActive
+                        ? 'bg-accent-purple/20 text-accent-purple'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-background-hover'
+                    )
+                  }
+                >
+                  <item.icon className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="font-medium text-xs md:text-sm whitespace-nowrap">{item.label}</span>
+                </NavLink>
+              );
+            })}
           </nav>
         </GlassCard>
 

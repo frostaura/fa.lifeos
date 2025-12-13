@@ -25,6 +25,14 @@ const baseQueryWithAutoLogout: BaseQueryFn<string | FetchArgs, unknown, FetchBas
   const result = await baseQuery(args, api, extraOptions);
   
   if (result.error && result.error.status === 401) {
+    const currentLocation = { 
+      pathname: window.location.pathname, 
+      search: window.location.search, 
+      hash: window.location.hash 
+    };
+    
+    console.log('[401 Handler] Token expired, storing redirect location:', currentLocation);
+    
     // Clear localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
@@ -33,10 +41,12 @@ const baseQueryWithAutoLogout: BaseQueryFn<string | FetchArgs, unknown, FetchBas
     api.dispatch(logout());
     
     // Store current location before redirecting
-    sessionStorage.setItem('redirectAfterLogin', JSON.stringify({ pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }));
+    sessionStorage.setItem('redirectAfterLogin', JSON.stringify(currentLocation));
+    console.log('[401 Handler] Redirect location stored in sessionStorage');
     
-    // Redirect to login page
-    window.location.href = '/#/login';
+    // Redirect to login page (using BrowserRouter path, not hash routing)
+    console.log('[401 Handler] Redirecting to /login');
+    window.location.href = '/login';
   }
   
   return result;
