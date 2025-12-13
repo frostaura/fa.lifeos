@@ -2408,12 +2408,6 @@ export function IncomeExpenseSettings() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleEditIncome(income)}
-                            className="p-2 text-text-secondary hover:text-text-primary hover:bg-background-hover rounded transition-colors"
-                          >
-                            <DollarSign className="w-4 h-4" />
-                          </button>
-                          <button
                             onClick={() => handleDeleteIncome(income.id)}
                             className="p-2 text-red-400 hover:bg-red-400/10 rounded transition-colors"
                           >
@@ -3151,12 +3145,6 @@ export function IncomeExpenseSettings() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEditExpense(expense)}
-                              className="p-2 text-text-secondary hover:text-text-primary hover:bg-background-hover rounded transition-colors"
-                            >
-                              <DollarSign className="w-4 h-4" />
-                            </button>
                             <button
                               onClick={() => handleDeleteExpense(expense.id)}
                               className="p-2 text-red-400 hover:bg-red-400/10 rounded transition-colors"
@@ -4118,12 +4106,6 @@ export function InvestmentSettings() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEdit(contribution)}
-                          className="p-2 text-text-secondary hover:text-text-primary hover:bg-background-hover rounded transition-colors"
-                        >
-                          <TrendingUp className="w-4 h-4" />
-                        </button>
                         <button
                           onClick={() => handleDelete(contribution.id)}
                           className="p-2 text-red-400 hover:bg-red-400/10 rounded transition-colors"
