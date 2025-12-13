@@ -599,7 +599,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                     existing.Name = item.Name;
                     existing.Description = item.Description;
                     existing.InputMetrics = System.Text.Json.JsonSerializer.Serialize(item.InputMetrics ?? Array.Empty<string>());
-                    existing.ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType);
+                    existing.ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType, ignoreCase: true);
                     existing.Parameters = item.Parameters ?? "{}";
                     existing.MaxRiskReduction = item.MaxRiskReduction;
                     existing.IsActive = item.IsActive;
@@ -619,7 +619,7 @@ public class ImportDataCommandHandler : IRequestHandler<ImportDataCommand, Impor
                         Name = item.Name,
                         Description = item.Description,
                         InputMetrics = System.Text.Json.JsonSerializer.Serialize(item.InputMetrics ?? Array.Empty<string>()),
-                        ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType),
+                        ModelType = Enum.Parse<Domain.Enums.LongevityModelType>(item.ModelType, ignoreCase: true),
                         Parameters = item.Parameters ?? "{}",
                         MaxRiskReduction = item.MaxRiskReduction,
                         IsActive = item.IsActive
