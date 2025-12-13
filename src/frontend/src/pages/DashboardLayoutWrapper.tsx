@@ -1,0 +1,52 @@
+import { NavLink, Outlet } from 'react-router-dom';
+import { GlassCard } from '@components/atoms/GlassCard';
+import { LayoutDashboard, ClipboardList } from 'lucide-react';
+import { cn } from '@utils/cn';
+
+// Tab navigation items for Dashboard page
+const dashboardNav = [
+  { icon: LayoutDashboard, label: 'Overview', path: '/' },
+  { icon: ClipboardList, label: 'Reviews', path: '/reviews' },
+];
+
+// Layout wrapper for Dashboard with tab navigation
+export function DashboardLayoutWrapper() {
+  return (
+    <div className="space-y-4 overflow-x-hidden">
+      {/* Header with Title */}
+      <div>
+        <h1 className="text-base md:text-lg font-bold text-text-primary">Dashboard</h1>
+        <p className="text-text-secondary mt-0.5 text-xs">Your LifeOS command center</p>
+      </div>
+
+      {/* Tab Navigation */}
+      <GlassCard variant="default" className="p-2">
+        <nav className="flex flex-wrap gap-1">
+          {dashboardNav.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs md:text-sm',
+                  isActive
+                    ? 'bg-accent-purple/20 text-accent-purple'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-background-hover'
+                )
+              }
+            >
+              <item.icon className="w-4 h-4" />
+              <span className="font-medium whitespace-nowrap">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </GlassCard>
+
+      {/* Content Area */}
+      <div>
+        <Outlet />
+      </div>
+    </div>
+  );
+}

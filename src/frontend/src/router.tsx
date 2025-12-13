@@ -3,6 +3,8 @@ import { AppLayout } from '@components/templates/AppLayout';
 import { Login } from '@pages/Login';
 import { Dashboard } from '@pages/Dashboard';
 import { DashboardV3 } from '@pages/DashboardV3';
+import { DashboardLayoutWrapper } from '@pages/DashboardLayoutWrapper';
+import { DashboardReviews } from '@pages/DashboardReviews';
 import { Dimensions } from '@pages/Dimensions';
 import { DimensionDetail } from '@pages/DimensionDetail';
 import { FinancesLayout, FinancesOverview } from '@pages/Finances';
@@ -47,7 +49,14 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AuthGuard><AppLayout /></AuthGuard>,
     children: [
-      { index: true, element: <DashboardV3 /> },
+      { 
+        path: '',
+        element: <DashboardLayoutWrapper />,
+        children: [
+          { index: true, element: <DashboardV3 /> },
+          { path: 'reviews', element: <DashboardReviews /> },
+        ]
+      },
       { path: 'dashboard-v1', element: <Dashboard /> },
       { path: 'dimensions', element: <Dimensions /> },
       { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
@@ -73,10 +82,10 @@ export const router = createBrowserRouter([
       { path: 'simulation/:scenarioId', element: <SimulationDetail /> },
       { path: 'health', element: <Health /> },
       { path: 'metrics', element: <Metrics /> },
-      // v1.1 routes
-      { path: 'reviews', element: <Reviews /> },
-      { path: 'reviews/weekly', element: <WeeklyReviewPage /> },
-      { path: 'reviews/monthly', element: <MonthlyReviewPage /> },
+      // v1.1 routes - keeping old routes for backwards compatibility
+      { path: 'reviews-old', element: <Reviews /> },
+      { path: 'reviews-old/weekly', element: <WeeklyReviewPage /> },
+      { path: 'reviews-old/monthly', element: <MonthlyReviewPage /> },
       {
         path: 'settings',
         element: <Settings />,
