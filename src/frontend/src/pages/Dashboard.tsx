@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LifeOSScoreRings } from '@components/organisms/LifeOSScoreRings';
 import { IdentityRadar } from '@components/organisms/IdentityRadar';
 import { NetWorthChart } from '@components/organisms/NetWorthChart';
@@ -6,18 +6,99 @@ import { GlassCard } from '@components/atoms/GlassCard';
 import { Spinner } from '@components/atoms/Spinner';
 import { Button } from '@components/atoms/Button';
 import { Badge } from '@components/atoms/Badge';
+import { PeriodSelector } from '@components/molecules/PeriodSelector';
 import { cn } from '@utils/cn';
-import { useGetDashboardSnapshotQuery, useGetNetWorthHistoryQuery, useCompleteTaskMutation } from '@/services/endpoints/dashboard';
+import { formatCurrencyWhole } from '@utils/numberFormatter';
+import { useGetDashboardSnapshotQuery, useCompleteTaskMutation } from '@/services/endpoints/dashboard';
+import { useChartPeriod, getMonthsForPeriod } from '@/hooks/useChartPeriod';
 import { Activity, TrendingUp, Target, Calendar } from 'lucide-react';
+import type { NetWorthDataPoint } from '@/types';
 
 export function Dashboard() {
   const { data: snapshot, isLoading, error, refetch } = useGetDashboardSnapshotQuery();
-  const { data: netWorthHistory, isLoading: isLoadingHistory } = useGetNetWorthHistoryQuery({ 
-    months: 12, 
-    currency: 'ZAR' 
-  });
   const [completeTask] = useCompleteTaskMutation();
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
+  const [chartPeriod, setChartPeriod] = useChartPeriod();
+  const [projections, setProjections] = useState<NetWorthDataPoint[]>([]);
+  const [isLoadingProjections, setIsLoadingProjections] = useState(false);
+
+  // Fetch projections when period changes
+  useEffect(() => {
+    const fetchProjections = async () => {
+      setIsLoadingProjections(true);
+      const token = localStorage.getItem('accessToken');
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      try {
+        // First, get the baseline scenario
+        const scenariosRes = await fetch('/api/simulations/scenarios', { headers });
+        if (!scenariosRes.ok) {
+          console.warn('Failed to fetch scenarios');
+          setProjections([]);
+          return;
+        }
+
+        const scenariosData = await scenariosRes.json();
+        const baseline = scenariosData.data?.find((s: any) => s.attributes.isBaseline);
+        
+        if (!baseline) {
+          console.warn('No baseline scenario found');
+          setProjections([]);
+          return;
+        }
+
+        // Run the simulation to get fresh projections
+        await fetch(`/api/simulations/scenarios/${baseline.id}/run`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recalculateFromStart: true }),
+        });
+
+        // Fetch the projections
+        const projectionsRes = await fetch(`/api/simulations/scenarios/${baseline.id}/projections`, { headers });
+        if (!projectionsRes.ok) {
+          console.warn('Failed to fetch projections');
+          setProjections([]);
+          return;
+        }
+
+        const projectionsData = await projectionsRes.json();
+        if (projectionsData.data?.monthlyProjections?.length > 0) {
+          // Map the projections to the expected format
+          const mappedProjections: NetWorthDataPoint[] = projectionsData.data.monthlyProjections.map((p: {
+            period: string;
+            netWorth: number;
+            accounts?: Array<{
+              accountId: string;
+              accountName: string;
+              balance: number;
+            }>;
+          }) => ({
+            date: p.period,
+            value: Math.round(p.netWorth),
+            accounts: p.accounts?.map(a => ({
+              accountId: a.accountId,
+              accountName: a.accountName,
+              balance: a.balance,
+            })),
+          }));
+
+          // Filter based on chart period
+          const monthsToShow = getMonthsForPeriod(chartPeriod);
+          setProjections(mappedProjections.slice(0, monthsToShow + 1));
+        } else {
+          setProjections([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projections:', err);
+        setProjections([]);
+      } finally {
+        setIsLoadingProjections(false);
+      }
+    };
+
+    fetchProjections();
+  }, [chartPeriod]);
 
   const handleCompleteTask = async (taskId: string) => {
     setCompletingTasks(prev => new Set(prev).add(taskId));
@@ -219,13 +300,8 @@ export function Dashboard() {
           <div className="space-y-4">
             <div>
               <p className="text-text-secondary text-sm mb-1">Net Worth</p>
-              <p className="text-3xl font-bold text-text-primary">
-                {new Intl.NumberFormat('en-ZA', {
-                  style: 'currency',
-                  currency: 'ZAR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(snapshot.netWorthHomeCcy)}
+              <p className="text-2xl font-bold text-text-primary break-words">
+                {formatCurrencyWhole(snapshot.netWorthHomeCcy)}
               </p>
             </div>
             
@@ -248,23 +324,26 @@ export function Dashboard() {
 
       {/* Wealth Projection Chart */}
       <GlassCard variant="default" className="p-6">
-        <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-purple-400" />
-          Wealth Projection
-        </h3>
-        {isLoadingHistory ? (
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-purple-400" />
+            Wealth Projection
+          </h3>
+          <PeriodSelector value={chartPeriod} onChange={setChartPeriod} />
+        </div>
+        {isLoadingProjections ? (
           <div className="flex items-center justify-center h-64">
             <Spinner size="md" />
           </div>
-        ) : netWorthHistory?.data && netWorthHistory.data.length > 0 ? (
+        ) : projections.length > 0 ? (
           <NetWorthChart 
-            data={netWorthHistory.data} 
+            data={projections} 
             currency="ZAR" 
             height={300}
           />
         ) : (
           <div className="flex items-center justify-center h-64 text-text-secondary">
-            <p>No net worth history data available</p>
+            <p>No projection data available. Create a baseline scenario in Finances to see projections.</p>
           </div>
         )}
       </GlassCard>

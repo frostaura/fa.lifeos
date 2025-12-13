@@ -9,6 +9,7 @@ import { NetWorthGoalTracker } from '@components/organisms/NetWorthGoalTracker';
 import { LoanPayoffCalculator } from '@components/organisms/LoanPayoffCalculator';
 import { AccountRow } from '@components/molecules/AccountRow';
 import { CurrencySelector, formatCurrency } from '@components/molecules/CurrencySelector';
+import { PeriodSelector } from '@components/molecules/PeriodSelector';
 import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info, Wallet, DollarSign, Target, Zap } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { confirmToast } from '@utils/confirmToast';
@@ -16,6 +17,7 @@ import type { Account, NetWorthDataPoint, FxRate, Scenario } from '@/types';
 import { AddAccountModal } from './placeholders/AddAccountModal';
 import { AddTransactionModal } from './placeholders/AddTransactionModal';
 import { useCreateAccountMutation, useUpdateAccountMutation, useDeleteAccountMutation } from '@services/endpoints/finances';
+import { useChartPeriod, getMonthsForPeriod, type ChartPeriod } from '@/hooks/useChartPeriod';
 import toast from 'react-hot-toast';
 
 // Tab navigation items for Finances page
@@ -121,7 +123,7 @@ export function FinancesOverview() {
   const [netWorth, setNetWorth] = useState(0);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '5Y' | '10Y' | 'ALL'>('5Y');
+  const [chartPeriod, setChartPeriod] = useChartPeriod(); // Use shared hook
   const [showProjectionInfo, setShowProjectionInfo] = useState(false);
   const [fxRates] = useState<FxRate[]>([
     { pair: 'USD/ZAR', rate: 18.52, change: 0.15, timestamp: new Date().toISOString() },
@@ -256,15 +258,7 @@ export function FinancesOverview() {
                 }));
                 
                 // Filter based on chart period
-                const monthsToShow = {
-                  '1M': 1,
-                  '3M': 3,
-                  '6M': 6,
-                  '1Y': 12,
-                  '5Y': 60,
-                  '10Y': 120,
-                  'ALL': simulationProjections.length,
-                }[chartPeriod] || 60;
+                const monthsToShow = getMonthsForPeriod(chartPeriod);
                 
                 setNetWorthHistory(simulationProjections.slice(0, monthsToShow + 1));
                 return;
@@ -345,18 +339,9 @@ export function FinancesOverview() {
   const generateProjections = (
     _currentNetWorth: number, 
     accountsList: Account[], 
-    period: string
+    period: ChartPeriod
   ): NetWorthDataPoint[] => {
-    const periodMonths: Record<string, number> = {
-      '1M': 1,
-      '3M': 3,
-      '6M': 6,
-      '1Y': 12,
-      '5Y': 60,
-      '10Y': 120,
-      'ALL': 240, // 20 years for ALL
-    };
-    const months = periodMonths[period] || 60;
+    const months = getMonthsForPeriod(period);
     const projections: NetWorthDataPoint[] = [];
     
     // Track each account's balance separately for proper compound interest
@@ -489,22 +474,7 @@ export function FinancesOverview() {
               )}
             </div>
           </div>
-          <div className="flex gap-1 flex-wrap">
-            {(['1M', '3M', '6M', '1Y', '5Y', '10Y', 'ALL'] as const).map((period) => (
-              <button
-                key={period}
-                onClick={() => setChartPeriod(period)}
-                className={cn(
-                  'px-2 py-0.5 text-xs rounded-md transition-colors',
-                  chartPeriod === period 
-                    ? 'bg-accent-purple text-white' 
-                    : 'text-text-secondary hover:bg-background-hover'
-                )}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
+          <PeriodSelector value={chartPeriod} onChange={setChartPeriod} />
         </div>
         <NetWorthChart data={netWorthHistory} height={240} />
       </GlassCard>

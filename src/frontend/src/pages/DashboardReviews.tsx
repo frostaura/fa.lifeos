@@ -9,8 +9,9 @@ import {
   ArrowUp, ArrowDown, Flame, Target, RefreshCw, 
   TrendingUp, Wallet, Heart, Users, Briefcase, 
   Gamepad2, Home, Palette, Brain, Globe, DollarSign,
-  BarChart3, Activity
+  BarChart3
 } from 'lucide-react';
+import { formatCurrency, formatPercentage } from '@utils/numberFormatter';
 
 // Icon mapping for dimensions
 const dimensionIcons: Record<string, React.FC<{ className?: string }>> = {
@@ -43,30 +44,28 @@ function ScoreCard({
   currentValue,
   delta, 
   suffix = '',
-  icon: Icon,
-  gradient = 'from-accent-cyan to-accent-purple'
+  icon: Icon
 }: { 
   title: string; 
   currentValue: number | null | undefined;
   delta: number | null | undefined;
   suffix?: string;
   icon?: React.FC<{ className?: string }>;
-  gradient?: string;
 }) {
   return (
-    <GlassCard className="p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <GlassCard variant="default" className="p-6">
+      <div className="flex items-center gap-2 mb-3">
         {Icon && (
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-            <Icon className="w-4 h-4 text-white" />
-          </div>
+          <Icon className="w-5 h-5 text-purple-400" />
         )}
-        <span className="text-sm text-text-secondary">{title}</span>
+        <span className="text-text-secondary text-sm">{title}</span>
       </div>
-      <div className="text-2xl font-bold text-text-primary mb-1">
-        {currentValue !== null && currentValue !== undefined ? currentValue.toFixed(1) : '--'}{currentValue !== null && currentValue !== undefined && suffix}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-3xl font-bold text-text-primary">
+          {currentValue !== null && currentValue !== undefined ? currentValue.toFixed(1) : '--'}{currentValue !== null && currentValue !== undefined && suffix}
+        </span>
+        <DeltaIndicator value={delta} suffix={suffix} />
       </div>
-      <DeltaIndicator value={delta} suffix={suffix} />
     </GlassCard>
   );
 }
@@ -74,14 +73,12 @@ function ScoreCard({
 function StreakCard({ streak }: { streak: { taskId?: string; taskTitle: string; streakDays?: number; currentStreak?: number } }) {
   const days = streak.streakDays ?? streak.currentStreak ?? 0;
   return (
-    <div className="flex items-center justify-between bg-background-card rounded-lg px-4 py-3 border border-background-hover">
+    <div className="group flex items-center justify-between bg-black/90 rounded-lg px-4 py-3 border border-white/10 hover:border-accent-purple/50 transition-all cursor-pointer hover:shadow-glow-sm">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-          <Flame className="w-4 h-4 text-white" />
-        </div>
-        <span className="text-text-primary">{streak.taskTitle}</span>
+        <Flame className="w-5 h-5 text-orange-400 group-hover:text-orange-300 transition-colors" />
+        <span className="text-text-primary font-medium group-hover:text-text-primary transition-colors">{streak.taskTitle}</span>
       </div>
-      <span className="text-orange-400 font-semibold">{days} days</span>
+      <span className="text-orange-400 font-bold text-lg">{days} days</span>
     </div>
   );
 }
@@ -97,17 +94,15 @@ function ActionCard({ action }: { action: { action: string; priority: string; di
   const Icon = dimensionIcons[action.dimension] || Target;
 
   return (
-    <div className="flex items-start gap-3 bg-background-card rounded-lg px-4 py-3 border border-background-hover">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-cyan to-accent-purple flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-white" />
-      </div>
-      <div className="flex-1">
-        <div className="text-text-primary">{action.action}</div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${style}`}>
+    <div className="group flex items-start gap-3 bg-black/90 rounded-lg px-4 py-3 border border-white/10 hover:border-accent-cyan/50 transition-all cursor-pointer hover:shadow-glow-sm">
+      <Icon className="w-5 h-5 text-accent-cyan mt-0.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-text-primary font-medium mb-1 group-hover:text-text-primary transition-colors">{action.action}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${style}`}>
             {action.priority.toUpperCase()}
           </span>
-          <span className="text-xs text-text-tertiary">{action.dimension.replace('_', ' ')}</span>
+          <span className="text-xs text-text-secondary capitalize">{action.dimension.replace('_', ' ')}</span>
         </div>
       </div>
     </div>
@@ -118,44 +113,42 @@ function FinancialSummaryCard({ data }: { data: any }) {
   if (!data) return null;
   
   return (
-    <GlassCard className="p-6">
+    <GlassCard variant="solid" className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-          <Wallet className="w-5 h-5 text-white" />
-        </div>
+        <Wallet className="w-5 h-5 text-amber-400" />
         <h3 className="text-lg font-semibold text-text-primary">Financial Summary</h3>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div>
-          <div className="text-sm text-text-tertiary">Net Worth</div>
-          <div className="text-xl font-bold text-text-primary">
-            {data.netWorth != null ? `R ${data.netWorth.toLocaleString()}` : '--'}
+          <div className="text-sm text-text-secondary mb-1">Net Worth</div>
+          <div className="text-lg font-bold text-text-primary break-words">
+            {formatCurrency(data.netWorth)}
           </div>
           <DeltaIndicator value={data.netWorthDelta} />
         </div>
         <div>
-          <div className="text-sm text-text-tertiary">Income</div>
+          <div className="text-sm text-text-secondary mb-1">Income</div>
           <div className="text-lg font-semibold text-semantic-success">
-            {data.totalIncome != null ? `R ${data.totalIncome.toLocaleString()}` : '--'}
+            {formatCurrency(data.totalIncome)}
           </div>
         </div>
         <div>
-          <div className="text-sm text-text-tertiary">Expenses</div>
+          <div className="text-sm text-text-secondary mb-1">Expenses</div>
           <div className="text-lg font-semibold text-semantic-error">
-            {data.totalExpenses != null ? `R ${data.totalExpenses.toLocaleString()}` : '--'}
+            {formatCurrency(data.totalExpenses)}
           </div>
         </div>
         <div>
-          <div className="text-sm text-text-tertiary">Cash Flow</div>
+          <div className="text-sm text-text-secondary mb-1">Cash Flow</div>
           <div className={`text-lg font-semibold ${(data.netCashFlow ?? 0) >= 0 ? 'text-semantic-success' : 'text-semantic-error'}`}>
-            {data.netCashFlow != null ? `R ${data.netCashFlow.toLocaleString()}` : '--'}
+            {formatCurrency(data.netCashFlow)}
           </div>
         </div>
         <div>
-          <div className="text-sm text-text-tertiary">Savings Rate</div>
+          <div className="text-sm text-text-secondary mb-1">Savings Rate</div>
           <div className="text-lg font-semibold text-accent-cyan">
-            {data.savingsRate != null ? `${data.savingsRate.toFixed(1)}%` : '--'}
+            {formatPercentage(data.savingsRate)}
           </div>
         </div>
       </div>
@@ -167,26 +160,22 @@ function DimensionScoresCard({ scores }: { scores: Record<string, number> | unde
   if (!scores || Object.keys(scores).length === 0) return null;
 
   return (
-    <GlassCard className="p-6">
+    <GlassCard variant="solid" className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-          <BarChart3 className="w-5 h-5 text-white" />
-        </div>
+        <BarChart3 className="w-5 h-5 text-purple-400" />
         <h3 className="text-lg font-semibold text-text-primary">Dimension Scores</h3>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Object.entries(scores).map(([key, value]) => {
-          const Icon = dimensionIcons[key] || Activity;
           const displayName = key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
           
           return (
-            <div key={key} className="bg-background rounded-lg p-3 border border-background-hover">
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-4 h-4 text-text-tertiary" />
-                <span className="text-xs text-text-tertiary truncate">{displayName}</span>
-              </div>
-              <div className="text-lg font-bold text-text-primary">{value.toFixed(0)}</div>
+            <div key={key} className="group p-4 rounded-lg bg-black/90 border border-white/10 hover:border-accent-purple/50 transition-all cursor-pointer hover:shadow-glow-sm">
+              <p className="text-sm text-text-secondary capitalize mb-2 group-hover:text-text-primary transition-colors">
+                {displayName}
+              </p>
+              <p className="text-2xl font-bold text-text-primary">{value.toFixed(0)}</p>
             </div>
           );
         })}
@@ -251,7 +240,6 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
           currentValue={data.healthIndex} 
           delta={data.healthIndexDelta} 
           icon={Heart}
-          gradient="from-red-500 to-pink-500"
         />
         <ScoreCard 
           title="Adherence" 
@@ -259,14 +247,12 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
           delta={data.adherenceIndexDelta} 
           suffix="%" 
           icon={Target}
-          gradient="from-amber-500 to-orange-500"
         />
         <ScoreCard 
           title="Wealth Health" 
           currentValue={data.wealthHealth} 
           delta={data.wealthHealthDelta} 
           icon={DollarSign}
-          gradient="from-green-500 to-emerald-500"
         />
         <ScoreCard 
           title="Longevity" 
@@ -274,7 +260,6 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
           delta={data.longevityDelta} 
           suffix=" yrs" 
           icon={TrendingUp}
-          gradient="from-blue-500 to-indigo-500"
         />
       </div>
 
@@ -286,9 +271,9 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
 
       {/* Top Streaks */}
       {data.topStreaks && data.topStreaks.length > 0 && (
-        <GlassCard className="p-6">
-          <h4 className="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2">
-            <Flame className="w-4 h-4 text-orange-400" /> Top Streaks
+        <GlassCard variant="solid" className="p-6">
+          <h4 className="text-base font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <Flame className="w-5 h-5 text-orange-400" /> Top Streaks
           </h4>
           <div className="space-y-2">
             {data.topStreaks.map((streak, index) => (
@@ -300,9 +285,9 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
 
       {/* Recommended Actions */}
       {data.recommendedActions && data.recommendedActions.length > 0 && (
-        <GlassCard className="p-6">
-          <h4 className="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent-cyan" /> Recommended Actions
+        <GlassCard variant="solid" className="p-6">
+          <h4 className="text-base font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-400" /> Recommended Actions
           </h4>
           <div className="space-y-2">
             {data.recommendedActions.map((action, index) => (
@@ -314,15 +299,15 @@ function ReviewContent({ type }: { type: 'weekly' | 'monthly' }) {
 
       {/* Primary Stats - Current Values */}
       {data.primaryStats && Object.keys(data.primaryStats).length > 0 && (
-        <GlassCard className="p-6">
-          <h4 className="text-sm font-medium text-text-secondary mb-3">Primary Stats Movement</h4>
-          <div className="grid grid-cols-7 gap-2">
+        <GlassCard variant="solid" className="p-6">
+          <h4 className="text-base font-semibold text-text-primary mb-4">Primary Stats Movement</h4>
+          <div className="grid grid-cols-7 gap-4">
             {Object.entries(data.primaryStats).map(([stat, value]) => {
               const delta = data.primaryStatsDelta?.[stat] || 0;
               return (
-                <div key={stat} className="bg-background rounded-lg p-2 text-center border border-background-hover">
-                  <div className="text-xs text-text-tertiary capitalize">{stat}</div>
-                  <div className="text-lg font-bold text-text-primary">{typeof value === 'number' ? value.toFixed(0) : value}</div>
+                <div key={stat} className="group p-4 rounded-lg bg-black/90 border border-white/10 hover:border-accent-purple/50 transition-all text-center hover:shadow-glow-sm">
+                  <div className="text-xs text-text-secondary capitalize mb-2 group-hover:text-text-primary transition-colors">{stat}</div>
+                  <div className="text-2xl font-bold text-text-primary mb-1">{typeof value === 'number' ? value.toFixed(0) : value}</div>
                   <DeltaIndicator value={delta} />
                 </div>
               );

@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { cn } from '@utils/cn';
 
 interface GlassCardProps {
-  variant?: 'default' | 'elevated' | 'outlined';
+  variant?: 'default' | 'elevated' | 'outlined' | 'solid';
   glow?: 'none' | 'subtle' | 'accent';
   children: React.ReactNode;
   className?: string;
@@ -26,6 +26,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
       default: 'bg-glass-medium border border-glass-border',
       elevated: 'bg-glass-heavy border border-glass-border shadow-elevated',
       outlined: 'bg-transparent border border-glass-border',
+      solid: 'bg-background-secondary/70 backdrop-blur-xl border border-glass-border shadow-lg',
     };
 
     const glowStyles = {
