@@ -6,6 +6,7 @@ import { DashboardV3 } from '@pages/DashboardV3';
 import { Dimensions } from '@pages/Dimensions';
 import { DimensionDetail } from '@pages/DimensionDetail';
 import { FinancesLayout, FinancesOverview } from '@pages/Finances';
+import { FinancesSimulation } from '@pages/FinancesSimulation';
 import { AccountDetail } from '@pages/AccountDetail';
 import { Health } from '@pages/Health';
 import { Simulation } from '@pages/Simulation';
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
           { path: 'income-expenses', element: <IncomeExpenseSettings /> },
           { path: 'investments', element: <InvestmentSettings /> },
           { path: 'goals', element: <GoalsSettings /> },
+          { path: 'simulation', element: <FinancesSimulation /> },
         ],
       },
       { path: 'finances/accounts/:accountId', element: <AccountDetail /> },

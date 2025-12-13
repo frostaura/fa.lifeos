@@ -9,7 +9,7 @@ import { NetWorthGoalTracker } from '@components/organisms/NetWorthGoalTracker';
 import { LoanPayoffCalculator } from '@components/organisms/LoanPayoffCalculator';
 import { AccountRow } from '@components/molecules/AccountRow';
 import { CurrencySelector, formatCurrency } from '@components/molecules/CurrencySelector';
-import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info, Wallet, DollarSign, Target } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Calculator, TrendingUp, Info, Wallet, DollarSign, Target, Zap } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { confirmToast } from '@utils/confirmToast';
 import type { Account, NetWorthDataPoint, FxRate, Scenario } from '@/types';
@@ -25,6 +25,7 @@ const financesNav = [
   { icon: DollarSign, label: 'Income/Expenses', path: '/finances/income-expenses' },
   { icon: TrendingUp, label: 'Investments', path: '/finances/investments' },
   { icon: Target, label: 'Goals', path: '/finances/goals' },
+  { icon: Zap, label: 'Simulation', path: '/finances/simulation' },
 ];
 
 // Layout wrapper for Finances with tab navigation
