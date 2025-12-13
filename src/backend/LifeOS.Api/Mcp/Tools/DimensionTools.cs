@@ -42,16 +42,17 @@ public class DimensionTools
             return McpToolResponse<ListDimensionsResponse>.Fail(authResult.Error!);
 
         var dimensions = await _dbContext.Dimensions
-            .Where(d => d.UserId == authResult.UserId)
-            .OrderBy(d => d.Name)
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.SortOrder)
+            .ThenBy(d => d.Name)
             .Select(d => new DimensionSummary
             {
                 Id = d.Id,
                 Name = d.Name,
                 Description = d.Description ?? string.Empty,
-                Weight = d.Weight,
-                CurrentScore = d.CurrentScore,
-                Color = d.Color ?? "#6366f1"
+                Weight = d.DefaultWeight * 100m,
+                CurrentScore = 0,
+                Color = "#6366f1"
             })
             .ToListAsync(cancellationToken);
 
@@ -77,17 +78,17 @@ public class DimensionTools
             return McpToolResponse<GetDimensionResponse>.Fail(authResult.Error!);
 
         var dimension = await _dbContext.Dimensions
-            .Where(d => d.Id == request.DimensionId && d.UserId == authResult.UserId)
+            .Where(d => d.Id == request.DimensionId && d.IsActive)
             .Select(d => new DimensionDetail
             {
                 Id = d.Id,
                 Name = d.Name,
                 Description = d.Description ?? string.Empty,
-                Weight = d.Weight,
-                CurrentScore = d.CurrentScore,
-                Color = d.Color ?? "#6366f1",
+                Weight = d.DefaultWeight * 100m,
+                CurrentScore = 0,
+                Color = "#6366f1",
                 CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt,
+                UpdatedAt = d.UpdatedAt ?? d.CreatedAt,
                 LinkedMetricCount = d.MetricDefinitions.Count
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -118,13 +119,13 @@ public class DimensionTools
             return McpToolResponse<UpdateDimensionWeightResponse>.Fail("Weight must be between 0 and 100.");
 
         var dimension = await _dbContext.Dimensions
-            .FirstOrDefaultAsync(d => d.Id == request.DimensionId && d.UserId == authResult.UserId, cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == request.DimensionId && d.IsActive, cancellationToken);
 
         if (dimension == null)
             return McpToolResponse<UpdateDimensionWeightResponse>.Fail($"Dimension with ID {request.DimensionId} not found.");
 
-        var previousWeight = dimension.Weight;
-        dimension.Weight = request.NewWeight;
+        var previousWeight = dimension.DefaultWeight * 100m;
+        dimension.DefaultWeight = request.NewWeight / 100m;
         dimension.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -158,20 +159,21 @@ public class DimensionTools
 
         // Check for duplicate name
         var existingDimension = await _dbContext.Dimensions
-            .AnyAsync(d => d.UserId == authResult.UserId && d.Name.ToLower() == request.Name.ToLower(), cancellationToken);
+            .AnyAsync(d => d.Name.ToLower() == request.Name.ToLower(), cancellationToken);
 
         if (existingDimension)
             return McpToolResponse<CreateDimensionResponse>.Fail($"A dimension named '{request.Name}' already exists.");
 
+        var code = request.Name.Trim().ToLowerInvariant().Replace(" ", "_");
+
         var dimension = new LifeOS.Domain.Entities.Dimension
         {
-            Id = Guid.NewGuid(),
-            UserId = authResult.UserId,
+            Code = code,
             Name = request.Name,
             Description = request.Description,
-            Weight = request.Weight,
-            CurrentScore = 0,
-            Color = request.Color ?? "#6366f1",
+            DefaultWeight = request.Weight / 100m,
+            SortOrder = 0,
+            IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -202,7 +204,7 @@ public class DimensionTools
 
         var dimension = await _dbContext.Dimensions
             .Include(d => d.MetricDefinitions)
-            .FirstOrDefaultAsync(d => d.Id == request.DimensionId && d.UserId == authResult.UserId, cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == request.DimensionId, cancellationToken);
 
         if (dimension == null)
             return McpToolResponse<DeleteDimensionResponse>.Fail($"Dimension with ID {request.DimensionId} not found.");

@@ -184,6 +184,50 @@ export function Login() {
                         Your browser or device doesn't support biometric authentication (WebAuthn).
                         Please use a modern browser like Chrome, Safari, or Edge on a device with Touch ID, Face ID, or Windows Hello.
                     </p>
+
+                    {/* Dev Login - Show in development even when WebAuthn not supported */}
+                    {import.meta.env.VITE_ENV === 'development' && (
+                        <div className="mt-6 pt-6 border-t border-glass-border">
+                            <Button
+                                data-testid="dev-login-button"
+                                onClick={async () => {
+                                    setLoading(true);
+                                    setError(null);
+                                    try {
+                                        const res = await fetch('/api/auth/dev-login', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                email: 'admin@system.local'
+                                            })
+                                        });
+                                        const data = await res.json();
+                                        if (data.data?.accessToken) {
+                                            localStorage.setItem('accessToken', data.data.accessToken);
+                                            localStorage.setItem('user', JSON.stringify(data.data.user));
+                                            dispatch(setCredentials({
+                                                token: data.data.accessToken,
+                                                user: data.data.user
+                                            }));
+                                            navigate(from, { replace: true });
+                                        } else {
+                                            setError('Dev login failed');
+                                        }
+                                    } catch (err: any) {
+                                        setError(err.message || 'Dev login failed');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }}
+                                disabled={loading}
+                                variant="secondary"
+                                className="w-full py-3 text-sm"
+                            >
+                                🔧 Dev Login (Skip Passkey)
+                            </Button>
+                            {error && <p className="mt-2 text-sm text-semantic-error">{error}</p>}
+                        </div>
+                    )}
                 </GlassCard>
             </div>
         );
@@ -240,7 +284,7 @@ export function Login() {
                             </p>
 
                             {/* Dev Login - Only in development */}
-                            {(import.meta.env.DEV || import.meta.env.VITE_ENV === 'development') && (
+                            {import.meta.env.VITE_ENV === 'development' && (
                                 <div className="mt-4 pt-4 border-t border-background-hover">
                                     <Button
                                         data-testid="dev-login-button"

@@ -4,6 +4,9 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
     plugins: [react()],
+    define: {
+        'import.meta.env.VITE_ENV': JSON.stringify(process.env.VITE_ENV || 'production'),
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),

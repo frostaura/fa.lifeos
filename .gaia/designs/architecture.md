@@ -81,6 +81,24 @@ LifeOS is a comprehensive life management platform built with Clean Architecture
 - User manually navigates to login → No redirect data, proceeds to `/dashboard`
 - Multiple tabs → Each tab maintains its own sessionStorage context
 
+#### Developer Login (Development Bypass)
+
+**Purpose**: Bypass biometric (passkey) authentication during development to speed up testing workflows.
+
+**Environment Detection**:
+- **Frontend**: Checks `VITE_ENV` environment variable (not `import.meta.env.DEV`)
+  - Why: Frontend uses production build served via nginx in Docker, so `import.meta.env.DEV` is always `false`
+  - Developer login visible when `window.VITE_ENV === 'development'`
+- **Backend**: Checks `ASPNETCORE_ENVIRONMENT` configuration
+  - Developer login endpoint (`/api/auth/dev-login`) only active in `Development` environment
+  - Returns 404 in production/staging environments
+
+**Security Implications**:
+- Frontend check prevents UI from showing dev login button in production
+- Backend check prevents endpoint from functioning even if called directly
+- Double-gated: both frontend and backend must be in development mode
+- No risk to production deployments (both checks fail in prod environment)
+
 ### Database
 - **Primary**: PostgreSQL 17
 - **Provider**: Npgsql

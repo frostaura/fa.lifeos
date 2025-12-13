@@ -13,6 +13,7 @@ using ModelContextProtocol.Server;
 // Use aliases to avoid ambiguity
 using McpRecordMetricsRequest = LifeOS.Application.DTOs.Mcp.RecordMetricsRequest;
 using McpRecordMetricsResponse = LifeOS.Application.DTOs.Mcp.RecordMetricsResponse;
+using McpMetricHistoryData = LifeOS.Application.DTOs.Mcp.MetricHistoryData;
 
 namespace LifeOS.Api.Mcp.Tools;
 
@@ -199,7 +200,7 @@ public class MetricsTools
         {
             MetricData = historyResult.Data.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new MetricHistoryData
+                kvp => new McpMetricHistoryData
                 {
                     Code = kvp.Key,
                     DataPoints = kvp.Value.Points.Select(p => new MetricDataPoint

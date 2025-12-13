@@ -16,7 +16,7 @@ ARG VITE_ENV=production
 ENV VITE_ENV=$VITE_ENV
 
 # Build the app
-RUN npm run build
+RUN VITE_ENV=$VITE_ENV npm run build
 
 # Production stage - serve static files with nginx
 FROM nginx:alpine AS production
