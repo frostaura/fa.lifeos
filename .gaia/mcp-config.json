@@ -1,29 +1,4 @@
 {
-    "mcpServers": {
-        "github": {
-            "transport": "http",
-            "type": "http",
-            "url": "https://api.githubcopilot.com/mcp/"
-        },
-        "playwright": {
-            "transport": "stdio",
-            "type": "stdio",
-            "command": "npx",
-            "args": [
-                "@playwright/mcp@latest"
-            ]
-        },
-        "gaia": {
-            "transport": "stdio",
-            "type": "stdio",
-            "command": "dotnet",
-            "args": [
-                "run",
-                "--project",
-                ".gaia/mcps/gaia/src/fa.mcp.gaia/fa.mcp.gaia.csproj"
-            ]
-        }
-    },
     "servers": {
         "playwright-mcp": {
             "type": "stdio",
@@ -40,6 +15,11 @@
                 "--project",
                 ".gaia/mcps/gaia/src/fa.mcp.gaia/fa.mcp.gaia.csproj"
             ]
+        },
+        "LifeOS MCP": {
+            "url": "http://localhost:5001/mcp",
+            "type": "http"
         }
-    }
+    },
+    "inputs": []
 }
