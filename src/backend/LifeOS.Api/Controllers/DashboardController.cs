@@ -1,5 +1,7 @@
 using LifeOS.Application.Common.Interfaces;
+using LifeOS.Application.Interfaces;
 using LifeOS.Application.Services;
+using LifeOS.Application.Services.Mcp;
 using LifeOS.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -17,17 +19,23 @@ public class DashboardController : ControllerBase
     private readonly ILifeOSDbContext _context;
     private readonly IScoreCalculator _scoreCalculator;
     private readonly IWealthHealthScoreService _wealthHealthService;
+    private readonly ILifeOSScoreAggregator _scoreAggregator;
+    private readonly IPrimaryStatsCalculator _statsCalculator;
     private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
         ILifeOSDbContext context, 
         IScoreCalculator scoreCalculator,
         IWealthHealthScoreService wealthHealthService,
+        ILifeOSScoreAggregator scoreAggregator,
+        IPrimaryStatsCalculator statsCalculator,
         ILogger<DashboardController> logger)
     {
         _context = context;
         _scoreCalculator = scoreCalculator;
         _wealthHealthService = wealthHealthService;
+        _scoreAggregator = scoreAggregator;
+        _statsCalculator = statsCalculator;
         _logger = logger;
     }
 
@@ -39,105 +47,42 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
-    /// Get complete dashboard data
+    /// Get complete dashboard data using shared handler
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetDashboard()
+    public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
     {
-        var userId = GetUserId();
-        
-        // Calculate actual life score using ScoreCalculator
-        var lifeScore = await _scoreCalculator.CalculateLifeScoreAsync(userId);
-        
-        // Get dimensions with calculated scores
-        var dimensionList = await _context.Dimensions
-            .Where(d => d.IsActive)
-            .ToListAsync();
-        
-        var dimensions = new List<object>();
-        foreach (var d in dimensionList)
+        try
         {
-            var score = await _scoreCalculator.CalculateDimensionScoreAsync(userId, d.Id);
-            var trend = await CalculateTrendAsync(userId, d.Code);
-            
-            dimensions.Add(new {
-                id = d.Id,
-                code = d.Code,
-                name = d.Name,
-                icon = d.Icon,
-                score = score,
-                trend = trend,
-                activeMilestones = await _context.Milestones
-                    .CountAsync(m => m.DimensionId == d.Id && m.Status == MilestoneStatus.Active)
+            var userId = GetUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized(new { error = "Invalid user ID" });
+            }
+
+            // Use the same handler that MCP tools use - shared logic
+            var handler = new GetDashboardSnapshotHandler(_scoreAggregator, _statsCalculator, _context);
+            var result = await handler.HandleAsync(null, userId, cancellationToken);
+
+            if (!result.Success)
+            {
+                _logger.LogError("Failed to get dashboard: {Error}", result.Error);
+                return StatusCode(500, new { error = result.Error });
+            }
+
+            return Ok(new {
+                data = result.Data,
+                meta = new {
+                    timestamp = DateTime.UtcNow
+                }
             });
         }
-
-        // Get accounts for net worth
-        var accounts = await _context.Accounts
-            .Where(a => a.UserId == userId && a.IsActive)
-            .ToListAsync();
-
-        var totalAssets = accounts.Where(a => !a.IsLiability).Sum(a => a.CurrentBalance);
-        var totalLiabilities = accounts.Where(a => a.IsLiability).Sum(a => a.CurrentBalance);
-        var netWorth = totalAssets - totalLiabilities;
-
-        // Get streaks
-        var streaks = await _context.Streaks
-            .Where(s => s.UserId == userId && s.IsActive)
-            .OrderByDescending(s => s.CurrentStreakLength)
-            .Take(5)
-            .Select(s => new {
-                id = s.Id,
-                name = s.TaskId != null 
-                    ? _context.Tasks.Where(t => t.Id == s.TaskId).Select(t => t.Title).FirstOrDefault()
-                    : s.MetricCode,
-                habitId = s.TaskId,
-                currentDays = s.CurrentStreakLength,
-                longestDays = s.LongestStreakLength,
-                lastCompletedAt = s.LastSuccessDate
-            })
-            .ToListAsync();
-
-        // Get today's tasks
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var tasks = await _context.Tasks
-            .Where(t => t.UserId == userId && t.IsActive && 
-                   (t.ScheduledDate == null || t.ScheduledDate == today))
-            .OrderBy(t => t.IsCompleted)
-            .ThenBy(t => t.Title)
-            .Take(10)
-            .Select(t => new {
-                id = t.Id,
-                title = t.Title,
-                completed = t.IsCompleted,
-                dimensionId = t.Dimension != null ? t.Dimension.Code : null
-            })
-            .ToListAsync();
-
-        // Calculate life score trend
-        var lifeScoreTrend = await CalculateLifeScoreTrendAsync(userId);
-
-        return Ok(new {
-            data = new {
-                lifeScore,
-                lifeScoreTrend,
-                netWorth = new {
-                    value = netWorth,
-                    totalAssets,
-                    totalLiabilities,
-                    currency = "ZAR",
-                    change = 0m,
-                    changePercent = 0m
-                },
-                dimensions,
-                streaks,
-                tasks
-            },
-            meta = new {
-                timestamp = DateTime.UtcNow
-            }
-        });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception in GetDashboard");
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
     
     /// <summary>

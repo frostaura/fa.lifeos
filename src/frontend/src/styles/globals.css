@@ -43,6 +43,15 @@
   --glass-bg: rgba(255, 255, 255, 0.7);
 }
 
+/* Light mode card backgrounds */
+:root.light .bg-background-secondary {
+  background-color: #ffffff !important;
+}
+
+:root.light .bg-background-tertiary {
+  background-color: #f1f3f5 !important;
+}
+
 /* Dark mode glass effects */
 :root.dark .bg-glass-medium,
 :root:not(.light) .bg-glass-medium {

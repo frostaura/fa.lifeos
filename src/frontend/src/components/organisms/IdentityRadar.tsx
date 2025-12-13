@@ -41,15 +41,15 @@ export function IdentityRadar({ currentStats, targetStats, size = 'md' }: Identi
     <div className="w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-          <PolarGrid stroke="rgba(255,255,255,0.1)" />
+          <PolarGrid stroke="var(--border-glass)" strokeOpacity={0.5} />
           <PolarAngleAxis 
             dataKey="stat" 
-            tick={{ fill: '#94a3b8', fontSize: size === 'sm' ? 10 : 12 }}
+            tick={{ fill: 'var(--text-secondary)', fontSize: size === 'sm' ? 10 : 12 }}
           />
           <PolarRadiusAxis 
             angle={90} 
             domain={[0, 100]} 
-            tick={{ fill: '#64748b', fontSize: 10 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
             axisLine={false}
           />
           <Radar
@@ -65,13 +65,14 @@ export function IdentityRadar({ currentStats, targetStats, size = 'md' }: Identi
             dataKey="current"
             stroke="#22d3ee"
             fill="#22d3ee"
-            fillOpacity={0.3}
+            fillOpacity={0.2}
             strokeWidth={2}
           />
           <Legend 
             wrapperStyle={{ 
               paddingTop: '10px',
-              fontSize: size === 'sm' ? '10px' : '12px'
+              fontSize: size === 'sm' ? '10px' : '12px',
+              color: 'var(--text-secondary)'
             }}
           />
         </RadarChart>

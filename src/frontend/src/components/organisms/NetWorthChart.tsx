@@ -98,25 +98,25 @@ export function NetWorthChart({
         <XAxis
           dataKey="date"
           tickFormatter={formatDate}
-          stroke="#6b6b7a"
-          tick={{ fill: '#6b6b7a', fontSize: 12 }}
-          tickLine={{ stroke: '#6b6b7a' }}
+          stroke="var(--text-tertiary)"
+          tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }}
+          tickLine={{ stroke: 'var(--text-tertiary)' }}
         />
         <YAxis
-          stroke="#6b6b7a"
-          tick={{ fill: '#6b6b7a', fontSize: 12 }}
+          stroke="var(--text-tertiary)"
+          tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }}
           tickFormatter={(value) => {
             if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
             if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
             return value.toString();
           }}
-          tickLine={{ stroke: '#6b6b7a' }}
+          tickLine={{ stroke: 'var(--text-tertiary)' }}
         />
         <Tooltip content={<CustomTooltip currency={currency} />} />
         <Area
           type="monotone"
           dataKey="value"
-          stroke="#8b5cf6"
+          stroke="var(--accent-color)"
           strokeWidth={2}
           fill="url(#netWorthGradient)"
         />

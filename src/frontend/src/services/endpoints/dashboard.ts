@@ -8,11 +8,19 @@ import type {
   Streak,
   TaskItem,
 } from '@/types';
+import type { DashboardSnapshot } from '@/types/mcp';
 
 export const dashboardApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getDashboard: builder.query<DashboardData, void>({
       query: () => '/api/dashboard',
+      providesTags: ['Dashboard'],
+    }),
+    
+    // Dashboard snapshot - full snapshot with all metrics
+    getDashboardSnapshot: builder.query<DashboardSnapshot, void>({
+      query: () => '/api/dashboard',
+      transformResponse: (response: { data: DashboardSnapshot }) => response.data,
       providesTags: ['Dashboard'],
     }),
     
@@ -63,6 +71,7 @@ export const dashboardApi = apiSlice.injectEndpoints({
 
 export const {
   useGetDashboardQuery,
+  useGetDashboardSnapshotQuery,
   useGetNetWorthQuery,
   useGetDimensionScoresQuery,
   useGetStreaksQuery,

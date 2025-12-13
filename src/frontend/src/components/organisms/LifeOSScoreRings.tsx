@@ -38,10 +38,10 @@ export const LifeOSScoreRings: React.FC<LifeOSScoreRingsProps> = ({
           color="from-purple-500 to-pink-500"
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={cn('font-bold text-white', config.fontSize)}>
+          <div className={cn('font-bold', config.fontSize)} style={{ color: 'var(--text-primary)' }}>
             {Math.round(lifeScore)}
           </div>
-          <div className={cn('text-gray-400 font-medium', config.label)}>
+          <div className={cn('font-medium', config.label)} style={{ color: 'var(--text-secondary)' }}>
             LifeOS Score
           </div>
         </div>
@@ -59,13 +59,14 @@ export const LifeOSScoreRings: React.FC<LifeOSScoreRingsProps> = ({
               color="from-green-400 to-emerald-600"
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className={cn('font-bold text-white', 
-                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}>
+              <div className={cn('font-bold', 
+                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}
+                style={{ color: 'var(--text-primary)' }}>
                 {Math.round(healthIndex)}
               </div>
             </div>
           </div>
-          <div className={cn('text-center text-gray-400 font-medium', config.label)}>
+          <div className={cn('text-center font-medium', config.label)} style={{ color: 'var(--text-secondary)' }}>
             Health
           </div>
         </div>
@@ -80,13 +81,14 @@ export const LifeOSScoreRings: React.FC<LifeOSScoreRingsProps> = ({
               color="from-blue-400 to-cyan-600"
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className={cn('font-bold text-white',
-                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}>
+              <div className={cn('font-bold',
+                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}
+                style={{ color: 'var(--text-primary)' }}>
                 {Math.round(adherenceIndex)}
               </div>
             </div>
           </div>
-          <div className={cn('text-center text-gray-400 font-medium', config.label)}>
+          <div className={cn('text-center font-medium', config.label)} style={{ color: 'var(--text-secondary)' }}>
             Adherence
           </div>
         </div>
@@ -101,13 +103,14 @@ export const LifeOSScoreRings: React.FC<LifeOSScoreRingsProps> = ({
               color="from-amber-400 to-orange-600"
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className={cn('font-bold text-white',
-                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}>
+              <div className={cn('font-bold',
+                size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl')}
+                style={{ color: 'var(--text-primary)' }}>
                 {Math.round(wealthHealthScore)}
               </div>
             </div>
           </div>
-          <div className={cn('text-center text-gray-400 font-medium', config.label)}>
+          <div className={cn('text-center font-medium', config.label)} style={{ color: 'var(--text-secondary)' }}>
             Wealth
           </div>
         </div>

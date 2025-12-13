@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '@components/templates/AppLayout';
 import { Login } from '@pages/Login';
 import { Dashboard } from '@pages/Dashboard';
-import { DashboardV3 } from '@pages/DashboardV3';
 import { DashboardLayoutWrapper } from '@pages/DashboardLayoutWrapper';
 import { DashboardReviews } from '@pages/DashboardReviews';
 import { Dimensions } from '@pages/Dimensions';
@@ -53,11 +52,10 @@ export const router = createBrowserRouter([
         path: '',
         element: <DashboardLayoutWrapper />,
         children: [
-          { index: true, element: <DashboardV3 /> },
+          { index: true, element: <Dashboard /> },
           { path: 'reviews', element: <DashboardReviews /> },
         ]
       },
-      { path: 'dashboard-v1', element: <Dashboard /> },
       { path: 'dimensions', element: <Dimensions /> },
       { path: 'dimensions/:dimensionId', element: <DimensionDetail /> },
       {

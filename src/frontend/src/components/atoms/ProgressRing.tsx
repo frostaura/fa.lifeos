@@ -26,14 +26,16 @@ export function ProgressRing({
   return (
     <div className={cn('relative', className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} className="rotate-[-90deg]">
-        {/* Background circle */}
+        {/* Background circle - always visible with fallback */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.1)"
+          stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="none"
+          opacity="0.2"
+          className="text-text-muted"
         />
         {/* Progress circle */}
         <circle
