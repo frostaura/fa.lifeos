@@ -2330,6 +2330,13 @@ export function IncomeExpenseSettings() {
                             Inactive
                           </span>
                         )}
+                        {income.endConditionType && income.endConditionType.toLowerCase() !== 'none' && (
+                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                            {income.endConditionType.toLowerCase() === 'untilaccountsettled' && `Until ${income.endConditionAccountName || 'account'} settled`}
+                            {income.endConditionType.toLowerCase() === 'untildate' && `Until ${income.endDate}`}
+                            {income.endConditionType.toLowerCase() === 'untilamount' && `Until R${income.endAmountThreshold?.toLocaleString()}`}
+                          </span>
+                        )}
                       </div>
                       <div className="text-text-secondary text-sm mt-1">
                         {income.employerName && `${income.employerName} • `}
@@ -3053,6 +3060,13 @@ export function IncomeExpenseSettings() {
                           {!expense.isActive && (
                             <span className="px-2 py-0.5 bg-gray-600/20 text-gray-400 text-xs rounded-full">
                               Inactive
+                            </span>
+                          )}
+                          {expense.endConditionType && expense.endConditionType.toLowerCase() !== 'none' && (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                              {expense.endConditionType.toLowerCase() === 'untilaccountsettled' && `Until ${expense.linkedAccountName || 'account'} settled`}
+                              {expense.endConditionType.toLowerCase() === 'untildate' && `Until ${expense.endDate}`}
+                              {expense.endConditionType.toLowerCase() === 'untilamount' && `Until R${expense.endAmountThreshold?.toLocaleString()}`}
                             </span>
                           )}
                         </div>

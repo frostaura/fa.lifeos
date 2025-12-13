@@ -19,6 +19,11 @@ public record IncomeSourceDto
     public bool IsActive { get; init; }
     public Guid? TargetAccountId { get; init; }
     public string? TargetAccountName { get; init; }
+    public EndConditionType EndConditionType { get; init; }
+    public Guid? EndConditionAccountId { get; init; }
+    public string? EndConditionAccountName { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 
@@ -50,6 +55,11 @@ public record IncomeSourceAttributes
     public bool IsActive { get; init; }
     public Guid? TargetAccountId { get; init; }
     public string? TargetAccountName { get; init; }
+    public string EndConditionType { get; init; } = "None";
+    public Guid? EndConditionAccountId { get; init; }
+    public string? EndConditionAccountName { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record IncomeSourceMeta
@@ -78,6 +88,10 @@ public record CreateIncomeSourceRequest
     public string? EmployerName { get; init; }
     public string? Notes { get; init; }
     public Guid? TargetAccountId { get; init; } // Optional: where the income is deposited
+    public EndConditionType EndConditionType { get; init; } = EndConditionType.None;
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }
 
 public record UpdateIncomeSourceRequest
@@ -93,4 +107,8 @@ public record UpdateIncomeSourceRequest
     public string? Notes { get; init; }
     public bool? IsActive { get; init; }
     public Guid? TargetAccountId { get; init; }
+    public EndConditionType? EndConditionType { get; init; }
+    public Guid? EndConditionAccountId { get; init; }
+    public DateOnly? EndDate { get; init; }
+    public decimal? EndAmountThreshold { get; init; }
 }

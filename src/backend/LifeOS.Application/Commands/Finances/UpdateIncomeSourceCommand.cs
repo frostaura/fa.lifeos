@@ -16,5 +16,9 @@ public record UpdateIncomeSourceCommand(
     string? EmployerName,
     string? Notes,
     bool? IsActive,
-    Guid? TargetAccountId
+    Guid? TargetAccountId,
+    EndConditionType? EndConditionType,
+    Guid? EndConditionAccountId,
+    DateOnly? EndDate,
+    decimal? EndAmountThreshold
 ) : IRequest<bool>;

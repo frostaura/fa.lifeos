@@ -30,7 +30,11 @@ public class CreateIncomeSourceCommandHandler : IRequestHandler<CreateIncomeSour
             EmployerName = request.EmployerName,
             Notes = request.Notes,
             IsActive = true,
-            TargetAccountId = request.TargetAccountId
+            TargetAccountId = request.TargetAccountId,
+            EndConditionType = request.EndConditionType,
+            EndConditionAccountId = request.EndConditionAccountId,
+            EndDate = request.EndDate,
+            EndAmountThreshold = request.EndAmountThreshold
         };
 
         _context.IncomeSources.Add(incomeSource);
@@ -43,6 +47,15 @@ public class CreateIncomeSourceCommandHandler : IRequestHandler<CreateIncomeSour
             var account = await _context.Accounts
                 .FindAsync(new object[] { incomeSource.TargetAccountId.Value }, cancellationToken);
             targetAccountName = account?.Name;
+        }
+        
+        // Get end condition account name if set
+        string? endConditionAccountName = null;
+        if (incomeSource.EndConditionAccountId.HasValue)
+        {
+            var account = await _context.Accounts
+                .FindAsync(new object[] { incomeSource.EndConditionAccountId.Value }, cancellationToken);
+            endConditionAccountName = account?.Name;
         }
 
         return new IncomeSourceDetailResponse
@@ -65,7 +78,12 @@ public class CreateIncomeSourceCommandHandler : IRequestHandler<CreateIncomeSour
                     Notes = incomeSource.Notes,
                     IsActive = incomeSource.IsActive,
                     TargetAccountId = incomeSource.TargetAccountId,
-                    TargetAccountName = targetAccountName
+                    TargetAccountName = targetAccountName,
+                    EndConditionType = incomeSource.EndConditionType.ToString().ToLowerInvariant(),
+                    EndConditionAccountId = incomeSource.EndConditionAccountId,
+                    EndConditionAccountName = endConditionAccountName,
+                    EndDate = incomeSource.EndDate,
+                    EndAmountThreshold = incomeSource.EndAmountThreshold
                 }
             }
         };

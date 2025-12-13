@@ -61,6 +61,11 @@ interface IncomeSourceResponse {
       isActive: boolean;
       targetAccountId?: string;
       targetAccountName?: string;
+      endConditionType: string;
+      endConditionAccountId?: string;
+      endConditionAccountName?: string;
+      endDate?: string;
+      endAmountThreshold?: number;
     };
   }>;
   meta?: {
@@ -312,6 +317,11 @@ export const financesApi = apiSlice.injectEndpoints({
           isActive: item.attributes.isActive,
           targetAccountId: item.attributes.targetAccountId,
           targetAccountName: item.attributes.targetAccountName,
+          endConditionType: item.attributes.endConditionType as IncomeSource['endConditionType'],
+          endConditionAccountId: item.attributes.endConditionAccountId,
+          endConditionAccountName: item.attributes.endConditionAccountName,
+          endDate: item.attributes.endDate,
+          endAmountThreshold: item.attributes.endAmountThreshold,
         }));
       },
       providesTags: ['IncomeSources'],
@@ -348,6 +358,11 @@ export const financesApi = apiSlice.injectEndpoints({
             isActive: item.attributes.isActive,
             targetAccountId: item.attributes.targetAccountId,
             targetAccountName: item.attributes.targetAccountName,
+            endConditionType: item.attributes.endConditionType as IncomeSource['endConditionType'],
+            endConditionAccountId: item.attributes.endConditionAccountId,
+            endConditionAccountName: item.attributes.endConditionAccountName,
+            endDate: item.attributes.endDate,
+            endAmountThreshold: item.attributes.endAmountThreshold,
           })),
           summary: {
             totalMonthlyGross: response.meta?.totalMonthlyGross || 0,

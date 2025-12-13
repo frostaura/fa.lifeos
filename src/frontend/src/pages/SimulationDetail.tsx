@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { Button } from '@components/atoms/Button';
 import { Badge } from '@components/atoms/Badge';
@@ -23,9 +23,14 @@ import {
 export function SimulationDetail() {
   const { scenarioId } = useParams<{ scenarioId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [showEventEditor, setShowEventEditor] = useState(false);
   const [showProjectionInfo, setShowProjectionInfo] = useState(false);
+
+  // Determine if we're in the finances context
+  const isFinancesContext = location.pathname.startsWith('/finances/');
+  const backPath = isFinancesContext ? '/finances/simulation' : '/simulation';
 
   // API queries
   const { 
@@ -133,7 +138,7 @@ export function SimulationDetail() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/simulation')}
+            onClick={() => navigate(backPath)}
             className="p-2 rounded-lg hover:bg-background-hover transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
@@ -156,7 +161,7 @@ export function SimulationDetail() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/simulation')}
+            onClick={() => navigate(backPath)}
             className="p-2 rounded-lg hover:bg-background-hover transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-text-secondary" />

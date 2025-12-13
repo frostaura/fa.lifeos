@@ -94,7 +94,7 @@ export function FinancesSimulation() {
       }
 
       // Navigate to scenario detail page after running
-      navigate(`/simulation/${scenarioId}`);
+      navigate(`/finances/simulation/${scenarioId}`);
     } catch (err) {
       console.error('Failed to run simulation:', err);
       alert('Failed to run simulation. Please try again.');
@@ -149,7 +149,7 @@ export function FinancesSimulation() {
           <p className="text-text-secondary text-xs mt-1">Build and run financial scenarios to project your future</p>
         </div>
         <Button 
-          onClick={() => navigate('/simulation/new')} 
+          onClick={() => navigate('/finances/simulation/new')} 
           icon={<Plus className="w-3 h-3" />}
           className="text-xs px-2 py-1"
         >
@@ -162,7 +162,7 @@ export function FinancesSimulation() {
         <GlassCard 
           variant="default" 
           className="p-3 cursor-pointer hover:bg-background-hover transition-colors"
-          onClick={() => navigate('/simulation/builder')}
+          onClick={() => navigate('/finances/simulation/builder')}
         >
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-accent-purple/20">
@@ -178,7 +178,7 @@ export function FinancesSimulation() {
         <GlassCard 
           variant="default" 
           className="p-3 cursor-pointer hover:bg-background-hover transition-colors"
-          onClick={() => navigate('/simulation/new')}
+          onClick={() => navigate('/finances/simulation/new')}
         >
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-accent-cyan/20">
@@ -197,7 +197,7 @@ export function FinancesSimulation() {
           onClick={() => {
             const baseline = scenarios.find(s => s.isBaseline);
             if (baseline) {
-              navigate(`/simulation/${baseline.id}`);
+              navigate(`/finances/simulation/${baseline.id}`);
             } else {
               alert('No baseline scenario found. Please create one first.');
             }
@@ -228,7 +228,7 @@ export function FinancesSimulation() {
             <p className="text-text-secondary text-sm mb-1">No scenarios yet</p>
             <p className="text-text-tertiary text-xs mb-4">Create your first scenario to start projecting your financial future</p>
             <Button 
-              onClick={() => navigate('/simulation/new')} 
+              onClick={() => navigate('/finances/simulation/new')} 
               icon={<Plus className="w-3 h-3" />}
               className="text-xs"
             >
@@ -245,7 +245,7 @@ export function FinancesSimulation() {
                 <div className="flex items-start justify-between gap-3">
                   <div 
                     className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => navigate(`/simulation/${scenario.id}`)}
+                    onClick={() => navigate(`/finances/simulation/${scenario.id}`)}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold text-text-primary text-sm">{scenario.name}</h4>

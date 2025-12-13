@@ -571,7 +571,7 @@ export function FinancesOverview() {
                 <h2 className="text-sm md:text-base font-semibold text-text-primary">Simulations</h2>
               </div>
               <button 
-                onClick={() => navigate('/simulation/new')}
+                onClick={() => navigate('/finances/simulation/new')}
                 className="text-accent-purple hover:text-accent-purple/80 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -584,7 +584,7 @@ export function FinancesOverview() {
                 scenarios.map((scenario) => (
                   <div
                     key={scenario.id}
-                    onClick={() => navigate(`/simulation/${scenario.id}`)}
+                    onClick={() => navigate(`/finances/simulation/${scenario.id}`)}
                     className="p-2 rounded-lg bg-background-hover/50 hover:bg-background-hover transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between">

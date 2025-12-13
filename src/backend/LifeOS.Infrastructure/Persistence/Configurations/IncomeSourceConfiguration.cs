@@ -67,6 +67,20 @@ public class IncomeSourceConfiguration : IEntityTypeConfiguration<IncomeSource>
             .WithMany()
             .HasForeignKey(e => e.TargetAccountId)
             .OnDelete(DeleteBehavior.SetNull);
+            
+        // End condition configuration
+        builder.Property(e => e.EndConditionType)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .HasDefaultValue(EndConditionType.None);
+            
+        builder.Property(e => e.EndAmountThreshold)
+            .HasPrecision(18, 4);
+            
+        builder.HasOne(e => e.EndConditionAccount)
+            .WithMany()
+            .HasForeignKey(e => e.EndConditionAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(e => e.UserId);
         builder.HasIndex(e => e.UserId)

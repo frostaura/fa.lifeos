@@ -6,7 +6,6 @@ import { closeMobileSidebar, toggleMobileSidebar, toggleSidebar } from '@store/s
 import { cn } from '@utils/cn';
 import {
     Activity,
-    Calculator,
     ChevronLeft,
     ChevronRight,
     ClipboardList,
@@ -25,7 +24,6 @@ const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Grid3X3, label: 'Dimensions', path: '/dimensions' },
     { icon: Wallet, label: 'Finances', path: '/finances' },
-    { icon: Calculator, label: 'Simulation', path: '/simulation' },
     { icon: Heart, label: 'Health', path: '/health' },
     { icon: Activity, label: 'Metrics', path: '/metrics' },
     { icon: ClipboardList, label: 'Reviews', path: '/reviews' },

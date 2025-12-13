@@ -22,6 +22,7 @@ public class GetIncomeSourcesQueryHandler : IRequestHandler<GetIncomeSourcesQuer
             .AsNoTracking()
             .Include(i => i.TaxProfile)
             .Include(i => i.TargetAccount)
+            .Include(i => i.EndConditionAccount)
             .Where(i => i.UserId == request.UserId)
             .OrderBy(i => i.Name)
             .ToListAsync(cancellationToken);
@@ -88,7 +89,12 @@ public class GetIncomeSourcesQueryHandler : IRequestHandler<GetIncomeSourcesQuer
                     Notes = i.Notes,
                     IsActive = i.IsActive,
                     TargetAccountId = i.TargetAccountId,
-                    TargetAccountName = i.TargetAccount?.Name
+                    TargetAccountName = i.TargetAccount?.Name,
+                    EndConditionType = i.EndConditionType.ToString().ToLowerInvariant(),
+                    EndConditionAccountId = i.EndConditionAccountId,
+                    EndConditionAccountName = i.EndConditionAccount?.Name,
+                    EndDate = i.EndDate,
+                    EndAmountThreshold = i.EndAmountThreshold
                 }
             }).ToList(),
             Meta = new IncomeSourceMeta

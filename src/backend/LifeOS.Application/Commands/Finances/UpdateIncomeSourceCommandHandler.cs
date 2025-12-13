@@ -52,6 +52,18 @@ public class UpdateIncomeSourceCommandHandler : IRequestHandler<UpdateIncomeSour
 
         if (request.TargetAccountId.HasValue)
             incomeSource.TargetAccountId = request.TargetAccountId.Value;
+            
+        if (request.EndConditionType.HasValue)
+            incomeSource.EndConditionType = request.EndConditionType.Value;
+            
+        if (request.EndConditionAccountId.HasValue)
+            incomeSource.EndConditionAccountId = request.EndConditionAccountId.Value;
+            
+        if (request.EndDate.HasValue)
+            incomeSource.EndDate = request.EndDate.Value;
+            
+        if (request.EndAmountThreshold.HasValue)
+            incomeSource.EndAmountThreshold = request.EndAmountThreshold.Value;
 
         await _context.SaveChangesAsync(cancellationToken);
         return true;

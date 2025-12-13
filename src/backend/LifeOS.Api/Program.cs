@@ -143,7 +143,6 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", $"{AppName} API {AppVersion}");
         c.RoutePrefix = "swagger";
         c.DocumentTitle = $"{AppName} API";
-        c.Version = AppVersion;
     });
 }
 

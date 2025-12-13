@@ -16,5 +16,9 @@ public record CreateIncomeSourceCommand(
     decimal? AnnualIncreaseRate,
     string? EmployerName,
     string? Notes,
-    Guid? TargetAccountId
+    Guid? TargetAccountId,
+    EndConditionType EndConditionType,
+    Guid? EndConditionAccountId,
+    DateOnly? EndDate,
+    decimal? EndAmountThreshold
 ) : IRequest<IncomeSourceDetailResponse>;

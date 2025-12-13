@@ -26,9 +26,16 @@ public class IncomeSource : BaseEntity
     
     // Target account where income will be deposited
     public Guid? TargetAccountId { get; set; }
+    
+    // End condition properties
+    public EndConditionType EndConditionType { get; set; } = EndConditionType.None;
+    public Guid? EndConditionAccountId { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public decimal? EndAmountThreshold { get; set; }
 
     // Navigation properties
     public virtual User User { get; set; } = null!;
     public virtual TaxProfile? TaxProfile { get; set; }
     public virtual Account? TargetAccount { get; set; }
+    public virtual Account? EndConditionAccount { get; set; }
 }

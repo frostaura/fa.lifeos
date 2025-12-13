@@ -60,7 +60,11 @@ public class IncomeSourcesController : ControllerBase
             request.AnnualIncreaseRate,
             request.EmployerName,
             request.Notes,
-            request.TargetAccountId));
+            request.TargetAccountId,
+            request.EndConditionType,
+            request.EndConditionAccountId,
+            request.EndDate,
+            request.EndAmountThreshold));
 
         return Created($"/api/income-sources/{result.Data.Id}", result);
     }
@@ -86,7 +90,11 @@ public class IncomeSourcesController : ControllerBase
             request.EmployerName,
             request.Notes,
             request.IsActive,
-            request.TargetAccountId));
+            request.TargetAccountId,
+            request.EndConditionType,
+            request.EndConditionAccountId,
+            request.EndDate,
+            request.EndAmountThreshold));
 
         if (!success)
             return NotFound(new { error = new { code = "NOT_FOUND", message = "Income source not found" } });

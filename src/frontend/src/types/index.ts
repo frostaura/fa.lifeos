@@ -264,6 +264,11 @@ export interface IncomeSource {
   isActive: boolean;
   targetAccountId?: string;
   targetAccountName?: string;
+  endConditionType: EndConditionType;
+  endConditionAccountId?: string;
+  endConditionAccountName?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 export interface CreateIncomeSourceRequest {
@@ -278,6 +283,10 @@ export interface CreateIncomeSourceRequest {
   employerName?: string;
   notes?: string;
   targetAccountId?: string; // Where the income is deposited
+  endConditionType?: EndConditionType;
+  endConditionAccountId?: string;
+  endDate?: string;
+  endAmountThreshold?: number;
 }
 
 // Expense Definition Types
