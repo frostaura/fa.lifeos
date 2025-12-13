@@ -9,29 +9,29 @@ export default {
       colors: {
         // Accent colors for gradients
         accent: {
-          purple: '#8b5cf6',
+          purple: 'var(--accent-color, #8b5cf6)',
           cyan: '#22d3ee',
           pink: '#ec4899',
         },
-        // Background gradients (dark theme)
+        // Background gradients (now using CSS variables)
         bg: {
-          primary: '#0a0a0f',
-          secondary: '#12121a',
-          tertiary: '#1a1a2e',
+          primary: 'var(--bg-primary)',
+          secondary: 'var(--bg-secondary)',
+          tertiary: 'var(--bg-tertiary)',
         },
         // Glass effect backgrounds
         glass: {
           light: 'rgba(255, 255, 255, 0.05)',
           medium: 'rgba(255, 255, 255, 0.08)',
           heavy: 'rgba(255, 255, 255, 0.12)',
-          border: 'rgba(255, 255, 255, 0.1)',
+          border: 'var(--border-glass)',
         },
         // Background hover
         background: {
-          primary: '#0a0a0f',
-          secondary: '#12121a',
-          tertiary: '#1a1a2e',
-          hover: '#22222e',
+          primary: 'var(--bg-primary)',
+          secondary: 'var(--bg-secondary)',
+          tertiary: 'var(--bg-tertiary)',
+          hover: 'var(--bg-hover)',
         },
         // Neon accent colors
         neon: {
@@ -42,12 +42,12 @@ export default {
           orange: '#f97316',
           yellow: '#eab308',
         },
-        // Text colors
+        // Text colors (now using CSS variables)
         text: {
-          primary: '#ffffff',
-          secondary: 'rgba(255, 255, 255, 0.7)',
-          muted: 'rgba(255, 255, 255, 0.5)',
-          disabled: 'rgba(255, 255, 255, 0.3)',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-tertiary)',
+          disabled: 'rgba(var(--text-secondary), 0.5)',
         },
         // Semantic colors
         semantic: {

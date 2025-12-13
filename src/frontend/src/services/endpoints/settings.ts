@@ -18,6 +18,14 @@ export interface ProfileSettings {
     weight: number;
     icon: string;
   }>;
+  appearance: {
+    orbColor1: string;
+    orbColor2: string;
+    orbColor3: string;
+    accentColor: string;
+    baseFontSize: number;
+    themeMode: string;
+  };
 }
 
 export interface ApiKeyInfo {
@@ -63,6 +71,15 @@ export interface DimensionWeight {
   weight: number;
 }
 
+export interface UpdateAppearanceRequest {
+  orbColor1?: string;
+  orbColor2?: string;
+  orbColor3?: string;
+  accentColor?: string;
+  baseFontSize?: number;
+  themeMode?: string;
+}
+
 export const settingsApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // Profile
@@ -88,6 +105,15 @@ export const settingsApi = apiSlice.injectEndpoints({
         body: { weights },
       }),
       invalidatesTags: ['Settings', 'Dimensions', 'Dashboard'],
+    }),
+
+    updateAppearance: builder.mutation<void, UpdateAppearanceRequest>({
+      query: (body) => ({
+        url: '/api/settings/appearance',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Settings'],
     }),
 
     // API Keys
@@ -121,6 +147,7 @@ export const {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useUpdateDimensionWeightsMutation,
+  useUpdateAppearanceMutation,
   useGetApiKeysQuery,
   useCreateApiKeyMutation,
   useRevokeApiKeyMutation,

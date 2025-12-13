@@ -92,13 +92,21 @@ export function Sidebar() {
                 {/* Mobile sidebar */}
                 <aside
                     className={cn(
-                        'fixed top-0 left-0 z-40 h-full w-64 bg-background-secondary border-r border-glass-border transform transition-transform duration-300 lg:hidden',
+                        'fixed top-0 left-0 z-40 h-full w-64 bg-glass-medium backdrop-blur-lg border-r border-glass-border transform transition-transform duration-300 lg:hidden',
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     )}
                 >
                     <div className="flex flex-col h-full pt-16 px-3">
                         <div className="mb-6 px-3 text-center">
-                            <h1 className="text-3xl text-center font-bold text-gradient" style={{ "width": "100%" }}>LifeOS</h1>
+                            <h1 
+                              className="text-3xl text-center font-bold bg-clip-text text-transparent"
+                              style={{ 
+                                width: "100%",
+                                backgroundImage: `linear-gradient(135deg, var(--orb-color-1), var(--orb-color-2), var(--orb-color-3))`
+                              }}
+                            >
+                              LifeOS
+                            </h1>
                         </div>
 
                         <nav className="flex-1 space-y-1">
@@ -147,14 +155,22 @@ export function Sidebar() {
     return (
         <aside
             className={cn(
-                'fixed top-0 left-0 h-full bg-background-secondary/50 backdrop-blur-lg border-r border-glass-border transition-all duration-300 z-40 hidden lg:flex lg:flex-col',
+                'fixed top-0 left-0 h-full bg-glass-medium backdrop-blur-lg border-r border-glass-border transition-all duration-300 z-40 hidden lg:flex lg:flex-col',
                 sidebarCollapsed ? 'w-16' : 'w-64'
             )}
         >
             {/* Logo */}
             <div className="flex items-center justify-between h-16 px-4 border-b border-glass-border">
                 {!sidebarCollapsed && (
-                    <h1 className="text-3xl text-center font-bold text-gradient" style={{ "width": "100%" }}>LifeOS</h1>
+                    <h1 
+                      className="text-3xl text-center font-bold bg-clip-text text-transparent"
+                      style={{ 
+                        width: "100%",
+                        backgroundImage: `linear-gradient(135deg, var(--orb-color-1), var(--orb-color-2), var(--orb-color-3))`
+                      }}
+                    >
+                      LifeOS
+                    </h1>
                 )}
                 <button
                     onClick={handleToggle}

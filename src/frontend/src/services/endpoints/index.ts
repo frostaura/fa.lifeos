@@ -43,8 +43,8 @@ export {
   useDeleteFinancialGoalMutation,
 } from './finances';
 export { simulationApi, useGetScenariosQuery, useGetScenarioQuery, useCreateScenarioMutation, useUpdateScenarioMutation, useDeleteScenarioMutation, useSetActiveScenarioMutation, useGetScenarioEventsQuery, useAddEventMutation, useUpdateEventMutation, useDeleteEventMutation, useRunSimulationMutation, useGetScenarioProjectionsQuery } from './simulation';
-export { settingsApi, useGetProfileQuery, useUpdateProfileMutation, useUpdateDimensionWeightsMutation, useGetApiKeysQuery, useCreateApiKeyMutation, useRevokeApiKeyMutation } from './settings';
-export type { ProfileSettings, ApiKeyInfo, CreateApiKeyResponse, UpdateProfileRequest, CreateApiKeyRequest, DimensionWeight } from './settings';
+export { settingsApi, useGetProfileQuery, useUpdateProfileMutation, useUpdateDimensionWeightsMutation, useUpdateAppearanceMutation, useGetApiKeysQuery, useCreateApiKeyMutation, useRevokeApiKeyMutation } from './settings';
+export type { ProfileSettings, ApiKeyInfo, CreateApiKeyResponse, UpdateProfileRequest, CreateApiKeyRequest, DimensionWeight, UpdateAppearanceRequest } from './settings';
 // Metrics
 export {
   metricsApi,

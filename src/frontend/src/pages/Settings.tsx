@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GlassCard } from '@components/atoms/GlassCard';
 import { InfoTooltip } from '@components/atoms/InfoTooltip';
-import { User, Key, Grid3X3, Calculator, DollarSign, Copy, Trash2, Plus, Check, Loader2, AlertCircle, TrendingUp, Target, Download, Upload, ArrowUpDown } from 'lucide-react';
+import { User, Key, Grid3X3, Calculator, DollarSign, Copy, Trash2, Plus, Check, Loader2, AlertCircle, TrendingUp, Target, Download, Upload, ArrowUpDown, Palette } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@utils/cn';
 import { confirmToast } from '@utils/confirmToast';
@@ -12,6 +12,7 @@ import {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useUpdateDimensionWeightsMutation,
+  useUpdateAppearanceMutation,
   useGetApiKeysQuery,
   useCreateApiKeyMutation,
   useRevokeApiKeyMutation,
@@ -56,6 +57,7 @@ import type {
 
 const settingsNav = [
   { icon: User, label: 'Profile', path: '/settings/profile' },
+  { icon: Palette, label: 'Appearance', path: '/settings/appearance' },
   { icon: Key, label: 'API Keys', path: '/settings/api-keys' },
   { icon: Grid3X3, label: 'Dimensions', path: '/settings/dimensions' },
   { icon: Download, label: 'Data Portability', path: '/settings/data' },
@@ -502,6 +504,414 @@ export function DimensionSettings() {
       <p className="text-text-secondary text-sm mt-6">
         Adjust dimension weights in the Profile settings tab.
       </p>
+    </GlassCard>
+  );
+}
+
+export function AppearanceSettings() {
+  const { data: profile, isLoading, error } = useGetProfileQuery();
+  const [updateAppearance, { isLoading: isSaving }] = useUpdateAppearanceMutation();
+  
+  const [formData, setFormData] = useState({
+    orbColor1: '#8B5CF6',
+    orbColor2: '#22D3EE',
+    orbColor3: '#EC4899',
+    accentColor: '#8B5CF6',
+    baseFontSize: 1.0,
+    themeMode: 'dark',
+  });
+  
+  const [savedData, setSavedData] = useState(formData);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.appearance) {
+      const loadedData = {
+        orbColor1: profile.appearance.orbColor1 || '#8B5CF6',
+        orbColor2: profile.appearance.orbColor2 || '#22D3EE',
+        orbColor3: profile.appearance.orbColor3 || '#EC4899',
+        accentColor: profile.appearance.accentColor || '#8B5CF6',
+        baseFontSize: profile.appearance.baseFontSize || 1.0,
+        themeMode: profile.appearance.themeMode || 'dark',
+      };
+      setFormData(loadedData);
+      setSavedData(loadedData);
+    }
+  }, [profile]);
+  
+  // Apply preview changes in real-time
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', formData.accentColor);
+    root.style.setProperty('--base-font-size', `${formData.baseFontSize}rem`);
+    root.style.setProperty('--orb-color-1', formData.orbColor1);
+    root.style.setProperty('--orb-color-2', formData.orbColor2);
+    root.style.setProperty('--orb-color-3', formData.orbColor3);
+    
+    // Apply theme mode preview
+    root.classList.remove('dark', 'light');
+    if (formData.themeMode === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.add(prefersDark ? 'dark' : 'light');
+    } else {
+      root.classList.add(formData.themeMode);
+    }
+  }, [formData]);
+
+  const handleSave = async () => {
+    setSaveError(null);
+    setSaveSuccess(false);
+    
+    try {
+      await updateAppearance(formData).unwrap();
+      setSavedData(formData); // Update saved state
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveError('Failed to save appearance settings. Please try again.');
+    }
+  };
+  
+  const handleReset = () => {
+    // Revert to saved data
+    setFormData(savedData);
+  };
+
+  const presetColors = [
+    { name: 'Default', colors: ['#8B5CF6', '#22D3EE', '#EC4899'], accent: '#8B5CF6' },
+    { name: 'Ocean', colors: ['#06B6D4', '#3B82F6', '#8B5CF6'], accent: '#06B6D4' },
+    { name: 'Sunset', colors: ['#F59E0B', '#EF4444', '#EC4899'], accent: '#F59E0B' },
+    { name: 'Forest', colors: ['#10B981', '#059669', '#84CC16'], accent: '#10B981' },
+    { name: 'Fire', colors: ['#EF4444', '#F97316', '#FBBF24'], accent: '#EF4444' },
+    { name: 'Purple Haze', colors: ['#A855F7', '#8B5CF6', '#6366F1'], accent: '#A855F7' },
+    { name: 'Mint', colors: ['#34D399', '#10B981', '#14B8A6'], accent: '#14B8A6' },
+    { name: 'Rose', colors: ['#FB7185', '#F43F5E', '#EC4899'], accent: '#FB7185' },
+  ];
+
+  if (isLoading) {
+    return (
+      <GlassCard variant="default" className="p-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-accent-purple" />
+        </div>
+      </GlassCard>
+    );
+  }
+
+  if (error) {
+    return (
+      <GlassCard variant="default" className="p-6">
+        <div className="flex items-center gap-3 text-red-400">
+          <AlertCircle className="w-5 h-5" />
+          <span>Failed to load appearance settings</span>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard variant="default" className="p-6">
+      <h2 className="text-xl font-semibold text-text-primary mb-6">Appearance Settings</h2>
+
+      <div className="space-y-6">
+        {/* Theme Mode Selector */}
+        <div>
+          <h3 className="text-lg font-medium text-text-primary mb-4">Theme Mode</h3>
+          <p className="text-text-secondary mb-6 text-sm">
+            Choose between dark mode, light mode, or automatically match your system preference.
+          </p>
+          
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setFormData(prev => ({ ...prev, themeMode: 'dark' }))}
+              className={`p-4 rounded-lg border transition-all ${
+                formData.themeMode === 'dark'
+                  ? 'border-accent-purple bg-accent-purple/10 text-accent-purple'
+                  : 'border-glass-border bg-bg-tertiary text-text-secondary hover:border-accent-purple/50'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-2xl mb-2">🌙</div>
+                <div className="font-medium">Dark</div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setFormData(prev => ({ ...prev, themeMode: 'light' }))}
+              className={`p-4 rounded-lg border transition-all ${
+                formData.themeMode === 'light'
+                  ? 'border-accent-purple bg-accent-purple/10 text-accent-purple'
+                  : 'border-glass-border bg-bg-tertiary text-text-secondary hover:border-accent-purple/50'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-2xl mb-2">☀️</div>
+                <div className="font-medium">Light</div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setFormData(prev => ({ ...prev, themeMode: 'system' }))}
+              className={`p-4 rounded-lg border transition-all ${
+                formData.themeMode === 'system'
+                  ? 'border-accent-purple bg-accent-purple/10 text-accent-purple'
+                  : 'border-glass-border bg-bg-tertiary text-text-secondary hover:border-accent-purple/50'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-2xl mb-2">🖥️</div>
+                <div className="font-medium">System</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-medium text-text-primary mb-4">Background Orb Colors</h3>
+          <p className="text-text-secondary mb-6 text-sm">
+            Customize the animated gradient orbs that create the background atmosphere. 
+            Changes will be applied instantly across the application.
+          </p>
+
+          {/* Color Pickers */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                <span className="inline-flex items-center gap-1.5">
+                  Orb 1 Color (Roaming)
+                  <InfoTooltip content="The primary roaming orb that moves across the background" />
+                </span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={formData.orbColor1}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor1: e.target.value }))}
+                  className="h-12 w-20 rounded-lg border border-glass-border cursor-pointer bg-bg-tertiary [color-scheme:dark]"
+                />
+                <input
+                  type="text"
+                  value={formData.orbColor1}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor1: e.target.value }))}
+                  placeholder="#8B5CF6"
+                  className="flex-1 bg-bg-tertiary border border-glass-border rounded-lg px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-purple font-mono [color-scheme:dark]"
+                />
+                <div 
+                  className="h-12 w-12 rounded-lg border border-glass-border"
+                  style={{ backgroundColor: formData.orbColor1 }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                <span className="inline-flex items-center gap-1.5">
+                  Orb 2 Color (Counter)
+                  <InfoTooltip content="The secondary orb that moves in the opposite direction" />
+                </span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={formData.orbColor2}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor2: e.target.value }))}
+                  className="h-12 w-20 rounded-lg border border-glass-border cursor-pointer bg-bg-tertiary [color-scheme:dark]"
+                />
+                <input
+                  type="text"
+                  value={formData.orbColor2}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor2: e.target.value }))}
+                  placeholder="#22D3EE"
+                  className="flex-1 bg-bg-tertiary border border-glass-border rounded-lg px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-purple font-mono [color-scheme:dark]"
+                />
+                <div 
+                  className="h-12 w-12 rounded-lg border border-glass-border"
+                  style={{ backgroundColor: formData.orbColor2 }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                <span className="inline-flex items-center gap-1.5">
+                  Orb 3 Color (Diagonal)
+                  <InfoTooltip content="The tertiary orb that moves diagonally" />
+                </span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={formData.orbColor3}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor3: e.target.value }))}
+                  className="h-12 w-20 rounded-lg border border-glass-border cursor-pointer bg-bg-tertiary [color-scheme:dark]"
+                />
+                <input
+                  type="text"
+                  value={formData.orbColor3}
+                  onChange={(e) => setFormData(prev => ({ ...prev, orbColor3: e.target.value }))}
+                  placeholder="#EC4899"
+                  className="flex-1 bg-bg-tertiary border border-glass-border rounded-lg px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-purple font-mono [color-scheme:dark]"
+                />
+                <div 
+                  className="h-12 w-12 rounded-lg border border-glass-border"
+                  style={{ backgroundColor: formData.orbColor3 }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Accent Color Picker */}
+          <div className="mt-8 pt-6 border-t border-glass-border">
+            <h3 className="text-lg font-medium text-text-primary mb-4">Accent Color</h3>
+            <p className="text-text-secondary mb-6 text-sm">
+              Choose the accent color for buttons, links, highlights, and interactive elements.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  <span className="inline-flex items-center gap-1.5">
+                    Primary Accent Color
+                    <InfoTooltip content="This color is used for buttons, active states, and highlights throughout the app" />
+                  </span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.accentColor}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accentColor: e.target.value }))}
+                    className="h-12 w-20 rounded-lg border border-glass-border cursor-pointer bg-bg-tertiary [color-scheme:dark]"
+                  />
+                  <input
+                    type="text"
+                    value={formData.accentColor}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accentColor: e.target.value }))}
+                    placeholder="#8B5CF6"
+                    className="flex-1 bg-bg-tertiary border border-glass-border rounded-lg px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-purple font-mono [color-scheme:dark]"
+                  />
+                  <div 
+                    className="h-12 w-12 rounded-lg border border-glass-border"
+                    style={{ backgroundColor: formData.accentColor }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Font Size Selector */}
+          <div className="mt-8 pt-6 border-t border-glass-border">
+            <h3 className="text-lg font-medium text-text-primary mb-4">Text Size</h3>
+            <p className="text-text-secondary mb-6 text-sm">
+              Adjust the base font size for better readability. This scales all text throughout the application.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Base Font Size
+                </label>
+                <div className="flex items-center gap-4">
+                  <span className="text-text-secondary text-sm w-20">Smaller</span>
+                  <input
+                    type="range"
+                    min="0.875"
+                    max="1.25"
+                    step="0.125"
+                    value={formData.baseFontSize}
+                    onChange={(e) => setFormData(prev => ({ ...prev, baseFontSize: parseFloat(e.target.value) }))}
+                    className="flex-1 accent-accent-purple"
+                  />
+                  <span className="text-text-secondary text-sm w-20 text-right">Larger</span>
+                  <div className="w-20 text-center">
+                    <span className="text-text-primary font-medium">
+                      {(formData.baseFontSize * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 p-4 bg-bg-tertiary rounded-lg border border-glass-border">
+                  <p className="text-text-secondary" style={{ fontSize: `${formData.baseFontSize}rem` }}>
+                    Preview text: The quick brown fox jumps over the lazy dog.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="mt-6">
+            <h4 className="text-sm font-medium text-text-secondary mb-3">Color Presets</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {presetColors.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => setFormData({
+                    ...formData,
+                    orbColor1: preset.colors[0],
+                    orbColor2: preset.colors[1],
+                    orbColor3: preset.colors[2],
+                    accentColor: preset.accent,
+                  })}
+                  className="p-3 bg-bg-tertiary rounded-lg border border-glass-border hover:border-accent-purple transition-colors"
+                >
+                  <div className="flex gap-1 mb-2">
+                    {preset.colors.map((color, i) => (
+                      <div
+                        key={i}
+                        className="h-6 flex-1 rounded"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-text-secondary text-center">{preset.name}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {saveError && (
+          <div className="flex items-center gap-2 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            {saveError}
+          </div>
+        )}
+
+        {saveSuccess && (
+          <div className="flex items-center gap-2 text-green-400 text-sm">
+            <Check className="w-4 h-4" />
+            Appearance settings saved successfully!
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleReset}
+            className="px-6 py-2.5 rounded-lg border border-glass-border text-text-secondary hover:text-text-primary hover:border-accent-purple transition-colors"
+          >
+            Reset to Default
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className={cn(
+              "px-6 py-2.5 rounded-lg text-white font-medium transition-colors flex items-center gap-2",
+              isSaving
+                ? "bg-gray-600 cursor-not-allowed"
+                : "bg-accent-purple hover:bg-accent-purple/80"
+            )}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </button>
+        </div>
+      </div>
     </GlassCard>
   );
 }

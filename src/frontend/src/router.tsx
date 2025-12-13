@@ -17,6 +17,7 @@ import { Metrics } from '@pages/Metrics';
 import {
   Settings,
   ProfileSettings,
+  AppearanceSettings,
   ApiKeySettings,
   DimensionSettings,
   TaxProfileSettings,
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="profile" replace /> },
           { path: 'profile', element: <ProfileSettings /> },
+          { path: 'appearance', element: <AppearanceSettings /> },
           { path: 'api-keys', element: <ApiKeySettings /> },
           { path: 'dimensions', element: <DimensionSettings /> },
           { path: 'data', element: <DataPortabilitySettings /> },

@@ -36,6 +36,15 @@ public class SettingsController : ControllerBase
             return NotFound(new { error = new { code = "NOT_FOUND", message = "User not found" } });
 
         var dimensions = await _context.Dimensions.OrderBy(d => d.SortOrder).ToListAsync();
+        
+        // Get or create user settings
+        var userSettings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (userSettings == null)
+        {
+            userSettings = new Domain.Entities.UserSettings { UserId = userId };
+            _context.UserSettings.Add(userSettings);
+            await _context.SaveChangesAsync();
+        }
 
         return Ok(new
         {
@@ -54,7 +63,16 @@ public class SettingsController : ControllerBase
                     name = d.Name,
                     weight = d.DefaultWeight,
                     icon = d.Icon
-                })
+                }),
+                appearance = new
+                {
+                    orbColor1 = userSettings.OrbColor1,
+                    orbColor2 = userSettings.OrbColor2,
+                    orbColor3 = userSettings.OrbColor3,
+                    accentColor = userSettings.AccentColor,
+                    baseFontSize = userSettings.BaseFontSize,
+                    themeMode = userSettings.ThemeMode
+                }
             }
         });
     }
@@ -121,6 +139,45 @@ public class SettingsController : ControllerBase
 
         return Ok(new { data = new { message = "Dimension weights updated successfully" } });
     }
+    
+    /// <summary>
+    /// Update appearance settings (orb colors)
+    /// </summary>
+    [HttpPut("appearance")]
+    public async Task<IActionResult> UpdateAppearance([FromBody] UpdateAppearanceRequest request)
+    {
+        var userId = GetUserId();
+        var userSettings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        
+        if (userSettings == null)
+        {
+            userSettings = new Domain.Entities.UserSettings { UserId = userId };
+            _context.UserSettings.Add(userSettings);
+        }
+
+        if (!string.IsNullOrEmpty(request.OrbColor1))
+            userSettings.OrbColor1 = request.OrbColor1;
+            
+        if (!string.IsNullOrEmpty(request.OrbColor2))
+            userSettings.OrbColor2 = request.OrbColor2;
+            
+        if (!string.IsNullOrEmpty(request.OrbColor3))
+            userSettings.OrbColor3 = request.OrbColor3;
+            
+        if (!string.IsNullOrEmpty(request.AccentColor))
+            userSettings.AccentColor = request.AccentColor;
+            
+        if (request.BaseFontSize.HasValue)
+            userSettings.BaseFontSize = request.BaseFontSize.Value;
+            
+        if (!string.IsNullOrEmpty(request.ThemeMode))
+            userSettings.ThemeMode = request.ThemeMode;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("User {UserId} updated appearance settings", userId);
+
+        return Ok(new { data = new { message = "Appearance settings updated successfully" } });
+    }
 }
 
 public record UpdateProfileRequest
@@ -148,4 +205,14 @@ public record DimensionWeight
 {
     public Guid DimensionId { get; init; }
     public decimal Weight { get; init; }
+}
+
+public record UpdateAppearanceRequest
+{
+    public string? OrbColor1 { get; init; }
+    public string? OrbColor2 { get; init; }
+    public string? OrbColor3 { get; init; }
+    public string? AccentColor { get; init; }
+    public decimal? BaseFontSize { get; init; }
+    public string? ThemeMode { get; init; }
 }

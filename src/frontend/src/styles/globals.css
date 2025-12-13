@@ -19,6 +19,43 @@
   --accent-cyan: #22d3ee;
   --accent-pink: #ec4899;
   --accent-green: #22c55e;
+  
+  /* Dynamic appearance settings - set via JS */
+  --accent-color: #8b5cf6;
+  --base-font-size: 1rem;
+  --orb-color-1: #8b5cf6;
+  --orb-color-2: #22d3ee;
+  --orb-color-3: #ec4899;
+}
+
+/* Light mode overrides */
+:root.light {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f3f5;
+  --bg-hover: #e9ecef;
+
+  --text-primary: #1a1a1a;
+  --text-secondary: #495057;
+  --text-tertiary: #6c757d;
+
+  --border-glass: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+}
+
+/* Dark mode glass effects */
+:root.dark .bg-glass-medium,
+:root:not(.light) .bg-glass-medium {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Light mode glass effects - preserve backdrop blur */
+:root.light .bg-glass-medium {
+  background-color: rgba(255, 255, 255, 0.7);
+}
+
+:root.light .bg-background-secondary {
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 * {
@@ -29,7 +66,7 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 12px;
+  font-size: var(--base-font-size);
 }
 
 body {
@@ -39,7 +76,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 12px;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {

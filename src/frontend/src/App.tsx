@@ -4,9 +4,11 @@ import { store } from '@store/index';
 import { router } from './router';
 import { Toaster } from 'react-hot-toast';
 import { useProjectionUpdates } from '@/hooks/useProjectionUpdates';
+import { useAppearance } from '@/hooks/useAppearance';
 
 function AppContent() {
   useProjectionUpdates();
+  useAppearance(); // Apply appearance settings in real-time
   
   return (
     <>

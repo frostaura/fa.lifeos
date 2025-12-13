@@ -31,7 +31,7 @@ namespace LifeOS.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "PrimaryStatsCurrent",
                 table: "review_snapshots",
-                type: "text",
+                type: "jsonb",
                 nullable: true);
 
             migrationBuilder.AddColumn<decimal>(

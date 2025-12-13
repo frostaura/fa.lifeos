@@ -3,17 +3,20 @@ using System;
 using LifeOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LifeOS.Infrastructure.Migrations
+namespace LifeOS.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LifeOSDbContext))]
-    partial class LifeOSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251213153609_AddAccentColorAndFontSize")]
+    partial class AddAccentColorAndFontSize
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2871,10 +2874,6 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("streak_penalty_sensitivity");
-
-                    b.Property<string>("ThemeMode")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Timezone")
                         .IsRequired()

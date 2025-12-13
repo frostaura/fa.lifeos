@@ -3,17 +3,20 @@ using System;
 using LifeOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LifeOS.Infrastructure.Migrations
+namespace LifeOS.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LifeOSDbContext))]
-    partial class LifeOSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251213152844_FixPrimaryStatsCurrentColumnType")]
+    partial class FixPrimaryStatsCurrentColumnType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2822,13 +2825,6 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("AccentColor")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("BaseFontSize")
-                        .HasColumnType("numeric");
-
                     b.Property<decimal>("BaselineLifeExpectancyYears")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
@@ -2871,10 +2867,6 @@ namespace LifeOS.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("streak_penalty_sensitivity");
-
-                    b.Property<string>("ThemeMode")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
